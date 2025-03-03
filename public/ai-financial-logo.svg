@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="24" cy="24" r="22" fill="#1E293B" stroke="white" stroke-width="2"/>
+  <g transform="translate(12, 12)">
+    <!-- Barras verticales -->
+    <rect x="2" y="18" width="2" height="8" rx="1" fill="#22C55E"/>
+    <rect x="6" y="14" width="2" height="12" rx="1" fill="#22C55E"/>
+    <rect x="10" y="10" width="2" height="16" rx="1" fill="#22C55E"/>
+    <rect x="14" y="14" width="2" height="12" rx="1" fill="#22C55E"/>
+    <rect x="18" y="18" width="2" height="8" rx="1" fill="#22C55E"/>
+    
+    <!-- Puntos de conexión -->
+    <circle cx="3" cy="3" r="2" fill="white"/>
+    <circle cx="7" cy="3" r="2" fill="white"/>
+    <circle cx="11" cy="3" r="2" fill="white"/>
+    <circle cx="15" cy="3" r="2" fill="white"/>
+    <circle cx="19" cy="3" r="2" fill="white"/>
+    
+    <!-- Líneas de conexión -->
+    <path d="M3 5L3 17" stroke="white" stroke-width="1"/>
+    <path d="M7 5L7 13" stroke="white" stroke-width="1"/>
+    <path d="M11 5L11 9" stroke="white" stroke-width="1"/>
+    <path d="M15 5L15 13" stroke="white" stroke-width="1"/>
+    <path d="M19 5L19 17" stroke="white" stroke-width="1"/>
+  </g>
+</svg> 
