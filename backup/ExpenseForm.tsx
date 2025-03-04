@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { Calendar } from "@/components/ui/calendar"
@@ -19,25 +19,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { ArrowDown, ArrowUp, CalendarIcon, Plus, Users } from "lucide-react"
+import { ArrowDown, ArrowUp, CalendarIcon, Plus } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { toast } from "sonner"
-
-interface Grupo {
-  id: string;
-  nombre: string;
-}
 
 interface ExpenseFormProps {
   onTransactionAdded: () => void
-}
-
-// Nueva interfaz para categorías
-interface Categoria {
-  id: number;
-  descripcion: string;
-  grupo_categoria: string | null;
-  status: boolean;
 }
 
 export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
@@ -47,52 +33,6 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
   const [movementType, setMovementType] = useState<"efectivo" | "digital" | "ahorro">("efectivo")
   const [error, setError] = useState<string>("")
   const [success, setSuccess] = useState<boolean>(false)
-  const [grupos, setGrupos] = useState<Grupo[]>([])
-  const [selectedGrupoId, setSelectedGrupoId] = useState<string | null>(null)
-  const [loadingGrupos, setLoadingGrupos] = useState(false)
-  // Nuevo estado para categorías
-  const [categorias, setCategorias] = useState<Categoria[]>([])
-  const [loadingCategorias, setLoadingCategorias] = useState(false)
-
-  // Cargar los grupos del usuario
-  useEffect(() => {
-    const fetchGrupos = async () => {
-      try {
-        setLoadingGrupos(true)
-        const response = await fetch("/api/grupos")
-        if (response.ok) {
-          const data = await response.json()
-          setGrupos(data)
-        }
-      } catch (error) {
-        console.error("Error al cargar grupos:", error)
-      } finally {
-        setLoadingGrupos(false)
-      }
-    }
-
-    fetchGrupos()
-  }, [])
-
-  // Cargar las categorías
-  useEffect(() => {
-    const fetchCategorias = async () => {
-      try {
-        setLoadingCategorias(true)
-        const response = await fetch("/api/categorias")
-        if (response.ok) {
-          const data = await response.json()
-          setCategorias(data)
-        }
-      } catch (error) {
-        console.error("Error al cargar categorías:", error)
-      } finally {
-        setLoadingCategorias(false)
-      }
-    }
-
-    fetchCategorias()
-  }, [])
 
   // Función para formatear el monto con el formato requerido
   const formatAmount = (value: string) => {
@@ -125,9 +65,8 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
     const concepto = formData.get('concepto')?.toString()
     const monto = amount.replace(/[^0-9]/g, "") // Eliminar todo excepto números
     const categoria = formData.get('categoria')?.toString()
-    const categoriaId = formData.get('categoriaId')?.toString()
 
-    if (!concepto || !monto || !categoriaId) {
+    if (!concepto || !monto || !categoria) {
       setError("Por favor, completa todos los campos")
       return
     }
@@ -142,11 +81,9 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
           concepto,
           monto: Number(monto) / 100,
           categoria,
-          categoriaId: parseInt(categoriaId),
           tipoTransaccion: transactionType,
           tipoMovimiento: movementType,
-          fecha: date || new Date(),
-          grupoId: selectedGrupoId
+          fecha: date || new Date()
         }),
       })
 
@@ -161,7 +98,6 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
       setDate(undefined)
       setTransactionType("expense")
       setMovementType("efectivo")
-      setSelectedGrupoId(null)
       setSuccess(true)
       
       onTransactionAdded()
@@ -169,8 +105,6 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
       setTimeout(() => {
         setSuccess(false)
       }, 3000)
-      
-      toast.success("Transacción registrada correctamente")
       
     } catch (error) {
       console.error('Error:', error)
@@ -220,34 +154,17 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="categoriaId">Categoría</Label>
-          <Select name="categoriaId">
+          <Label htmlFor="categoria">Categoría</Label>
+          <Select name="categoria">
             <SelectTrigger>
               <SelectValue placeholder="Seleccionar categoría" />
             </SelectTrigger>
             <SelectContent>
-              {loadingCategorias ? (
-                <SelectItem value="loading" disabled>Cargando categorías...</SelectItem>
-              ) : categorias.length > 0 ? (
-                categorias.map((categoria) => (
-                  <SelectItem key={categoria.id} value={categoria.id.toString()}>
-                    {categoria.descripcion}
-                    {categoria.grupo_categoria && (
-                      <span className="text-xs text-muted-foreground ml-2">
-                        ({categoria.grupo_categoria})
-                      </span>
-                    )}
-                  </SelectItem>
-                ))
-              ) : (
-                <>
-                  <SelectItem value="alimentacion">Alimentación</SelectItem>
-                  <SelectItem value="transporte">Transporte</SelectItem>
-                  <SelectItem value="servicios">Servicios</SelectItem>
-                  <SelectItem value="ocio">Ocio</SelectItem>
-                  <SelectItem value="otros">Otros</SelectItem>
-                </>
-              )}
+              <SelectItem value="alimentacion">Alimentación</SelectItem>
+              <SelectItem value="transporte">Transporte</SelectItem>
+              <SelectItem value="servicios">Servicios</SelectItem>
+              <SelectItem value="ocio">Ocio</SelectItem>
+              <SelectItem value="otros">Otros</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -319,32 +236,8 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
           </Select>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="grupo">Grupo (opcional)</Label>
-          <Select value={selectedGrupoId || 'personal'} onValueChange={setSelectedGrupoId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecciona un grupo (opcional)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="personal">Personal (sin grupo)</SelectItem>
-              {grupos.map((grupo) => (
-                <SelectItem key={grupo.id} value={grupo.id}>
-                  <div className="flex items-center">
-                    <Users className="h-4 w-4 mr-2" />
-                    {grupo.nombre}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            {selectedGrupoId && selectedGrupoId !== 'personal'
-              ? "Este gasto será visible para todos los miembros del grupo" 
-              : "Selecciona un grupo para compartir este gasto"}
-          </p>
-        </div>
-
         <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
+          <Plus className="w-4 h-4 mr-2" />
           Registrar
         </Button>
       </form>

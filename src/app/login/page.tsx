@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
-import { signIn } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { signIn, useSession } from "next-auth/react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,8 +10,24 @@ import { FcGoogle } from "react-icons/fc"
 
 export default function LoginPage() {
   const router = useRouter()
+  const { status } = useSession()
+  const searchParams = useSearchParams()
+  
+  // Asegurarnos de que callbackUrl sea una ruta válida comenzando con "/"
+  const callbackParam = searchParams.get("callbackUrl")
+  const callbackUrl = callbackParam && callbackParam.startsWith("/") 
+    ? callbackParam 
+    : "/"
+    
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+
+  // Redirigir si ya está autenticado
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.push(callbackUrl)
+    }
+  }, [status, router, callbackUrl])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -26,14 +42,27 @@ export default function LoginPage() {
       const result = await signIn("credentials", {
         email,
         password,
-        callbackUrl: "/",
-        redirect: true,
+        redirect: false,
+        callbackUrl,
       })
 
       if (result?.error) {
-        setError(result.error)
+        if (result.error === 'Usuario no encontrado') {
+          setError("El usuario no existe. Por favor, regístrate primero.")
+        } else if (result.error === 'Contraseña incorrecta') {
+          setError("La contraseña es incorrecta. Inténtalo de nuevo.")
+        } else {
+          setError(result.error)
+        }
+      } else if (result?.ok) {
+        // Si el inicio de sesión fue exitoso, redirigir manualmente
+        // Utilizar un pequeño retraso para dar tiempo a la sesión a establecerse
+        setTimeout(() => {
+          router.push(callbackUrl);
+        }, 100);
       }
     } catch (error) {
+      console.error("Error durante login:", error);
       setError("Ocurrió un error al iniciar sesión")
     } finally {
       setIsLoading(false)
@@ -41,7 +70,16 @@ export default function LoginPage() {
   }
 
   const handleGoogleLogin = () => {
-    signIn("google", { callbackUrl: "/" })
+    signIn("google", { callbackUrl })
+  }
+
+  // Si está cargando la sesión, mostrar un estado de carga
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">Cargando...</div>
+      </div>
+    );
   }
 
   return (

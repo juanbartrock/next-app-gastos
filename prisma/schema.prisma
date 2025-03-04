@@ -97,4 +97,17 @@ model Gasto {
   grupoId         String?  // El grupo al que pertenece el gasto (opcional)
   user            User?    @relation(fields: [userId], references: [id])
   grupo           Grupo?   @relation(fields: [grupoId], references: [id])
+  categoriaId     Int?     // Referencia a la categoría
+  categoriaRel    Categoria? @relation(fields: [categoriaId], references: [id])
+}
+
+// Nueva tabla para categorías de gastos
+model Categoria {
+  id              Int       @id @default(autoincrement())
+  descripcion     String    // Nombre descriptivo de la categoría
+  status          Boolean   @default(true) // Activo/Inactivo
+  grupo_categoria String?   // Agrupación de categorías (ej: "hogar", "transporte", etc.)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  gastos          Gasto[]   // Relación con gastos
 }

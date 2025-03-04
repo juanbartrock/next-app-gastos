@@ -19,10 +19,6 @@ import {
   CalendarIcon,
   Users,
   Pencil,
-  MoreHorizontal,
-  LogOut,
-  Settings,
-  BarChart3,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,7 +30,7 @@ import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
-import { format, subMonths } from "date-fns"
+import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { ExpenseForm } from "@/components/ExpenseForm"
 import { useRouter } from "next/navigation"
@@ -49,47 +45,19 @@ import {
   RadioGroupItem,
 } from "@/components/ui/radio-group"
 import { DistributionPanel } from "@/components/DistributionPanel"
-import Link from "next/link"
-import { signOut, useSession } from "next-auth/react"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
-// Componente de carga
-function LoadingScreen() {
-  return <div className="min-h-screen flex items-center justify-center">Cargando...</div>
-}
-
-export default function BankingDashboard() {
-  // Hooks de autenticación
-  const { data: session, status } = useSession()
-  const router = useRouter()
-  
-  // Estados del componente
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("darkMode") === "true"
-    }
-    return false
-  })
+export default function BankingDashboard({ nombreUsuario = "Usuario" }) {
+  const [darkMode, setDarkMode] = useState(false)
   const [balanceIndex, setBalanceIndex] = useState(0)
   const [amount, setAmount] = useState("")
   const [date, setDate] = useState<Date>()
   const [transactionType, setTransactionType] = useState<"income" | "expense">("expense")
   const [transactions, setTransactions] = useState<any[]>([])
   const [editingTransaction, setEditingTransaction] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  const router = useRouter()
 
-  // Definir fetchTransactions antes de usarlo en useEffect
   const fetchTransactions = async () => {
     try {
-      setLoading(true)
       const response = await fetch('/api/gastos')
       if (response.ok) {
         const data = await response.json()
@@ -97,48 +65,13 @@ export default function BankingDashboard() {
       }
     } catch (error) {
       console.error('Error al cargar transacciones:', error)
-    } finally {
-      setLoading(false)
     }
   }
 
-  // Efecto para redireccionar si no está autenticado
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login")
-    }
-  }, [status, router])
+    fetchTransactions()
+  }, [])
 
-  // Efecto para cargar transacciones
-  useEffect(() => {
-    if (status === "authenticated") {
-      fetchTransactions()
-    }
-  }, [status])
-  
-  // Efecto para el modo oscuro
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark")
-    } else {
-      document.documentElement.classList.remove("dark")
-    }
-  }, [darkMode])
-
-  // Si está cargando, mostrar pantalla de carga
-  if (status === "loading" || (status === "authenticated" && loading)) {
-    return <LoadingScreen />
-  }
-
-  // Si no está autenticado, no mostrar nada (la redirección se maneja en el efecto)
-  if (status === "unauthenticated") {
-    return null
-  }
-
-  // Nombre del usuario
-  const nombreUsuario = session?.user?.name || "Usuario"
-
-  // Funciones del componente
   const calculateBalances = () => {
     const now = new Date()
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -200,6 +133,15 @@ export default function BankingDashboard() {
     }
   }
 
+  // Aplicar clase dark al elemento html cuando cambia el modo
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark")
+    } else {
+      document.documentElement.classList.remove("dark")
+    }
+  }, [darkMode])
+
   const handleEditTransaction = async (updatedTransaction: any) => {
     try {
       const response = await fetch(`/api/gastos/${updatedTransaction.id}`, {
@@ -222,74 +164,60 @@ export default function BankingDashboard() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
-      {/* Sidebar */}
-      <div className="w-80 border-r border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg flex flex-col">
-        <div className="p-6 flex-1 flex flex-col">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10">
-              <img src="/ai-financial-logo.svg" alt="AI Financial Management" className="w-full h-full" />
+    <div className="flex min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 p-6">
+      <div className="mx-auto w-full max-w-7xl rounded-3xl bg-white dark:bg-gray-800 shadow-lg overflow-hidden">
+        <div className="grid grid-cols-12 h-full">
+          {/* Sidebar */}
+          <div className="col-span-3 border-r border-gray-100 dark:border-gray-700 p-6">
+            <div className="flex items-center gap-3 mb-10">
+              <div className="w-10 h-10">
+                <img src="/ai-financial-logo.svg" alt="AI Financial Management" className="w-full h-full" />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-bold text-gray-900 dark:text-white">AI Financial</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">Management</span>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="font-bold text-gray-900 dark:text-white">AI Financial</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">Management</span>
-            </div>
-          </div>
 
-          <nav className="space-y-1 mb-6">
-            <Button variant="ghost" className="w-full justify-start gap-3 py-5">
-              <Grid className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-              <span className="font-medium">Principal</span>
-            </Button>
-            <Button variant="ghost" 
-              className="w-full justify-start gap-3 py-5 text-gray-500 dark:text-gray-400"
-              onClick={() => router.push('/grupos')}>
-              <Users className="w-5 h-5" />
-              <span>Grupos</span>
-            </Button>
-          </nav>
+            <nav className="space-y-1">
+              <Button variant="ghost" className="w-full justify-start gap-3 py-6">
+                <Grid className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                <span className="font-medium">Principal</span>
+              </Button>
+              <Button variant="ghost" className="w-full justify-start gap-3 py-6 text-gray-500 dark:text-gray-400">
+                <CreditCard className="w-5 h-5" />
+                <span>Tarjetas</span>
+              </Button>
+              <Button variant="ghost" className="w-full justify-start gap-3 py-6 text-gray-500 dark:text-gray-400">
+                <FileText className="w-5 h-5" />
+                <span>Detalles</span>
+              </Button>
+              <Button variant="ghost" className="w-full justify-start gap-3 py-6 text-gray-500 dark:text-gray-400">
+                <Users className="w-5 h-5" />
+                <span>Grupo</span>
+              </Button>
+            </nav>
 
-          {/* Expense Form */}
-          <div className="flex-1 overflow-y-auto">
+            {/* Expense Form */}
             <ExpenseForm onTransactionAdded={fetchTransactions} />
           </div>
 
-          {/* Logout Button */}
-          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-            <Button 
-              variant="ghost" 
-              className="w-full justify-center text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-              onClick={() => signOut()}>
-              <LogOut className="w-5 h-5 mr-2" />
-              <span>Cerrar sesión</span>
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        <div className="border-b">
-          <div className="flex h-16 items-center justify-between px-4">
-            <div className="hidden sm:flex">
-              <h1 className="text-xl font-semibold">
-                ¡Bienvenido, {session?.user?.name || "Usuario"}!
-              </h1>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center space-x-2">
-                <Sun className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                <Switch checked={darkMode} onCheckedChange={setDarkMode} id="dark-mode" />
-                <Moon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+          {/* Main Content */}
+          <div className="col-span-9 p-8">
+            <header className="flex justify-between items-center mb-8">
+              <h1 className="text-2xl font-bold dark:text-white">¡Hola, {nombreUsuario}!</h1>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center space-x-2">
+                  <Sun className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  <Switch checked={darkMode} onCheckedChange={setDarkMode} id="dark-mode" />
+                  <Moon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                </div>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <Bell className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                </Button>
               </div>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Bell className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-              </Button>
-            </div>
-          </div>
-        </div>
-        <div className="flex-1 overflow-auto p-4 md:p-6">
-          <div className="grid gap-4 md:gap-8">
+            </header>
+
             {/* Main content components */}
             <div className="grid grid-cols-12 gap-6">
               {/* Balance Card */}
@@ -320,7 +248,7 @@ export default function BankingDashboard() {
                 </Card>
               </div>
 
-              {/* Monthly Situation */}
+              {/* Monthly Balance */}
               <div className="col-span-7">
                 <Card className="h-full dark:bg-gray-700 dark:text-white">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -385,30 +313,34 @@ export default function BankingDashboard() {
                         </thead>
                         <tbody>
                           {transactions.slice(0, 5).map((transaction) => (
-                            <tr key={transaction.id} className="border-b border-gray-100 dark:border-gray-700">
-                              <td className="py-2 text-sm">{format(new Date(transaction.fecha), "dd/MM/yyyy")}</td>
-                              <td className="py-2 text-sm">
-                                <Badge variant="outline">{transaction.categoria}</Badge>
+                            <tr key={transaction.id}>
+                              <td className="py-3 text-sm">
+                                {format(new Date(transaction.fecha), "dd MMM yyyy", { locale: es })}
                               </td>
-                              <td className="py-2 text-sm">{transaction.concepto}</td>
-                              <td className="py-2 text-sm text-right">
-                                <Badge
-                                  className={
-                                    transaction.tipoTransaccion === "income"
-                                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-                                      : "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300"
+                              <td className="py-3 text-sm capitalize">{transaction.categoria}</td>
+                              <td className="py-3 text-sm">{transaction.concepto}</td>
+                              <td className="text-right">
+                                <Badge 
+                                  className={transaction.tipoTransaccion === "income" 
+                                    ? "bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300" 
+                                    : "bg-orange-100 text-orange-600 dark:bg-orange-900 dark:text-orange-300"
                                   }
                                 >
                                   {transaction.tipoTransaccion === "income" ? "Ingreso" : "Egreso"}
                                 </Badge>
                               </td>
-                              <td className="py-2 text-sm text-right capitalize">{transaction.tipoMovimiento}</td>
-                              <td className="py-2 text-sm text-right font-medium">
-                                {new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(
-                                  transaction.monto
-                                )}
+                              <td className="text-right">
+                                <Badge variant="outline" className="capitalize">
+                                  {transaction.tipoMovimiento}
+                                </Badge>
                               </td>
-                              <td className="py-2 text-sm text-right">
+                              <td className="text-right text-sm font-medium">
+                                {new Intl.NumberFormat("es-AR", {
+                                  style: "currency",
+                                  currency: "ARS",
+                                }).format(transaction.monto)}
+                              </td>
+                              <td className="text-right">
                                 <Button
                                   variant="ghost"
                                   size="icon"
