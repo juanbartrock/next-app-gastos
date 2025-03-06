@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { options } from '@/app/api/auth/[...nextauth]/options'
 
 // GET - Obtener todas las categorías
 export async function GET() {

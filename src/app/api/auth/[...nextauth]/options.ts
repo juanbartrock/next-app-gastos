@@ -27,30 +27,35 @@ export const options: NextAuthOptions = {
         password: { label: "Contraseña", type: "password" }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error('Por favor, ingresa todos los campos')
-        }
-
-        const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email
+        try {
+          if (!credentials?.email || !credentials?.password) {
+            throw new Error('Por favor, ingresa todos los campos')
           }
-        })
 
-        if (!user || !user.password) {
-          throw new Error('Usuario no encontrado')
+          const user = await prisma.user.findUnique({
+            where: {
+              email: credentials.email
+            }
+          })
+
+          if (!user || !user.password) {
+            throw new Error('Usuario no encontrado')
+          }
+
+          const isPasswordValid = await bcrypt.compare(
+            credentials.password,
+            user.password
+          )
+
+          if (!isPasswordValid) {
+            throw new Error('Contraseña incorrecta')
+          }
+
+          return user
+        } catch (error) {
+          console.error("Error en authorize:", error);
+          throw error;
         }
-
-        const isPasswordValid = await bcrypt.compare(
-          credentials.password,
-          user.password
-        )
-
-        if (!isPasswordValid) {
-          throw new Error('Contraseña incorrecta')
-        }
-
-        return user
       }
     })
   ],
@@ -65,38 +70,66 @@ export const options: NextAuthOptions = {
   },
   callbacks: {
     async redirect({ url, baseUrl }) {
-      // Validar y simplificar la redirección
-      // Por defecto, redirigir a la raíz si no hay URL o es inválida
-      if (!url || typeof url !== 'string') {
+      try {
+        // Validar y simplificar la redirección
+        // Por defecto, redirigir a la raíz si no hay URL o es inválida
+        if (!url || typeof url !== 'string') {
+          return baseUrl
+        }
+        
+        // Si la URL empieza con /, es una ruta relativa
+        if (url.startsWith('/')) {
+          return `${baseUrl}${url}`
+        }
+        
+        // Si es la misma URL base, usarla
+        if (url.startsWith(baseUrl)) {
+          return url
+        }
+        
+        // Por defecto, redirigir a la raíz
         return baseUrl
+      } catch (error) {
+        console.error("Error en redirect callback:", error);
+        return baseUrl;
       }
-      
-      // Si la URL empieza con /, es una ruta relativa
-      if (url.startsWith('/')) {
-        return `${baseUrl}${url}`
-      }
-      
-      // Si es la misma URL base, usarla
-      if (url.startsWith(baseUrl)) {
-        return url
-      }
-      
-      // Por defecto, redirigir a la raíz
-      return baseUrl
     },
     async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.sub!
+      try {
+        if (session.user) {
+          session.user.id = token.sub!
+        }
+        return session
+      } catch (error) {
+        console.error("Error en session callback:", error);
+        return session;
       }
-      return session
     },
     async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id
+      try {
+        if (user) {
+          token.id = user.id
+        }
+        return token
+      } catch (error) {
+        console.error("Error en jwt callback:", error);
+        return token;
       }
-      return token
     }
   },
   debug: process.env.NODE_ENV === "development",
-  secret: process.env.NEXTAUTH_SECRET
+  secret: process.env.NEXTAUTH_SECRET,
+  // Configuraciones adicionales para producción
+  trustHost: true,
+  cookies: {
+    sessionToken: {
+      name: `__Secure-next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: true
+      }
+    }
+  }
 } 
