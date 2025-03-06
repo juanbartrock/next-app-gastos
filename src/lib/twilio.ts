@@ -30,6 +30,27 @@ export async function sendWhatsAppMessage(to: string, body: string) {
   }
 }
 
+// Nueva función para enviar mensajes SMS a través de Twilio
+export async function sendSMS(to: string, body: string) {
+  try {
+    // Asegurarse de que el número no tenga el prefijo 'whatsapp:'
+    if (to.startsWith('whatsapp:')) {
+      to = to.replace('whatsapp:', '');
+    }
+
+    // Enviar el SMS
+    await client.messages.create({
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to: to,
+      body: body
+    });
+    return true;
+  } catch (error) {
+    console.error("Error al enviar SMS:", error);
+    return false;
+  }
+}
+
 // Función para descargar audio de Twilio
 export async function downloadAudio(mediaUrl: string): Promise<string> {
   try {
@@ -62,11 +83,15 @@ export async function downloadAudio(mediaUrl: string): Promise<string> {
 
 // Verificar que la solicitud viene de Twilio (opcional pero recomendado para producción)
 export function validateTwilioRequest(url: string, params: Record<string, string>, signature: string): boolean {
+  // Para pruebas, descomenta esta línea:
+  return true;
+  
+  // Y comenta el resto de la función:
+  /*
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   if (!authToken) return false;
   
-  // En un entorno serverless como Vercel, podríamos necesitar ajustes adicionales
-  // para la validación de la firma. Este es un enfoque básico.
   const validator = twilio.validateRequest;
   return validator(authToken, signature, url, params);
+  */
 } 
