@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { signIn, useSession } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { FcGoogle } from "react-icons/fc"
 
-export default function LoginPage() {
+// Componente interno que usa useSearchParams
+function LoginForm() {
   const router = useRouter()
   const { status } = useSession()
   const searchParams = useSearchParams()
@@ -164,5 +165,14 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+// Componente principal envuelto en Suspense
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Cargando...</div>}>
+      <LoginForm />
+    </Suspense>
   )
 } 

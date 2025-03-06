@@ -5,7 +5,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(options)
     
     // Si hay un usuario autenticado, filtrar por sus gastos
     if (session?.user?.email) {
@@ -104,7 +104,7 @@ async function crearCategoriasIniciales() {
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(options)
     let userId: string | undefined = undefined
     
     // Si hay un usuario autenticado, obtener su ID

@@ -27,7 +27,7 @@ export async function GET() {
 // POST - Crear una nueva categoría
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(options)
     
     // Verificar autenticación
     if (!session?.user) {
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
 // PUT - Actualizar una categoría
 export async function PUT(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(options)
     
     // Verificar autenticación
     if (!session?.user) {
@@ -124,7 +124,7 @@ export async function PUT(request: Request) {
 // DELETE - Desactivar una categoría (soft delete)
 export async function DELETE(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(options)
     
     // Verificar autenticación
     if (!session?.user) {

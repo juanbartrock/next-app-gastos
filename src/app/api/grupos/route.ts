@@ -6,7 +6,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 // GET - Obtener grupos del usuario autenticado
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(options)
     
     if (!session?.user?.email) {
       return NextResponse.json(
@@ -88,7 +88,7 @@ export async function GET() {
 // POST - Crear un nuevo grupo
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(options)
     
     if (!session?.user?.email) {
       return NextResponse.json(

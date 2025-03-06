@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(options)
     
     if (!session?.user?.email) {
       return NextResponse.json(
@@ -113,7 +113,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(options)
     
     if (!session?.user?.email) {
       return NextResponse.json(
@@ -224,7 +224,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(options)
     
     if (!session?.user?.email) {
       return NextResponse.json(

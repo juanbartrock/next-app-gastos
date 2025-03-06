@@ -1,36 +1,39 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { options } from "@/app/api/auth/[...nextauth]/options";
 import { OpenAI } from "openai";
+import fs from "fs";
 import prisma from "@/lib/prisma";
 
-// Inicializar OpenAI con la clave API directamente
+// Inicializar OpenAI
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-export async function POST(request: NextRequest) {
+// Función para transcribir audio
+export async function transcribeAudio(filePath: string): Promise<string> {
   try {
-    // Verificar autenticación
-    const session = await getServerSession(options);
-    if (!session?.user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    const transcription = await openai.audio.transcriptions.create({
+      file: fs.createReadStream(filePath),
+      model: "whisper-1",
+      language: "es",
+    });
+    
+    // Limpiar archivo temporal después de usarlo
+    try {
+      fs.unlinkSync(filePath);
+    } catch (e) {
+      console.error("Error al eliminar archivo temporal:", e);
     }
+    
+    return transcription.text;
+  } catch (error) {
+    console.error("Error en la transcripción:", error);
+    throw new Error("Error en la transcripción del audio");
+  }
+}
 
-    // Obtener el texto transcrito
-    const { text } = await request.json();
-
-    if (!text) {
-      return NextResponse.json(
-        { error: "No se proporcionó texto para analizar" },
-        { status: 400 }
-      );
-    }
-
-    console.log("API Key (analyze):", process.env.OPENAI_API_KEY ? "Configurada" : "No configurada");
-    console.log("Texto a analizar:", text);
-
-    // Obtener las categorías disponibles para referenciarlas en el prompt
+// Función para analizar texto y extraer información del gasto
+export async function analyzeExpenseText(text: string, userId: string): Promise<any> {
+  try {
+    // Obtener las categorías disponibles
     const categorias = await prisma.categoria.findMany({
       where: { status: true },
       select: { id: true, descripcion: true, grupo_categoria: true },
@@ -43,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     // Prompt para GPT
     const prompt = `
-    Necesito extraer información de un mensaje de voz que describe un gasto. El texto transcrito es:
+    Necesito extraer información de un mensaje que describe un gasto. El texto es:
     "${text}"
     
     Por favor, identifica los siguientes elementos:
@@ -59,7 +62,6 @@ export async function POST(request: NextRequest) {
     Por favor, responde SOLO con un objeto JSON con los campos anteriores, sin explicaciones adicionales.
     `;
 
-    // Llamar a la API de OpenAI para analizar el texto
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo-0125",
       messages: [
@@ -72,35 +74,22 @@ export async function POST(request: NextRequest) {
       response_format: { type: "json_object" },
     });
 
-    // Extraer y analizar la respuesta
+    // Procesar respuesta
     const analysisText = completion.choices[0].message.content;
-    console.log("Respuesta del análisis:", analysisText);
-    
     const analysisData = JSON.parse(analysisText || "{}");
 
-    // Preparar los datos para la creación del gasto
-    const gastoData = {
+    // Preparar datos del gasto
+    return {
       monto: Number(analysisData.MONTO) || 0,
       tipoTransaccion: analysisData.TIPO_TRANSACCION || "expense",
       tipoMovimiento: analysisData.TIPO_MOVIMIENTO || "efectivo",
-      concepto: analysisData.DESCRIPCION || "Gasto por voz",
+      concepto: analysisData.DESCRIPCION || "Gasto por WhatsApp",
       categoriaId: Number(analysisData.CATEGORIA_ID) || null,
       fecha: new Date(),
-      userId: session.user.id,
+      userId: userId,
     };
-
-    console.log("Datos del gasto preparados:", gastoData);
-
-    // Devolver los datos analizados
-    return NextResponse.json({
-      analysis: analysisData,
-      gastoData: gastoData
-    });
-  } catch (error: any) {
-    console.error("Error en el análisis:", error);
-    return NextResponse.json(
-      { error: error.message || "Error en el análisis del texto" },
-      { status: 500 }
-    );
+  } catch (error) {
+    console.error("Error en el análisis del texto:", error);
+    throw new Error("Error al analizar el texto");
   }
 } 

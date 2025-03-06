@@ -10,7 +10,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(options)
     
     // Si no hay un usuario autenticado, devolver error
     if (!session?.user?.email) {

@@ -6,7 +6,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 // GET - Obtener todos los gastos recurrentes del usuario
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(options)
     
     // Si no hay un usuario autenticado, devolver error
     if (!session?.user?.email) {
@@ -58,7 +58,7 @@ export async function GET() {
 // POST - Crear un nuevo gasto recurrente
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(options)
     
     // Si no hay un usuario autenticado, devolver error
     if (!session?.user?.email) {
