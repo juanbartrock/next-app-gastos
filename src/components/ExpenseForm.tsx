@@ -19,7 +19,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { ArrowDown, ArrowUp, CalendarIcon, Plus, Users } from "lucide-react"
+import { ArrowDown, ArrowUp, CalendarIcon, CreditCard, Plus, Users } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { toast } from "sonner"
 
@@ -44,15 +44,20 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
   const [amount, setAmount] = useState("")
   const [date, setDate] = useState<Date>()
   const [transactionType, setTransactionType] = useState<"income" | "expense">("expense")
-  const [movementType, setMovementType] = useState<"efectivo" | "digital" | "ahorro">("efectivo")
+  const [movementType, setMovementType] = useState<"efectivo" | "digital" | "ahorro" | "tarjeta">("efectivo")
   const [error, setError] = useState<string>("")
   const [success, setSuccess] = useState<boolean>(false)
   const [grupos, setGrupos] = useState<Grupo[]>([])
-  const [selectedGrupoId, setSelectedGrupoId] = useState<string | null>(null)
+  const [selectedGrupoId, setSelectedGrupoId] = useState<string>("personal")
   const [loadingGrupos, setLoadingGrupos] = useState(false)
   // Nuevo estado para categorías
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [loadingCategorias, setLoadingCategorias] = useState(false)
+  
+  // Estados para financiación con tarjeta
+  const [cantidadCuotas, setCantidadCuotas] = useState<string>("1")
+  const [fechaPrimerPago, setFechaPrimerPago] = useState<Date | undefined>(undefined)
+  const [diaPago, setDiaPago] = useState<string>("")
 
   // Cargar los grupos del usuario
   useEffect(() => {
@@ -132,7 +137,16 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
       return
     }
 
+    // Validar campos de financiación si es tarjeta
+    if (movementType === "tarjeta") {
+      if (!cantidadCuotas || parseInt(cantidadCuotas) < 1) {
+        setError("Por favor, ingresa una cantidad válida de cuotas")
+        return
+      }
+    }
+
     try {
+      // Crear el gasto
       const response = await fetch('/api/gastos', {
         method: 'POST',
         headers: {
@@ -146,7 +160,7 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
           tipoTransaccion: transactionType,
           tipoMovimiento: movementType,
           fecha: date || new Date(),
-          grupoId: selectedGrupoId
+          grupoId: selectedGrupoId === "personal" ? null : selectedGrupoId
         }),
       })
 
@@ -156,12 +170,46 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
 
       const data = await response.json()
       console.log('Registro creado:', data)
+      
+      // Si es tarjeta, crear la financiación
+      if (movementType === "tarjeta") {
+        const montoTotal = Number(monto) / 100
+        const montoCuota = montoTotal / parseInt(cantidadCuotas)
+        
+        const financiacionResponse = await fetch('/api/financiacion', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            gastoId: data.id,
+            cantidadCuotas: parseInt(cantidadCuotas),
+            montoCuota,
+            fechaPrimerPago,
+            diaPago: diaPago ? parseInt(diaPago) : undefined
+          }),
+        })
+        
+        if (!financiacionResponse.ok) {
+          console.error('Error al crear financiación:', await financiacionResponse.text())
+          toast.error("El gasto se registró pero hubo un error al crear la financiación")
+        } else {
+          toast.success("Gasto y financiación registrados correctamente")
+        }
+      } else {
+        toast.success("Transacción registrada correctamente")
+      }
+      
+      // Resetear formulario
       form.reset()
       setAmount("")
       setDate(undefined)
       setTransactionType("expense")
       setMovementType("efectivo")
-      setSelectedGrupoId(null)
+      setSelectedGrupoId("personal")
+      setCantidadCuotas("1")
+      setFechaPrimerPago(undefined)
+      setDiaPago("")
       setSuccess(true)
       
       onTransactionAdded()
@@ -169,8 +217,6 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
       setTimeout(() => {
         setSuccess(false)
       }, 3000)
-      
-      toast.success("Transacción registrada correctamente")
       
     } catch (error) {
       console.error('Error:', error)
@@ -253,99 +299,182 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label>Fecha</Label>
+          <Label htmlFor="date">Fecha</Label>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full justify-start text-left font-normal truncate">
-                <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
-                <span className="truncate">{date ? format(date, "PPP", { locale: es }) : "Seleccionar"}</span>
+              <Button
+                variant="outline"
+                className="w-full justify-start text-left font-normal"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date ? (
+                  format(date, 'PPP', { locale: es })
+                ) : (
+                  <span>Seleccionar fecha</span>
+                )}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
-              <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={setDate}
+                initialFocus
+                locale={es}
+              />
             </PopoverContent>
           </Popover>
         </div>
 
         <div className="space-y-2">
-          <Label>Tipo de transacción</Label>
+          <Label>Tipo de Transacción</Label>
           <RadioGroup
             defaultValue="expense"
             value={transactionType}
             onValueChange={(value) => setTransactionType(value as "income" | "expense")}
-            className="grid grid-cols-2 gap-2"
+            className="flex"
           >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="income" id="income" className="peer sr-only" />
-              <Label
-                htmlFor="income"
-                className={`flex items-center justify-center w-full gap-2 rounded-md border-2 p-2 cursor-pointer
-                  ${transactionType === "income" 
-                    ? "border-green-500 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300" 
-                    : "border-gray-200 dark:border-gray-700"}`}
-              >
-                <ArrowDown className="w-4 h-4" />
-                Ingreso
+            <div className="flex items-center space-x-2 mr-4">
+              <RadioGroupItem value="expense" id="expense" />
+              <Label htmlFor="expense" className="flex items-center">
+                <ArrowDown className="mr-1 h-4 w-4 text-red-500" />
+                Gasto
               </Label>
             </div>
-
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="expense" id="expense" className="peer sr-only" />
-              <Label
-                htmlFor="expense"
-                className={`flex items-center justify-center w-full gap-2 rounded-md border-2 p-2 cursor-pointer
-                  ${transactionType === "expense" 
-                    ? "border-orange-500 bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300" 
-                    : "border-gray-200 dark:border-gray-700"}`}
-              >
-                <ArrowUp className="w-4 h-4" />
-                Egreso
+              <RadioGroupItem value="income" id="income" />
+              <Label htmlFor="income" className="flex items-center">
+                <ArrowUp className="mr-1 h-4 w-4 text-green-500" />
+                Ingreso
               </Label>
             </div>
           </RadioGroup>
         </div>
 
         <div className="space-y-2">
-          <Label>Tipo de movimiento</Label>
-          <Select value={movementType} onValueChange={(value) => setMovementType(value as "efectivo" | "digital" | "ahorro")}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="efectivo">Efectivo</SelectItem>
-              <SelectItem value="digital">Digital</SelectItem>
-              <SelectItem value="ahorro">Ahorro</SelectItem>
-            </SelectContent>
-          </Select>
+          <Label>Tipo de Movimiento</Label>
+          <RadioGroup
+            defaultValue="efectivo"
+            value={movementType}
+            onValueChange={(value) => setMovementType(value as "efectivo" | "digital" | "ahorro" | "tarjeta")}
+            className="flex flex-wrap"
+          >
+            <div className="flex items-center space-x-2 mr-4 mb-2">
+              <RadioGroupItem value="efectivo" id="efectivo" />
+              <Label htmlFor="efectivo">Efectivo</Label>
+            </div>
+            <div className="flex items-center space-x-2 mr-4 mb-2">
+              <RadioGroupItem value="digital" id="digital" />
+              <Label htmlFor="digital">Digital</Label>
+            </div>
+            <div className="flex items-center space-x-2 mr-4 mb-2">
+              <RadioGroupItem value="ahorro" id="ahorro" />
+              <Label htmlFor="ahorro">Ahorro</Label>
+            </div>
+            <div className="flex items-center space-x-2 mb-2">
+              <RadioGroupItem value="tarjeta" id="tarjeta" />
+              <Label htmlFor="tarjeta" className="flex items-center">
+                <CreditCard className="mr-1 h-4 w-4" />
+                Tarjeta
+              </Label>
+            </div>
+          </RadioGroup>
         </div>
 
+        {/* Campos adicionales para financiación con tarjeta */}
+        {movementType === "tarjeta" && (
+          <div className="space-y-4 p-4 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800">
+            <h4 className="font-medium text-gray-900 dark:text-gray-100">Detalles de Financiación</h4>
+            
+            <div className="space-y-2">
+              <Label htmlFor="cantidadCuotas">Cantidad de Cuotas</Label>
+              <Input
+                id="cantidadCuotas"
+                type="number"
+                min="1"
+                value={cantidadCuotas}
+                onChange={(e) => setCantidadCuotas(e.target.value)}
+                placeholder="Ej: 12"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="fechaPrimerPago">Fecha del Primer Pago</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {fechaPrimerPago ? (
+                      format(fechaPrimerPago, 'PPP', { locale: es })
+                    ) : (
+                      <span>Seleccionar fecha</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={fechaPrimerPago}
+                    onSelect={setFechaPrimerPago}
+                    initialFocus
+                    locale={es}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="diaPago">Día de Pago Mensual</Label>
+              <Input
+                id="diaPago"
+                type="number"
+                min="1"
+                max="31"
+                value={diaPago}
+                onChange={(e) => setDiaPago(e.target.value)}
+                placeholder="Ej: 10"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Día del mes en que se realiza el pago (opcional)
+              </p>
+            </div>
+            
+            <div className="pt-2">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Monto por cuota: {cantidadCuotas && amount ? 
+                  formatAmount((parseInt(amount.replace(/[^0-9]/g, "")) / parseInt(cantidadCuotas)).toString()) : 
+                  "$0,00"}
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-2">
-          <Label htmlFor="grupo">Grupo (opcional)</Label>
-          <Select value={selectedGrupoId || 'personal'} onValueChange={setSelectedGrupoId}>
+          <Label>Grupo (opcional)</Label>
+          <Select value={selectedGrupoId} onValueChange={setSelectedGrupoId}>
             <SelectTrigger>
-              <SelectValue placeholder="Selecciona un grupo (opcional)" />
+              <SelectValue placeholder="Seleccionar grupo" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="personal">Personal (sin grupo)</SelectItem>
-              {grupos.map((grupo) => (
-                <SelectItem key={grupo.id} value={grupo.id}>
-                  <div className="flex items-center">
-                    <Users className="h-4 w-4 mr-2" />
+              {loadingGrupos ? (
+                <SelectItem value="loading" disabled>Cargando grupos...</SelectItem>
+              ) : (
+                grupos.map((grupo) => (
+                  <SelectItem key={grupo.id} value={grupo.id}>
                     {grupo.nombre}
-                  </div>
-                </SelectItem>
-              ))}
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">
-            {selectedGrupoId && selectedGrupoId !== 'personal'
-              ? "Este gasto será visible para todos los miembros del grupo" 
-              : "Selecciona un grupo para compartir este gasto"}
-          </p>
         </div>
 
-        <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-          Registrar
+        <Button type="submit" className="w-full">
+          Guardar
         </Button>
       </form>
     </div>

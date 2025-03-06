@@ -34,6 +34,9 @@ Esta aplicación está diseñada para ayudar a los usuarios a gestionar sus gast
 - `/register`: Registro de nuevos usuarios
 - `/transacciones`: Gestión de transacciones
 - `/grupos`: Gestión de grupos de gastos compartidos
+- `/recurrentes`: Gestión de gastos recurrentes
+- `/financiacion`: Gestión de financiaciones con tarjeta
+- `/voz`: Reconocimiento de voz para registro de gastos
 
 ## Modelos de Datos
 
@@ -41,13 +44,15 @@ Esta aplicación está diseñada para ayudar a los usuarios a gestionar sus gast
 Almacena información de usuarios, incluyendo autenticación y perfiles.
 - ID, nombre, email, contraseña, etc.
 - Relación con gastos, grupos y sesiones.
+- Relación con gastos recurrentes y financiaciones.
 
 ### Gasto (Gasto)
 Registra las transacciones financieras.
 - Concepto, monto, fecha, categoría
 - Tipo de transacción: ingreso o gasto
-- Tipo de movimiento: efectivo, digital, ahorro
+- Tipo de movimiento: efectivo, digital, ahorro, tarjeta
 - Asociación con usuario y/o grupo
+- Relación con financiación (para gastos con tarjeta)
 
 ### Grupo (Grupo)
 Para gestión de gastos compartidos.
@@ -59,6 +64,22 @@ Para gestión de gastos compartidos.
 Clasificación para los gastos.
 - Descripción, estado
 - Grupo de categoría (hogar, transporte, etc.)
+- Relación con gastos y gastos recurrentes
+
+### Gasto Recurrente (GastoRecurrente)
+Para gestión de gastos que se repiten periódicamente.
+- Concepto, monto, periodicidad
+- Estado (pagado, pendiente, parcial, n/a)
+- Fechas de próximo pago y último pago
+- Relación con categoría y usuario
+
+### Financiación (Financiacion)
+Para gestión de gastos financiados con tarjeta de crédito.
+- Relación con el gasto asociado
+- Cantidad total de cuotas y cuotas pagadas
+- Monto de cada cuota
+- Fechas de pago y día de pago mensual
+- Relación con usuario
 
 ## Funcionalidades Principales
 
@@ -84,6 +105,24 @@ Clasificación para los gastos.
 - Tendencias de gastos por período
 - Distribución de ingresos vs gastos
 - Balance general de finanzas
+
+### Gastos Recurrentes
+- Registro y seguimiento de gastos periódicos
+- Gestión de estados (pagado, pendiente, parcial)
+- Alertas de próximos pagos
+- Visualización de calendario de pagos
+
+### Financiaciones con Tarjeta
+- Registro de compras financiadas
+- Seguimiento de cuotas pagadas y pendientes
+- Cálculo de montos restantes
+- Registro de pagos de cuotas
+
+### Reconocimiento de Voz
+- Carga de archivos de audio
+- Transcripción de comandos de voz
+- Análisis de contenido para registro de gastos
+- Procesamiento de lenguaje natural para identificar detalles del gasto
 
 ## Configuración y Despliegue
 
@@ -138,4 +177,4 @@ Para contribuir al proyecto o reportar problemas, por favor abra un issue en el 
 
 ---
 
-Documentación generada: [Fecha actual] 
+Documentación actualizada: Marzo 2024 
