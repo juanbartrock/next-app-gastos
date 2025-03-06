@@ -106,17 +106,20 @@ export default function BankingDashboard() {
   // Efecto para redireccionar si no está autenticado
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.push("/login")
+      console.log("Usuario no autenticado, redirigiendo a login");
+      router.push("/login");
+    } else if (status === "authenticated") {
+      console.log("Usuario autenticado correctamente:", session?.user?.name);
     }
-  }, [status, router])
+  }, [status, router, session]);
 
   // Efecto para cargar transacciones
   useEffect(() => {
     if (status === "authenticated") {
-      fetchTransactions()
+      fetchTransactions();
     }
-  }, [status])
-  
+  }, [status]);
+
   // Efecto para el modo oscuro
   useEffect(() => {
     if (darkMode) {

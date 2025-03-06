@@ -39,8 +39,10 @@ function LoginForm() {
     const email = formData.get("email") as string
     const password = formData.get("password") as string
 
+    let result: any = null; // Declaramos result fuera del try para usarlo en finally
+
     try {
-      const result = await signIn("credentials", {
+      result = await signIn("credentials", {
         email,
         password,
         redirect: false,
@@ -56,17 +58,21 @@ function LoginForm() {
           setError(result.error)
         }
       } else if (result?.ok) {
-        // Si el inicio de sesión fue exitoso, redirigir manualmente
-        // Utilizar un pequeño retraso para dar tiempo a la sesión a establecerse
+        // Aumentamos el tiempo de espera a 500ms para dar más tiempo a que la sesión se establezca
+        console.log("Login exitoso, redirigiendo a:", callbackUrl);
+        setIsLoading(true) // Mantener el estado de carga durante la redirección
         setTimeout(() => {
           router.push(callbackUrl);
-        }, 100);
+          router.refresh(); // Forzar una actualización del router
+        }, 500);
       }
     } catch (error) {
       console.error("Error durante login:", error);
       setError("Ocurrió un error al iniciar sesión")
     } finally {
-      setIsLoading(false)
+      if (!result?.ok) {
+        setIsLoading(false)
+      }
     }
   }
 
