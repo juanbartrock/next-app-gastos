@@ -3,6 +3,9 @@ import { Inter, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 import { NextAuthProvider } from "@/providers/NextAuthProvider";
 import { ToastProvider } from "@/providers/ToastProvider";
+import { SidebarProvider } from "@/contexts/SidebarContext";
+import { CurrencyProvider } from "@/contexts/CurrencyContext";
+import { SidebarStateManager } from "@/components/SidebarStateManager";
 
 const inter = Inter({
   variable: "--font-geist-sans",
@@ -31,7 +34,12 @@ export default function RootLayout({
       >
         <NextAuthProvider>
           <ToastProvider>
-            {children}
+            <SidebarProvider>
+              <CurrencyProvider>
+                <SidebarStateManager />
+                {children}
+              </CurrencyProvider>
+            </SidebarProvider>
           </ToastProvider>
         </NextAuthProvider>
       </body>

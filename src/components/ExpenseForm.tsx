@@ -22,6 +22,7 @@ import {
 import { ArrowDown, ArrowUp, CalendarIcon, CreditCard, Plus, Users } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { toast } from "sonner"
+import { useCurrency } from "@/contexts/CurrencyContext"
 
 interface Grupo {
   id: string;
@@ -58,6 +59,8 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
   const [cantidadCuotas, setCantidadCuotas] = useState<string>("1")
   const [fechaPrimerPago, setFechaPrimerPago] = useState<Date | undefined>(undefined)
   const [diaPago, setDiaPago] = useState<string>("")
+
+  const { currency, formatMoney } = useCurrency()
 
   // Cargar los grupos del usuario
   useEffect(() => {
@@ -104,14 +107,9 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
     // Eliminar todo excepto números
     const numbers = value.replace(/\D/g, "")
 
-    // Convertir a número y formatear
-    const formatted = new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      minimumFractionDigits: 2,
-    }).format(Number(numbers) / 100)
-
-    return formatted
+    // Convertir a número y formatear con el contexto de moneda
+    const amountNumber = Number(numbers) / 100
+    return formatMoney(amountNumber)
   }
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -266,13 +264,17 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
           <Label htmlFor="amount">Monto</Label>
           <Input
             id="amount"
-            name="amount"
             type="text"
+            placeholder="$0,00"
             value={amount}
             onChange={handleAmountChange}
-            placeholder="$0.000.000,00"
-            className="text-lg"
+            autoComplete="off"
+            autoFocus
+            className={amount ? "border-green-500 dark:border-green-600" : ""}
           />
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Ingrese el monto en pesos argentinos (ARS). La visualización en otra moneda es solo informativa.
+          </p>
         </div>
 
         <div className="space-y-2">
@@ -467,7 +469,7 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
               <p className="text-sm text-gray-600 dark:text-gray-300">
                 Monto por cuota: {cantidadCuotas && amount ? 
                   formatAmount((parseInt(amount.replace(/[^0-9]/g, "")) / parseInt(cantidadCuotas)).toString()) : 
-                  "$0,00"}
+                  formatMoney(0)}
               </p>
             </div>
           </div>

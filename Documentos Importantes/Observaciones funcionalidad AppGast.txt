@@ -17,20 +17,20 @@ Observaciones funcionalidad AppGastos:
 - Alerta panel (Implementar)
 -4-
 - Crear página inicial con 3 posilidades -> carga de gasto/ingreso, acceso al dashboard, acceso a informes. Que sean botones/íconos grandes con las 3 opciones distribuidas en la pantalla con algún mensaje de bienvenida.
-
+-5-aun no implementado
+- Implementar Presupuesto de gastos (dinero destinado para distintos conceptos y que controle el limite de lo presupuestado vs el gasto del mes en curso)
+- Dar la posibilidad de ver el saldo en pesos argentinos o dolares (y dar la posibilidad de que se tome dolar oficial, dolar blue o dolar crypto)
+- Desarrollar informes y mostrar gráficos (tablero de estado de situación)
 ---------------------------TODO ARREGLADO---------------------------
 
+
 ---------------------------EN PROGRESO---------------------------
-- Implementar Presupuesto de gastos (dinero destinado para distintos conceptos y que controle el limite de lo presupuestado vs el gasto del mes en curso)
 
 ---------------------------EN PROGRESO---------------------------
 
 
 ---------------------------AUN NO ENCARADO---------------------------
 
-- Dar la posibilidad de ver el saldo en pesos argentinos o dolares (y dar la posibilidad de que se tome dolar oficial, dolar blue o dolar crypto)
 
-- Crear API para obtener información sobre cotización del dolar y principales valores financieros de interés y mostrarlos
 
-- Desarrollar informes y mostrar gráficos (tablero de estado de situación)
 ---------------------------AUN NO ENCARADO---------------------------

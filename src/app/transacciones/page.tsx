@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Search } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useCurrency } from "@/contexts/CurrencyContext"
 
 export default function TransaccionesPage() {
   const [transactions, setTransactions] = useState<any[]>([])
@@ -20,6 +21,7 @@ export default function TransaccionesPage() {
   const [typeFilter, setTypeFilter] = useState("")
   const [movementTypeFilter, setMovementTypeFilter] = useState("")
   const router = useRouter()
+  const { formatMoney } = useCurrency()
 
   useEffect(() => {
     const fetchTransactions = async () => {
@@ -182,10 +184,7 @@ export default function TransaccionesPage() {
                         </Badge>
                       </td>
                       <td className="text-right text-sm font-medium">
-                        {new Intl.NumberFormat("es-AR", {
-                          style: "currency",
-                          currency: "ARS",
-                        }).format(transaction.monto)}
+                        {formatMoney(transaction.monto)}
                       </td>
                     </tr>
                   ))}

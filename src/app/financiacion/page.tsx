@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { CreditCard, ExternalLink, ArrowDown, ArrowLeft } from "lucide-react"
 import {
   Table,
@@ -35,6 +35,7 @@ import { Label } from "@/components/ui/label"
 import { format, addMonths, isSameMonth, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
 import { toast } from "sonner"
+import { useCurrency } from "@/contexts/CurrencyContext"
 
 // Tipos
 type Financiacion = {
@@ -72,6 +73,7 @@ export default function FinanciacionPage() {
   const [pagoDialogOpen, setPagoDialogOpen] = useState(false)
   const [currentFinanciacionId, setCurrentFinanciacionId] = useState<number | null>(null)
   const [selectedTipoMovimiento, setSelectedTipoMovimiento] = useState("digital")
+  const { formatMoney } = useCurrency()
 
   // Cargar datos iniciales
   const fetchData = async () => {
@@ -140,7 +142,7 @@ export default function FinanciacionPage() {
       
       toast.success('Cuota registrada como pagada')
       if (result.gastoRegistrado) {
-        toast.success(`Se registró un gasto de ${formatMonto(result.gastoRegistrado.monto)} en tu cuenta`)
+        toast.success(`Se registró un gasto de ${formatMoney(result.gastoRegistrado.monto)} en tu cuenta`)
       }
       
       setPagoDialogOpen(false)
@@ -259,7 +261,7 @@ export default function FinanciacionPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {formatMonto(totalMesEnCurso)}
+                {formatMoney(totalMesEnCurso)}
               </div>
               <p className="text-xs text-gray-500 mt-1">Pagos programados para este mes</p>
             </CardContent>
@@ -271,7 +273,7 @@ export default function FinanciacionPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-                {formatMonto(totalRestante)}
+                {formatMoney(totalRestante)}
               </div>
               <p className="text-xs text-gray-500 mt-1">Monto total a pagar en todas las financiaciones</p>
             </CardContent>
@@ -330,10 +332,10 @@ export default function FinanciacionPage() {
                           {financiacion.gasto.concepto}
                         </TableCell>
                         <TableCell>
-                          {formatMonto(financiacion.gasto.monto)}
+                          {formatMoney(financiacion.gasto.monto)}
                         </TableCell>
                         <TableCell>
-                          {formatMonto(financiacion.montoCuota)}
+                          {formatMoney(financiacion.montoCuota)}
                         </TableCell>
                         <TableCell>
                           {financiacion.cuotasPagadas} de {financiacion.cantidadCuotas}
@@ -345,7 +347,7 @@ export default function FinanciacionPage() {
                           {getProximoPago(financiacion)}
                         </TableCell>
                         <TableCell className="font-medium">
-                          {formatMonto(calcularMontoRestante(financiacion))}
+                          {formatMoney(calcularMontoRestante(financiacion))}
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">

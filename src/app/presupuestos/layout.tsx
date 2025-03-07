@@ -1,4 +1,6 @@
 import { Metadata } from 'next'
+import { PageLayout } from "@/components/PageLayout"
+import { ReactNode } from "react"
 
 export const metadata: Metadata = {
   title: 'Presupuestos de Gastos',
@@ -8,7 +10,7 @@ export const metadata: Metadata = {
 export default function PresupuestosLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: ReactNode
 }) {
-  return children
+  return <PageLayout>{children}</PageLayout>
 } 
