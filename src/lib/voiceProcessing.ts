@@ -85,11 +85,29 @@ export async function analyzeExpenseText(text: string, userId: string): Promise<
       tipoMovimiento: analysisData.TIPO_MOVIMIENTO || "efectivo",
       concepto: analysisData.DESCRIPCION || "Gasto por WhatsApp",
       categoriaId: Number(analysisData.CATEGORIA_ID) || null,
+      categoria: await getCategoriaDescripcion(Number(analysisData.CATEGORIA_ID)),
       fecha: new Date(),
       userId: userId,
     };
   } catch (error) {
     console.error("Error en el análisis del texto:", error);
     throw new Error("Error al analizar el texto");
+  }
+}
+
+// Función auxiliar para obtener la descripción de la categoría
+async function getCategoriaDescripcion(categoriaId: number | null): Promise<string> {
+  if (!categoriaId) return "Sin categoría";
+  
+  try {
+    const categoria = await prisma.categoria.findUnique({
+      where: { id: categoriaId },
+      select: { descripcion: true }
+    });
+    
+    return categoria?.descripcion || "Sin categoría";
+  } catch (error) {
+    console.error("Error al obtener la categoría:", error);
+    return "Sin categoría";
   }
 } 
