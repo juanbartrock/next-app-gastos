@@ -71,27 +71,23 @@ export const options: NextAuthOptions = {
   callbacks: {
     async redirect({ url, baseUrl }) {
       try {
-        // Validar y simplificar la redirección
-        // Por defecto, redirigir a la raíz si no hay URL o es inválida
-        if (!url || typeof url !== 'string') {
-          return baseUrl
+        // Simplificación: siempre redirigir a /home después del login
+        // excepto para rutas específicas con callbackUrl
+        
+        // Si hay un callbackUrl específico que no sea la raíz, respetarlo
+        if (url.includes('callbackUrl=')) {
+          const callbackUrl = new URL(url).searchParams.get('callbackUrl');
+          
+          if (callbackUrl && callbackUrl !== '/' && callbackUrl !== '') {
+            return `${baseUrl}${callbackUrl}`
+          }
         }
         
-        // Si la URL empieza con /, es una ruta relativa
-        if (url.startsWith('/')) {
-          return `${baseUrl}${url}`
-        }
-        
-        // Si es la misma URL base, usarla
-        if (url.startsWith(baseUrl)) {
-          return url
-        }
-        
-        // Por defecto, redirigir a la raíz
-        return baseUrl
+        // Para todos los demás casos, redirigir a /home
+        return `${baseUrl}/home`
       } catch (error) {
         console.error("Error en redirect callback:", error);
-        return baseUrl;
+        return `${baseUrl}/home`;
       }
     },
     async session({ session, token }) {

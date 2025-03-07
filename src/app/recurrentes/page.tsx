@@ -12,7 +12,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { CalendarIcon, Edit, Pencil, Repeat, Trash2 } from "lucide-react"
+import { CalendarIcon, Edit, Pencil, Repeat, Trash2, ArrowLeft } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -281,8 +281,9 @@ export default function RecurrentesPage() {
             <Button variant="default" onClick={() => { resetForm(); setIsFormOpen(true); }}>
               Nuevo Gasto Recurrente
             </Button>
-            <Button variant="outline" onClick={() => router.push("/")}>
-              Volver al Inicio
+            <Button variant="outline" onClick={() => router.push("/?dashboard=true")}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Volver al Dashboard
             </Button>
           </div>
         </div>

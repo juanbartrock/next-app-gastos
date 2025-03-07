@@ -47,6 +47,7 @@ model User {
   gastosRecurrentes GastoRecurrente[]
   gruposAdmin       Grupo[]           @relation("GrupoAdmin")
   grupos            GrupoMiembro[]
+  presupuestos      Presupuesto[]
   sessions          Session[]
 }
 
@@ -110,6 +111,7 @@ model Categoria {
   updatedAt         DateTime          @updatedAt
   gastos            Gasto[]
   gastosRecurrentes GastoRecurrente[]
+  presupuestos      Presupuesto[]
 }
 
 model GastoRecurrente {
@@ -144,4 +146,20 @@ model Financiacion {
   updatedAt        DateTime  @updatedAt
   gasto            Gasto     @relation(fields: [gastoId], references: [id], onDelete: Cascade)
   user             User      @relation(fields: [userId], references: [id])
+}
+
+model Presupuesto {
+  id          Int        @id @default(autoincrement())
+  nombre      String
+  monto       Float
+  categoriaId Int?
+  mes         Int // 1-12 para representar el mes
+  año         Int
+  userId      String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  categoria   Categoria? @relation(fields: [categoriaId], references: [id])
+  user        User       @relation(fields: [userId], references: [id])
+  
+  @@unique([categoriaId, mes, año, userId])
 }

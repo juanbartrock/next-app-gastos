@@ -38,29 +38,21 @@ export async function middleware(request: NextRequest) {
 
     // Si el usuario está autenticado y trata de acceder a login/register
     if (token && isPublicPath) {
-      // Redirigir al dashboard
-      return NextResponse.redirect(new URL('/', request.url))
+      // Redirigir a la página de inicio
+      return NextResponse.redirect(new URL('/home', request.url))
     }
 
-    // Agregar token de depuración para ver info del usuario en caso de sesión inconsistente
-    if (token && request.nextUrl.pathname.startsWith('/api/') && 
-        !request.nextUrl.pathname.startsWith('/api/auth/')) {
-      // Adjuntar información del token al request para depuración
-      const requestHeaders = new Headers(request.headers);
-      requestHeaders.set('x-user-id', token.sub || '');
-      requestHeaders.set('x-user-email', token.email || '');
+    // Si el usuario está autenticado y está en la raíz, verificar si tiene el parámetro dashboard
+    if (token && request.nextUrl.pathname === '/') {
+      // Si tiene el parámetro dashboard, no redirigir
+      if (request.nextUrl.searchParams.has('dashboard')) {
+        // Crear una URL limpia sin el parámetro dashboard
+        const cleanUrl = new URL('/', request.url)
+        return NextResponse.rewrite(cleanUrl)
+      }
       
-      const requestWithHeaders = new NextRequest(request.url, {
-        headers: requestHeaders,
-        method: request.method,
-        body: request.body,
-        redirect: request.redirect,
-        signal: request.signal,
-      });
-      
-      return NextResponse.next({
-        request: requestWithHeaders
-      });
+      // Si no tiene el parámetro dashboard, redirigir a /home
+      return NextResponse.redirect(new URL('/home', request.url))
     }
 
     return NextResponse.next()

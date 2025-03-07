@@ -1,10 +1,36 @@
 Observaciones funcionalidad AppGastos:
+---------------------------TODO ARREGLADO---------------------------
+-1-
+- Agrega categorias cada vez que entro a la aplicación (ver imagen)
 - Se perdió la funcionalidad de crear/administrar grupos. La página parece estática
-- Implementar totales en recurrentes
-- El sidebar tendría que tener la opción de RETRAERLO sobre todo para mobile porque ocupa mucho espacio y se ve muy mal los componentes
-en la estructura del proyecto no se está usando...
-   - Distribución panel mes
-   - Navbar
-   - Alerta panel (Implementar) en avatar del usuario que debe estar en la parte superior derecha de la pantalla
-- Implementar Presupuesto de gastos (dinero destinado para distintos conceptos y que controle el limite de lo presupuestado vs el gasto del mes en curso
+- el ingreso del gasto en tarjeta para financiación falló... "Respuesta: Financiaciones cargadas: Array(0)" No tomo el ingreso.
+-2-
+- Implementar total  /recurrentes, en la parte superior, que sea bien visible pero armonioso con el diseño de la aplicación. El total deberá mostrar la suma de los que tengan como proximo pago el mes en curso
+- agregar filtros de búsqueda a /recurrentes
 - Nuevo Registro en el sidebar que esté centrado
+-3-
+- En la estructura del proyecto no se está usando...
+   - Distribución panel new
+   - Navbar
+- Avatar del usuario que debe estar en la parte superior derecha de la pantalla
+- El sidebar tendría que tener la opción de RETRAERLO sobre todo para mobile porque ocupa mucho espacio y se ve muy mal los componentes
+- Alerta panel (Implementar)
+-4-
+- Crear página inicial con 3 posilidades -> carga de gasto/ingreso, acceso al dashboard, acceso a informes. Que sean botones/íconos grandes con las 3 opciones distribuidas en la pantalla con algún mensaje de bienvenida.
+
+---------------------------TODO ARREGLADO---------------------------
+
+---------------------------EN PROGRESO---------------------------
+- Implementar Presupuesto de gastos (dinero destinado para distintos conceptos y que controle el limite de lo presupuestado vs el gasto del mes en curso)
+
+---------------------------EN PROGRESO---------------------------
+
+
+---------------------------AUN NO ENCARADO---------------------------
+
+- Dar la posibilidad de ver el saldo en pesos argentinos o dolares (y dar la posibilidad de que se tome dolar oficial, dolar blue o dolar crypto)
+
+- Crear API para obtener información sobre cotización del dolar y principales valores financieros de interés y mostrarlos
+
+- Desarrollar informes y mostrar gráficos (tablero de estado de situación)
+---------------------------AUN NO ENCARADO---------------------------

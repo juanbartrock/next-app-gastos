@@ -283,12 +283,12 @@ export default function GruposPage() {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => router.push('/')}
+              onClick={() => router.push('/?dashboard=true')}
               className="mr-2"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h1 className="text-3xl font-bold">Grupos de Gastos Compartidos</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Grupos de Gastos</h1>
           </div>
           <Button onClick={() => setOpenDialog(true)}>
             Crear Grupo

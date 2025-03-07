@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { CreditCard, ExternalLink, ArrowDown } from "lucide-react"
+import { CreditCard, ExternalLink, ArrowDown, ArrowLeft } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -245,8 +245,9 @@ export default function FinanciacionPage() {
       <div className="mx-auto w-full max-w-7xl">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Financiación con Tarjeta</h1>
-          <Button variant="outline" onClick={() => router.push("/")}>
-            Volver al Inicio
+          <Button variant="outline" onClick={() => router.push("/?dashboard=true")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Volver al Dashboard
           </Button>
         </div>
 

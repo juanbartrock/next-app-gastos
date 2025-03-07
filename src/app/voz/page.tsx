@@ -201,7 +201,7 @@ export default function VozPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => router.push("/")}
+                onClick={() => router.push("/?dashboard=true")}
                 className="h-8 w-8"
               >
                 <ArrowLeft size={18} />

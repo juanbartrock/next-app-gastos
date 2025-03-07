@@ -70,7 +70,7 @@ export default function TransaccionesPage() {
           <Button 
             variant="ghost" 
             className="gap-2"
-            onClick={() => router.back()}
+            onClick={() => router.push("/?dashboard=true")}
           >
             <ArrowLeft className="w-4 h-4" />
             Volver

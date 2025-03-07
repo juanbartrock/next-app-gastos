@@ -42,6 +42,11 @@ function LoginForm() {
     let result: any = null; // Declaramos result fuera del try para usarlo en finally
 
     try {
+      // Establecer indicador de que viene del login
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('fromLogin', 'true')
+      }
+      
       result = await signIn("credentials", {
         email,
         password,
@@ -77,6 +82,11 @@ function LoginForm() {
   }
 
   const handleGoogleLogin = () => {
+    // Establecer indicador de que viene del login
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('fromLogin', 'true')
+    }
+    
     signIn("google", { callbackUrl })
   }
 

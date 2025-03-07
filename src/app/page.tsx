@@ -27,7 +27,9 @@ import {
   Menu,
   UserCircle,
   PanelLeft,
-  PanelLeftClose
+  PanelLeftClose,
+  Home,
+  PieChart
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -48,6 +50,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog"
 import {
   RadioGroup,
@@ -267,17 +270,23 @@ export default function BankingDashboard() {
               style={{ justifyContent: sidebarOpen ? 'flex-start' : 'center' }}
             >
               <Grid className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-              {sidebarOpen && <span className="ml-3 font-medium">Principal</span>}
+              {sidebarOpen && <span className="ml-3 font-medium">Dashboard</span>}
             </Button>
+            
             <Button 
               variant="ghost" 
               className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
               style={{ justifyContent: sidebarOpen ? 'flex-start' : 'center' }}
-              onClick={() => router.push('/grupos')}
+              onClick={() => router.push('/voz')}
             >
-              <Users className="w-5 h-5" />
-              {sidebarOpen && <span className="ml-3">Grupos</span>}
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 dark:text-gray-400">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" x2="12" y1="19" y2="22"></line>
+              </svg>
+              {sidebarOpen && <span className="ml-3">Gastos por Voz</span>}
             </Button>
+            
             <Button 
               variant="ghost" 
               className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
@@ -287,6 +296,7 @@ export default function BankingDashboard() {
               <Repeat className="w-5 h-5" />
               {sidebarOpen && <span className="ml-3">Recurrentes</span>}
             </Button>
+            
             <Button 
               variant="ghost" 
               className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
@@ -296,18 +306,35 @@ export default function BankingDashboard() {
               <CreditCard className="w-5 h-5" />
               {sidebarOpen && <span className="ml-3">Financiación</span>}
             </Button>
+            
             <Button 
               variant="ghost" 
-              className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700"
+              className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
               style={{ justifyContent: sidebarOpen ? 'flex-start' : 'center' }}
-              onClick={() => router.push('/voz')}
+              onClick={() => router.push('/presupuestos')}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 dark:text-gray-400">
-                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                <line x1="12" x2="12" y1="19" y2="22"></line>
-              </svg>
-              {sidebarOpen && <span className="ml-3">Gasto por Voz</span>}
+              <PieChart className="w-5 h-5" />
+              {sidebarOpen && <span className="ml-3">Presupuestos</span>}
+            </Button>
+            
+            <Button 
+              variant="ghost" 
+              className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+              style={{ justifyContent: sidebarOpen ? 'flex-start' : 'center' }}
+              onClick={() => router.push('/informes')}
+            >
+              <BarChart3 className="w-5 h-5" />
+              {sidebarOpen && <span className="ml-3">Informes</span>}
+            </Button>
+            
+            <Button 
+              variant="ghost" 
+              className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+              style={{ justifyContent: sidebarOpen ? 'flex-start' : 'center' }}
+              onClick={() => router.push('/grupos')}
+            >
+              <Users className="w-5 h-5" />
+              {sidebarOpen && <span className="ml-3">Grupos</span>}
             </Button>
           </nav>
 
