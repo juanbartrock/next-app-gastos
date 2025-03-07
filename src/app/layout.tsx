@@ -30,8 +30,9 @@ export default function RootLayout({
         className={`${inter.variable} ${robotoMono.variable} antialiased`}
       >
         <NextAuthProvider>
-          <ToastProvider />
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </NextAuthProvider>
       </body>
     </html>

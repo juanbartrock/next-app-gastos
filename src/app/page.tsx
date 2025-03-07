@@ -24,6 +24,10 @@ import {
   Settings,
   BarChart3,
   Repeat,
+  Menu,
+  UserCircle,
+  PanelLeft,
+  PanelLeftClose
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -61,6 +65,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { RecurringPaymentAlert } from "@/components/RecurringPaymentAlert"
 
 // Componente de carga
 function LoadingScreen() {
@@ -79,6 +84,7 @@ export default function BankingDashboard() {
     }
     return false
   })
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [balanceIndex, setBalanceIndex] = useState(0)
   const [amount, setAmount] = useState("")
   const [date, setDate] = useState<Date>()
@@ -228,69 +234,91 @@ export default function BankingDashboard() {
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
       {/* Sidebar */}
-      <div className="w-80 border-r border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg flex flex-col">
+      <div className={`${sidebarOpen ? 'w-80' : 'w-20'} transition-all duration-300 border-r border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg flex flex-col relative`}>
+        {/* Botón toggle persistente */}
+        <Button 
+          variant="outline" 
+          size="icon" 
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="absolute -right-3 top-20 h-6 w-6 rounded-full shadow-md border-gray-200 bg-white dark:bg-gray-700 dark:border-gray-600 p-0"
+        >
+          {sidebarOpen ? <PanelLeftClose className="h-3 w-3" /> : <PanelLeft className="h-3 w-3" />}
+        </Button>
+
         <div className="p-6 flex-1 flex flex-col">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10">
-              <img src="/ai-financial-logo.svg" alt="AI Financial Management" className="w-full h-full" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-bold text-gray-900 dark:text-white">AI Financial</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">Management</span>
+          <div className="flex items-center justify-between mb-8">
+            <div className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center w-full'}`}>
+              <div className="w-10 h-10 flex-shrink-0">
+                <img src="/ai-financial-logo.svg" alt="AI Financial Management" className="w-full h-full" />
+              </div>
+              {sidebarOpen && (
+                <div className="flex flex-col">
+                  <span className="font-bold text-gray-900 dark:text-white">AI Financial</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Management</span>
+                </div>
+              )}
             </div>
           </div>
 
           <nav className="space-y-1 mb-6">
-            <Button variant="ghost" className="w-full justify-start gap-3 py-5">
+            <Button 
+              variant="ghost" 
+              className="w-full flex items-center justify-center py-5"
+              style={{ justifyContent: sidebarOpen ? 'flex-start' : 'center' }}
+            >
               <Grid className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-              <span className="font-medium">Principal</span>
-            </Button>
-            <Button variant="ghost" 
-              className="w-full justify-start gap-3 py-5 text-gray-500 dark:text-gray-400"
-              onClick={() => router.push('/grupos')}>
-              <Users className="w-5 h-5" />
-              <span>Grupos</span>
-            </Button>
-            <Button variant="ghost" 
-              className="w-full justify-start gap-3 py-5 text-gray-500 dark:text-gray-400"
-              onClick={() => router.push('/recurrentes')}>
-              <Repeat className="w-5 h-5" />
-              <span>Recurrentes</span>
-            </Button>
-            <Button variant="ghost" 
-              className="w-full justify-start gap-3 py-5 text-gray-500 dark:text-gray-400"
-              onClick={() => router.push('/financiacion')}>
-              <CreditCard className="w-5 h-5" />
-              <span>Financiación</span>
+              {sidebarOpen && <span className="ml-3 font-medium">Principal</span>}
             </Button>
             <Button 
               variant="ghost" 
-              className="w-full justify-start gap-3 py-5 text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700"
-              onClick={() => router.push('/voz')}>
+              className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+              style={{ justifyContent: sidebarOpen ? 'flex-start' : 'center' }}
+              onClick={() => router.push('/grupos')}
+            >
+              <Users className="w-5 h-5" />
+              {sidebarOpen && <span className="ml-3">Grupos</span>}
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+              style={{ justifyContent: sidebarOpen ? 'flex-start' : 'center' }}
+              onClick={() => router.push('/recurrentes')}
+            >
+              <Repeat className="w-5 h-5" />
+              {sidebarOpen && <span className="ml-3">Recurrentes</span>}
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+              style={{ justifyContent: sidebarOpen ? 'flex-start' : 'center' }}
+              onClick={() => router.push('/financiacion')}
+            >
+              <CreditCard className="w-5 h-5" />
+              {sidebarOpen && <span className="ml-3">Financiación</span>}
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700"
+              style={{ justifyContent: sidebarOpen ? 'flex-start' : 'center' }}
+              onClick={() => router.push('/voz')}
+            >
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 dark:text-gray-400">
                 <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
                 <line x1="12" x2="12" y1="19" y2="22"></line>
               </svg>
-              <span>Gasto por Voz</span>
+              {sidebarOpen && <span className="ml-3">Gasto por Voz</span>}
             </Button>
           </nav>
 
           {/* Expense Form */}
-          <div className="flex-1 overflow-y-auto">
-            <ExpenseForm onTransactionAdded={fetchTransactions} />
-          </div>
+          {sidebarOpen && (
+            <div className="flex-1 overflow-y-auto">
+              <ExpenseForm onTransactionAdded={fetchTransactions} />
+            </div>
+          )}
 
-          {/* Logout Button */}
-          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-            <Button 
-              variant="ghost" 
-              className="w-full justify-center text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-              onClick={() => signOut()}>
-              <LogOut className="w-5 h-5 mr-2" />
-              <span>Cerrar sesión</span>
-            </Button>
-          </div>
+          {/* Logout Button removed from here */}
         </div>
       </div>
 
@@ -298,7 +326,7 @@ export default function BankingDashboard() {
       <div className="flex-1 flex flex-col">
         <div className="border-b">
           <div className="flex h-16 items-center justify-between px-4">
-            <div className="hidden sm:flex">
+            <div className="flex items-center gap-2">
               <h1 className="text-xl font-semibold">
                 ¡Bienvenido, {session?.user?.name || "Usuario"}!
               </h1>
@@ -309,9 +337,32 @@ export default function BankingDashboard() {
                 <Switch checked={darkMode} onCheckedChange={setDarkMode} id="dark-mode" />
                 <Moon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
               </div>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Bell className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-              </Button>
+              
+              {/* Alerta de pagos recurrentes */}
+              <RecurringPaymentAlert />
+              
+              {/* User Avatar */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-full">
+                    <UserCircle className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Mi cuenta</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/perfil">
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Editar perfil</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => signOut()}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Cerrar sesión</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
@@ -386,8 +437,8 @@ export default function BankingDashboard() {
               </div>
 
               {/* Distribution Panel */}
-              <div className="col-span-12">
-                <DistributionPanel transactions={transactions} onEdit={setEditingTransaction} onTransactionUpdated={fetchTransactions} />
+              <div className="col-span-12 mt-6">
+                <DistributionPanel transactions={transactions} />
               </div>
 
               {/* Transactions History */}

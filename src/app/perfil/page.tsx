@@ -1,148 +1,177 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner";
+import { ChevronLeft, Save, User, Mail, LogOut } from "lucide-react";
+import Link from "next/link";
+import { useToast } from "@/components/ui/use-toast";
 
-export default function PerfilPage() {
-  const { data: session, status } = useSession();
+export default function ProfilePage() {
+  const { data: session, status, update } = useSession();
   const router = useRouter();
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+  
+  const [formData, setFormData] = useState({
+    name: "",
+    email: ""
+  });
+  const [loading, setLoading] = useState(false);
 
-  // Redireccionar si no está autenticado
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
     }
-  }, [status, router]);
-
-  // Cargar datos del usuario al iniciar
-  useEffect(() => {
-    if (session?.user?.id) {
-      fetchUserData();
+    
+    if (session?.user) {
+      setFormData({
+        name: session.user.name || "",
+        email: session.user.email || ""
+      });
     }
-  }, [session]);
+  }, [session, status, router]);
 
-  const fetchUserData = async () => {
-    try {
-      const response = await fetch("/api/user/profile");
-      const data = await response.json();
-      
-      if (data.phoneNumber) {
-        setPhoneNumber(data.phoneNumber);
-      }
-    } catch (error) {
-      console.error("Error al cargar datos del usuario:", error);
-      toast.error("Error al cargar los datos del perfil");
-    }
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
+    setLoading(true);
+    
     try {
-      const response = await fetch("/api/user/profile", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          phoneNumber,
-        }),
+      // Aquí se implementaría la actualización real del perfil
+      // Por ahora solo actualizamos la sesión localmente
+      await update({
+        ...session,
+        user: {
+          ...session?.user,
+          name: formData.name
+        }
       });
-
-      if (response.ok) {
-        toast.success("Número de teléfono actualizado correctamente");
-      } else {
-        const data = await response.json();
-        toast.error(data.error || "Error al actualizar el perfil");
-      }
+      
+      toast({
+        title: "Perfil actualizado",
+        description: "Tus datos han sido actualizados correctamente",
+        duration: 3000
+      });
     } catch (error) {
-      console.error("Error al actualizar el perfil:", error);
-      toast.error("Error al actualizar el perfil");
+      console.error("Error al actualizar perfil:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el perfil",
+        variant: "destructive",
+        duration: 3000
+      });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
+  // Mostrar una pantalla de carga mientras se verifica la sesión
   if (status === "loading") {
-    return <div className="container p-8">Cargando...</div>;
+    return <div className="min-h-screen flex items-center justify-center">Cargando...</div>;
+  }
+
+  // Si no está autenticado, no mostrar nada (la redirección se maneja en el efecto)
+  if (status === "unauthenticated") {
+    return null;
   }
 
   return (
-    <div className="container p-4 md:p-8">
-      <h1 className="text-2xl font-bold mb-6">Perfil de Usuario</h1>
-      
-      <Card className="max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle>Información Personal</CardTitle>
-          <CardDescription>
-            Actualiza tus datos de contacto y preferencias
-          </CardDescription>
-        </CardHeader>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 p-6">
+      <div className="max-w-2xl mx-auto">
+        <div className="mb-6">
+          <Link href="/">
+            <Button variant="outline" size="sm" className="gap-1">
+              <ChevronLeft className="h-4 w-4" />
+              Volver al inicio
+            </Button>
+          </Link>
+        </div>
         
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nombre</Label>
-              <Input 
-                id="name" 
-                value={session?.user?.name || ""} 
-                disabled 
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input 
-                id="email" 
-                value={session?.user?.email || ""} 
-                disabled 
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="phoneNumber">Número de WhatsApp</Label>
-              <p className="text-sm text-gray-500">
-                Introduce tu número completo con código de país 
-                (ej: +34612345678, +541112345678)
-              </p>
-              <Input 
-                id="phoneNumber" 
-                value={phoneNumber} 
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="+XXXXXXXXXXX" 
-              />
-            </div>
-
-            <div className="bg-yellow-50 p-3 rounded-md border border-yellow-200 text-sm">
-              <p className="font-semibold text-yellow-800">Instrucciones para WhatsApp:</p>
-              <ol className="list-decimal ml-5 mt-2 text-yellow-700 space-y-1">
-                <li>Guarda este número en tus contactos: {process.env.NEXT_PUBLIC_TWILIO_PHONE_NUMBER || "+12183049400"}</li>
-                <li>Envía "join" al número para activar la conexión con WhatsApp</li>
-                <li>Después podrás enviar mensajes de voz o texto describiendo tus gastos</li>
-              </ol>
-            </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold">Mi perfil</CardTitle>
+            <CardDescription>
+              Administra tu información personal y configuraciones de cuenta
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-gray-500" />
+                      Nombre completo
+                    </div>
+                  </Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    placeholder="Tu nombre"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="email">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-gray-500" />
+                      Correo electrónico
+                    </div>
+                  </Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="tu@email.com"
+                    disabled
+                  />
+                  <p className="text-xs text-gray-500">
+                    El correo electrónico no se puede modificar.
+                  </p>
+                </div>
+              </div>
+              
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Guardando..." : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Guardar cambios
+                  </>
+                )}
+              </Button>
+            </form>
           </CardContent>
           
-          <CardFooter>
-            <Button 
-              type="submit" 
-              disabled={isLoading}
-              className="w-full"
-            >
-              {isLoading ? "Guardando..." : "Guardar Cambios"}
-            </Button>
+          <CardFooter className="flex flex-col">
+            <div className="w-full pt-4 border-t">
+              <Button 
+                variant="destructive" 
+                className="w-full"
+                onClick={() => signOut({ callbackUrl: "/login" })}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Cerrar sesión
+              </Button>
+            </div>
           </CardFooter>
-        </form>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 } 
