@@ -66,6 +66,10 @@ export default function RecurrentesPage() {
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingGasto, setEditingGasto] = useState<GastoRecurrente | null>(null)
+  const [totalMesActual, setTotalMesActual] = useState(0)
+  const [filtroConcepto, setFiltroConcepto] = useState("")
+  const [filtroCategoria, setFiltroCategoria] = useState<number | undefined>(undefined)
+  const [filtroEstado, setFiltroEstado] = useState<string | undefined>(undefined)
   
   // Estados para el formulario
   const [concepto, setConcepto] = useState("")
@@ -75,6 +79,24 @@ export default function RecurrentesPage() {
   const [estado, setEstado] = useState("pendiente")
   const [categoriaId, setCategoriaId] = useState<number | undefined>(undefined)
   const [proximaFecha, setProximaFecha] = useState<Date | undefined>(undefined)
+
+  // Calcular el total de gastos recurrentes del mes actual
+  useEffect(() => {
+    if (gastos.length > 0) {
+      const fechaActual = new Date();
+      const mesActual = fechaActual.getMonth();
+      const anioActual = fechaActual.getFullYear();
+      
+      const gastosMesActual = gastos.filter(gasto => {
+        if (!gasto.proximaFecha) return false;
+        const fechaProx = new Date(gasto.proximaFecha);
+        return fechaProx.getMonth() === mesActual && fechaProx.getFullYear() === anioActual;
+      });
+      
+      const suma = gastosMesActual.reduce((total, gasto) => total + gasto.monto, 0);
+      setTotalMesActual(suma);
+    }
+  }, [gastos]);
 
   // Cargar datos iniciales
   const fetchData = async () => {
@@ -265,6 +287,72 @@ export default function RecurrentesPage() {
           </div>
         </div>
 
+        {/* Total de gastos del mes actual */}
+        <Card className="w-full bg-white dark:bg-gray-800 shadow-lg mb-6">
+          <CardContent className="p-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">Total de gastos recurrentes para el mes actual</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</p>
+              </div>
+              <div className="text-3xl font-bold text-primary">
+                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(totalMesActual)}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Filtros de búsqueda */}
+        <Card className="w-full bg-white dark:bg-gray-800 shadow-lg mb-6">
+          <CardHeader>
+            <CardTitle className="text-lg">Filtros de búsqueda</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="filtro-concepto">Concepto</Label>
+                <Input
+                  id="filtro-concepto"
+                  placeholder="Buscar por concepto"
+                  value={filtroConcepto}
+                  onChange={(e) => setFiltroConcepto(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="filtro-categoria">Categoría</Label>
+                <Select value={filtroCategoria?.toString()} onValueChange={(value) => setFiltroCategoria(value !== "all" ? parseInt(value) : undefined)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todas las categorías" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las categorías</SelectItem>
+                    {categorias.map((categoria) => (
+                      <SelectItem key={categoria.id} value={categoria.id.toString()}>
+                        {categoria.descripcion}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="filtro-estado">Estado</Label>
+                <Select value={filtroEstado || "all"} onValueChange={(value) => setFiltroEstado(value !== "all" ? value : undefined)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos los estados" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los estados</SelectItem>
+                    <SelectItem value="pendiente">Pendiente</SelectItem>
+                    <SelectItem value="pagado">Pagado</SelectItem>
+                    <SelectItem value="parcial">Parcial</SelectItem>
+                    <SelectItem value="n/a">N/A</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Formulario en diálogo */}
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogContent className="sm:max-w-[550px]">
@@ -437,7 +525,23 @@ export default function RecurrentesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {gastos.map((gasto) => (
+                    {gastos
+                      .filter(gasto => {
+                        // Filtrar por concepto (case insensitive)
+                        const conceptoMatch = !filtroConcepto || 
+                          gasto.concepto.toLowerCase().includes(filtroConcepto.toLowerCase());
+                        
+                        // Filtrar por categoría
+                        const categoriaMatch = !filtroCategoria || 
+                          gasto.categoriaId === filtroCategoria;
+                        
+                        // Filtrar por estado
+                        const estadoMatch = !filtroEstado || 
+                          gasto.estado === filtroEstado;
+                        
+                        return conceptoMatch && categoriaMatch && estadoMatch;
+                      })
+                      .map((gasto) => (
                       <TableRow key={gasto.id}>
                         <TableCell className="font-medium">{gasto.concepto}</TableCell>
                         <TableCell>{gasto.periodicidad}</TableCell>

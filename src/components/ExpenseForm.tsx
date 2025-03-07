@@ -176,25 +176,46 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
         const montoTotal = Number(monto) / 100
         const montoCuota = montoTotal / parseInt(cantidadCuotas)
         
-        const financiacionResponse = await fetch('/api/financiacion', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            gastoId: data.id,
-            cantidadCuotas: parseInt(cantidadCuotas),
-            montoCuota,
-            fechaPrimerPago,
-            diaPago: diaPago ? parseInt(diaPago) : undefined
-          }),
+        console.log('Creando financiación con datos:', {
+          gastoId: data.id,
+          cantidadCuotas: parseInt(cantidadCuotas),
+          montoCuota,
+          fechaPrimerPago: fechaPrimerPago ? new Date(fechaPrimerPago).toISOString() : null,
+          diaPago: diaPago ? parseInt(diaPago) : null
         })
         
-        if (!financiacionResponse.ok) {
-          console.error('Error al crear financiación:', await financiacionResponse.text())
-          toast.error("El gasto se registró pero hubo un error al crear la financiación")
-        } else {
-          toast.success("Gasto y financiación registrados correctamente")
+        try {
+          const financiacionResponse = await fetch('/api/financiacion', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              gastoId: data.id,
+              cantidadCuotas: parseInt(cantidadCuotas),
+              montoCuota,
+              fechaPrimerPago: fechaPrimerPago ? new Date(fechaPrimerPago).toISOString() : null,
+              diaPago: diaPago ? parseInt(diaPago) : null
+            }),
+          })
+          
+          if (!financiacionResponse.ok) {
+            const errorText = await financiacionResponse.text()
+            console.error('Error al crear financiación. Status:', financiacionResponse.status, 'Response:', errorText)
+            try {
+              const errorJson = JSON.parse(errorText)
+              toast.error(`Error: ${errorJson.error || errorJson.details || 'Error al crear la financiación'}`)
+            } catch {
+              toast.error(`Error (${financiacionResponse.status}): ${errorText || 'Error al crear la financiación'}`)
+            }
+          } else {
+            const financiacionData = await financiacionResponse.json()
+            console.log('Financiación creada:', financiacionData)
+            toast.success("Gasto y financiación registrados correctamente")
+          }
+        } catch (error) {
+          console.error('Error de red al crear financiación:', error)
+          toast.error("Error de conexión al crear la financiación")
         }
       } else {
         toast.success("Transacción registrada correctamente")
@@ -226,7 +247,7 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
 
   return (
     <div className="mt-8 space-y-4">
-      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Nuevo Registro</h3>
+      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 text-center">Nuevo Registro</h3>
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">

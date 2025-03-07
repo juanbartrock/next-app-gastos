@@ -290,4 +290,102 @@ export async function DELETE(
       { status: 500 }
     )
   }
+}
+
+// PUT - Actualizar un grupo existente
+export async function PUT(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(options)
+    
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "No autenticado" },
+        { status: 401 }
+      )
+    }
+
+    // Obtener el usuario de la base de datos usando el email
+    const usuario = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    })
+
+    if (!usuario) {
+      return NextResponse.json(
+        { error: "Usuario no encontrado" },
+        { status: 404 }
+      )
+    }
+
+    // Verificar si el grupo existe
+    const grupo = await prisma.grupo.findUnique({
+      where: { id: params.id },
+    })
+
+    if (!grupo) {
+      return NextResponse.json(
+        { error: "Grupo no encontrado" },
+        { status: 404 }
+      )
+    }
+
+    // Verificar que el usuario sea el administrador del grupo
+    if (grupo.adminId !== usuario.id) {
+      return NextResponse.json(
+        { error: "No tienes permisos para editar este grupo" },
+        { status: 403 }
+      )
+    }
+
+    // Obtener los datos del request
+    const { nombre, descripcion } = await request.json()
+
+    // Validación básica
+    if (!nombre || nombre.trim() === '') {
+      return NextResponse.json(
+        { error: "El nombre del grupo es obligatorio" },
+        { status: 400 }
+      )
+    }
+
+    // Actualizar el grupo
+    const grupoActualizado = await prisma.grupo.update({
+      where: { id: params.id },
+      data: {
+        nombre,
+        descripcion: descripcion || null,
+        updatedAt: new Date()
+      },
+      include: {
+        admin: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        miembros: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        }
+      }
+    })
+
+    return NextResponse.json(grupoActualizado)
+  } catch (error) {
+    console.error('Error al actualizar grupo:', error)
+    return NextResponse.json(
+      { error: 'Error al actualizar el grupo' },
+      { status: 500 }
+    )
+  }
 } 

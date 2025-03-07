@@ -95,30 +95,59 @@ export async function POST(request: Request) {
       fechaPrimerPago,
       diaPago
     } = await request.json()
+
+    console.log("Datos recibidos para financiación:", {
+      gastoId, 
+      cantidadCuotas, 
+      montoCuota, 
+      fechaPrimerPago,
+      diaPago
+    })
     
     // Verificar datos obligatorios
-    if (!gastoId || !cantidadCuotas || !montoCuota) {
+    if (!gastoId) {
       return NextResponse.json(
-        { error: 'Faltan datos obligatorios' },
+        { error: 'El ID del gasto es obligatorio' },
+        { status: 400 }
+      )
+    }
+    
+    if (!cantidadCuotas || cantidadCuotas < 1) {
+      return NextResponse.json(
+        { error: 'La cantidad de cuotas debe ser al menos 1' },
+        { status: 400 }
+      )
+    }
+    
+    if (!montoCuota || montoCuota <= 0) {
+      return NextResponse.json(
+        { error: 'El monto de la cuota debe ser mayor a 0' },
         { status: 400 }
       )
     }
 
     // Verificar que el gasto existe y pertenece al usuario
     const gasto = await prisma.gasto.findUnique({
-      where: { id: gastoId }
+      where: { id: Number(gastoId) }
     })
     
-    if (!gasto || gasto.userId !== usuario.id) {
+    if (!gasto) {
       return NextResponse.json(
-        { error: 'Gasto no encontrado o no pertenece al usuario' },
+        { error: `Gasto con ID ${gastoId} no encontrado` },
         { status: 404 }
+      )
+    }
+    
+    if (gasto.userId !== usuario.id) {
+      return NextResponse.json(
+        { error: 'El gasto no pertenece al usuario actual' },
+        { status: 403 }
       )
     }
     
     // Verificar que el gasto no tenga ya una financiación
     const financiacionExistente = await prisma.financiacion.findUnique({
-      where: { gastoId }
+      where: { gastoId: Number(gastoId) }
     })
     
     if (financiacionExistente) {
@@ -128,20 +157,38 @@ export async function POST(request: Request) {
       )
     }
     
+    // Procesar fechaPrimerPago si existe
+    let fechaPrimerPagoDate = null;
+    if (fechaPrimerPago) {
+      try {
+        fechaPrimerPagoDate = new Date(fechaPrimerPago);
+        if (isNaN(fechaPrimerPagoDate.getTime())) {
+          throw new Error('Fecha inválida');
+        }
+      } catch (error) {
+        return NextResponse.json(
+          { error: 'Formato de fecha primer pago inválido' },
+          { status: 400 }
+        )
+      }
+    }
+
     // Crear la financiación
     const financiacion = await prisma.financiacion.create({
       data: {
-        gastoId,
+        gastoId: Number(gastoId),
         userId: usuario.id,
         cantidadCuotas: Number(cantidadCuotas),
         cuotasPagadas: 0,
         cuotasRestantes: Number(cantidadCuotas),
         montoCuota: Number(montoCuota),
-        fechaPrimerPago: fechaPrimerPago ? new Date(fechaPrimerPago) : null,
-        fechaProximoPago: fechaPrimerPago ? new Date(fechaPrimerPago) : null,
+        fechaPrimerPago: fechaPrimerPagoDate,
+        fechaProximoPago: fechaPrimerPagoDate,
         diaPago: diaPago ? Number(diaPago) : null
       }
     })
+    
+    console.log("Financiación creada:", financiacion)
     
     return NextResponse.json(financiacion)
   } catch (error: any) {

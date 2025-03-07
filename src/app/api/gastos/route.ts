@@ -4,13 +4,16 @@ import { getServerSession } from "next-auth"
 import { options } from "@/app/api/auth/[...nextauth]/options"
 import { createInitialCategories } from "@/lib/dbSetup";
 
-// Llamar a la función de inicialización al inicio para asegurar que existen las categorías
-createInitialCategories().catch(error => {
-  console.error("Error al inicializar categorías al cargar el módulo:", error);
-});
+// Remover la llamada automática para evitar creaciones duplicadas
+// createInitialCategories().catch(error => {
+//   console.error("Error al inicializar categorías al cargar el módulo:", error);
+// });
 
 export async function GET() {
   try {
+    // Verificar y crear categorías si es necesario, solo cuando se solicitan los gastos
+    await crearCategoriasIniciales();
+    
     const session = await getServerSession(options)
     
     // Si hay un usuario autenticado, filtrar por sus gastos
@@ -35,6 +38,14 @@ export async function GET() {
             OR: [
               { userId: usuario.id },
               { grupoId: { in: gruposIds.length > 0 ? gruposIds : undefined } }
+            ],
+            // Excluir los gastos de tipo tarjeta para que no impacten en el flujo de dinero
+            AND: [
+              { 
+                NOT: { 
+                  tipoMovimiento: "tarjeta" 
+                } 
+              }
             ]
           },
           include: {
@@ -218,5 +229,5 @@ export async function POST(request: Request) {
   }
 }
 
-// Inicializar categorías al iniciar el servidor
-crearCategoriasIniciales().catch(console.error); 
+// Remover la llamada automática al final del archivo para evitar duplicación
+// crearCategoriasIniciales().catch(console.error); 

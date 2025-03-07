@@ -1,0 +1,10 @@
+Observaciones funcionalidad AppGastos:
+- Se perdió la funcionalidad de crear/administrar grupos. La página parece estática
+- Implementar totales en recurrentes
+- El sidebar tendría que tener la opción de RETRAERLO sobre todo para mobile porque ocupa mucho espacio y se ve muy mal los componentes
+en la estructura del proyecto no se está usando...
+   - Distribución panel mes
+   - Navbar
+   - Alerta panel (Implementar) en avatar del usuario que debe estar en la parte superior derecha de la pantalla
+- Implementar Presupuesto de gastos (dinero destinado para distintos conceptos y que controle el limite de lo presupuestado vs el gasto del mes en curso
+- Nuevo Registro en el sidebar que esté centrado

@@ -20,13 +20,15 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogTrigger 
+  DialogTrigger,
+  DialogDescription,
+  DialogFooter
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Users, UserPlus, Settings, ArrowLeft } from "lucide-react"
+import { Users, UserPlus, Settings, ArrowLeft, Edit, Trash, LogOut } from "lucide-react"
 import { InvitarUsuarioForm } from "@/components/InvitarUsuarioForm"
 import { toast } from "sonner"
 
@@ -157,7 +159,110 @@ export default function GruposPage() {
   const handleUsuarioInvitado = () => {
     setInvitarUsuarioDialogOpen(false)
     fetchGrupos()
-    toast.success("Usuario invitado correctamente")
+  }
+  
+  // Añadir función para editar un grupo
+  const handleEditarGrupo = async (grupoId: string) => {
+    // Buscar el grupo que se quiere editar
+    const grupoToEdit = grupos.find(g => g.id === grupoId)
+    if (!grupoToEdit) return
+    
+    // Establecer los datos para edición
+    setFormData({
+      nombre: grupoToEdit.nombre,
+      descripcion: grupoToEdit.descripcion || ""
+    })
+    
+    setSelectedGrupoId(grupoId)
+    setOpenDialog(true)
+  }
+  
+  // Añadir función para guardar los cambios de un grupo
+  const handleSaveGrupo = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    
+    if (!formData.nombre.trim()) {
+      toast.error("El nombre del grupo es obligatorio")
+      return
+    }
+    
+    try {
+      const method = selectedGrupoId ? "PUT" : "POST"
+      const url = selectedGrupoId ? `/api/grupos/${selectedGrupoId}` : "/api/grupos"
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(formData)
+      })
+      
+      if (response.ok) {
+        toast.success(selectedGrupoId 
+          ? "Grupo actualizado correctamente" 
+          : "Grupo creado correctamente")
+        
+        setOpenDialog(false)
+        setFormData({ nombre: "", descripcion: "" })
+        setSelectedGrupoId(null)
+        fetchGrupos()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || "Error al procesar la solicitud")
+      }
+    } catch (error) {
+      console.error("Error al guardar grupo:", error)
+      toast.error("Error al procesar la solicitud")
+    }
+  }
+  
+  // Añadir función para eliminar un grupo
+  const handleEliminarGrupo = async (grupoId: string) => {
+    if (!confirm("¿Estás seguro de eliminar este grupo? Esta acción no se puede deshacer.")) {
+      return
+    }
+    
+    try {
+      const response = await fetch(`/api/grupos/${grupoId}`, {
+        method: "DELETE"
+      })
+      
+      if (response.ok) {
+        toast.success("Grupo eliminado correctamente")
+        fetchGrupos()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || "Error al eliminar el grupo")
+      }
+    } catch (error) {
+      console.error("Error al eliminar grupo:", error)
+      toast.error("Error al procesar la solicitud")
+    }
+  }
+  
+  // Añadir función para abandonar un grupo
+  const handleAbandonarGrupo = async (grupoId: string) => {
+    if (!confirm("¿Estás seguro de abandonar este grupo? Se perderá acceso a los gastos compartidos.")) {
+      return
+    }
+    
+    try {
+      const response = await fetch(`/api/grupos/${grupoId}/miembros`, {
+        method: "DELETE"
+      })
+      
+      if (response.ok) {
+        toast.success("Has abandonado el grupo correctamente")
+        fetchGrupos()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || "Error al abandonar el grupo")
+      }
+    } catch (error) {
+      console.error("Error al abandonar grupo:", error)
+      toast.error("Error al procesar la solicitud")
+    }
   }
 
   // Pantalla de carga
@@ -278,10 +383,22 @@ export default function GruposPage() {
                             <UserPlus className="h-4 w-4 mr-2" />
                             Invitar usuarios
                           </Button>
-                          <Button variant="outline" size="sm" className="w-full">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full"
+                            onClick={() => handleEditarGrupo(grupo.id)}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
                             Editar grupo
                           </Button>
-                          <Button variant="destructive" size="sm" className="w-full">
+                          <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            className="w-full"
+                            onClick={() => handleEliminarGrupo(grupo.id)}
+                          >
+                            <Trash className="h-4 w-4 mr-2" />
                             Eliminar grupo
                           </Button>
                         </div>
@@ -290,7 +407,13 @@ export default function GruposPage() {
                           <Button variant="outline" size="sm" className="w-full">
                             Ver todos los miembros
                           </Button>
-                          <Button variant="destructive" size="sm" className="w-full">
+                          <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            className="w-full"
+                            onClick={() => handleAbandonarGrupo(grupo.id)}
+                          >
+                            <LogOut className="h-4 w-4 mr-2" />
                             Abandonar grupo
                           </Button>
                         </div>
@@ -316,6 +439,52 @@ export default function GruposPage() {
                 onCancel={() => setInvitarUsuarioDialogOpen(false)}
               />
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal para crear o editar grupo */}
+        <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{selectedGrupoId ? "Editar Grupo" : "Crear Nuevo Grupo"}</DialogTitle>
+              <DialogDescription>
+                {selectedGrupoId 
+                  ? "Actualiza la información del grupo"
+                  : "Crea un nuevo grupo para compartir gastos"}
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSaveGrupo}>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="nombre" className="text-right">Nombre</Label>
+                  <Input
+                    id="nombre"
+                    name="nombre"
+                    placeholder="Nombre del grupo"
+                    value={formData.nombre}
+                    onChange={handleInputChange}
+                    className="col-span-3"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="descripcion" className="text-right">Descripción</Label>
+                  <Textarea
+                    id="descripcion"
+                    name="descripcion"
+                    placeholder="Descripción del grupo (opcional)"
+                    value={formData.descripcion}
+                    onChange={handleInputChange}
+                    className="col-span-3"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="submit" className="w-full">
+                  {selectedGrupoId ? "Guardar Cambios" : "Crear Grupo"}
+                </Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
