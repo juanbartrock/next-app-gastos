@@ -19,7 +19,7 @@ export async function sendWhatsAppMessage(to: string, body: string) {
     }
 
     await client.messages.create({
-      from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
+      from: 'whatsapp:+14155238886', // Número fijo del sandbox de Twilio para WhatsApp
       to: to,
       body: body
     });
