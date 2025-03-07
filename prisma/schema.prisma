@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -23,8 +20,7 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -38,20 +34,20 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?   // Para autenticación con credenciales
-  phoneNumber   String?   // Número de teléfono para WhatsApp
-  accounts      Account[]
-  sessions      Session[]
-  gastos        Gasto[]
-  grupos        GrupoMiembro[]
-  gruposAdmin   Grupo[]   @relation("GrupoAdmin")
-  gastosRecurrentes GastoRecurrente[]  // Nueva relación con gastos recurrentes
-  financiaciones Financiacion[] // Relación con financiaciones de tarjeta
+  id                String            @id @default(cuid())
+  name              String?
+  email             String?           @unique
+  emailVerified     DateTime?
+  image             String?
+  password          String?
+  phoneNumber       String?
+  accounts          Account[]
+  financiaciones    Financiacion[]
+  gastos            Gasto[]
+  gastosRecurrentes GastoRecurrente[]
+  gruposAdmin       Grupo[]           @relation("GrupoAdmin")
+  grupos            GrupoMiembro[]
+  sessions          Session[]
 }
 
 model VerificationToken {
@@ -63,22 +59,22 @@ model VerificationToken {
 }
 
 model Grupo {
-  id          String    @id @default(cuid())
+  id          String         @id @default(cuid())
   nombre      String
   descripcion String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  adminId     String    // ID del usuario administrador
-  admin       User      @relation("GrupoAdmin", fields: [adminId], references: [id])
-  miembros    GrupoMiembro[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  adminId     String
   gastos      Gasto[]
+  admin       User           @relation("GrupoAdmin", fields: [adminId], references: [id])
+  miembros    GrupoMiembro[]
 }
 
 model GrupoMiembro {
   id        String   @id @default(cuid())
   grupoId   String
   userId    String
-  rol       String   @default("miembro") // "miembro" o "admin"
+  rol       String   @default("miembro")
   createdAt DateTime @default(now())
   grupo     Grupo    @relation(fields: [grupoId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -87,69 +83,65 @@ model GrupoMiembro {
 }
 
 model Gasto {
-  id              Int      @id @default(autoincrement())
+  id              Int           @id @default(autoincrement())
   concepto        String
   monto           Float
-  fecha           DateTime @default(now())
+  fecha           DateTime      @default(now())
   categoria       String
-  tipoTransaccion String   @default("expense") // "income" o "expense"
-  tipoMovimiento  String   @default("efectivo") // "efectivo", "digital", "ahorro", "tarjeta"
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  userId          String?  // El usuario que creó el gasto
-  grupoId         String?  // El grupo al que pertenece el gasto (opcional)
-  user            User?    @relation(fields: [userId], references: [id])
-  grupo           Grupo?   @relation(fields: [grupoId], references: [id])
-  categoriaId     Int?     // Referencia a la categoría
-  categoriaRel    Categoria? @relation(fields: [categoriaId], references: [id])
-  // Relación con financiación (si es un gasto de tarjeta)
+  tipoTransaccion String        @default("expense")
+  tipoMovimiento  String        @default("efectivo")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  userId          String?
+  grupoId         String?
+  categoriaId     Int?
   financiacion    Financiacion?
+  categoriaRel    Categoria?    @relation(fields: [categoriaId], references: [id])
+  grupo           Grupo?        @relation(fields: [grupoId], references: [id])
+  user            User?         @relation(fields: [userId], references: [id])
 }
 
-// Nueva tabla para categorías de gastos
 model Categoria {
-  id              Int       @id @default(autoincrement())
-  descripcion     String    // Nombre descriptivo de la categoría
-  status          Boolean   @default(true) // Activo/Inactivo
-  grupo_categoria String?   // Agrupación de categorías (ej: "hogar", "transporte", etc.)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  gastos          Gasto[]   // Relación con gastos
-  gastosRecurrentes GastoRecurrente[] // Relación con gastos recurrentes
+  id                Int               @id @default(autoincrement())
+  descripcion       String
+  status            Boolean           @default(true)
+  grupo_categoria   String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  gastos            Gasto[]
+  gastosRecurrentes GastoRecurrente[]
 }
 
-// Modelo para gastos recurrentes
 model GastoRecurrente {
-  id              Int       @id @default(autoincrement())
-  concepto        String    // Nombre/descripción del gasto
-  periodicidad    String    // mensual, bimestral, semestral, anual, etc.
-  monto           Float     // Monto del gasto
-  comentario      String?   // Comentario opcional
-  estado          String    @default("pendiente") // pagado/parcial/pendiente/n/a
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  userId          String    // El usuario al que pertenece
-  user            User      @relation(fields: [userId], references: [id])
-  categoriaId     Int?      // Referencia opcional a la categoría
-  categoria       Categoria? @relation(fields: [categoriaId], references: [id])
-  proximaFecha    DateTime? // Próxima fecha de pago
-  ultimoPago      DateTime? // Última fecha de pago
+  id           Int        @id @default(autoincrement())
+  concepto     String
+  periodicidad String
+  monto        Float
+  comentario   String?
+  estado       String     @default("pendiente")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  userId       String
+  categoriaId  Int?
+  proximaFecha DateTime?
+  ultimoPago   DateTime?
+  categoria    Categoria? @relation(fields: [categoriaId], references: [id])
+  user         User       @relation(fields: [userId], references: [id])
 }
 
-// Modelo para financiaciones con tarjeta
 model Financiacion {
-  id              Int       @id @default(autoincrement())
-  gastoId         Int       @unique // Referencia al gasto asociado
-  gasto           Gasto     @relation(fields: [gastoId], references: [id], onDelete: Cascade)
-  userId          String    // El usuario al que pertenece
-  user            User      @relation(fields: [userId], references: [id])
-  cantidadCuotas  Int       // Cantidad total de cuotas
-  cuotasPagadas   Int       @default(0) // Cuotas ya pagadas
-  cuotasRestantes Int       // Cuotas que faltan pagar
-  montoCuota      Float     // Monto de cada cuota
-  fechaPrimerPago DateTime? // Fecha del primer pago
-  fechaProximoPago DateTime? // Fecha del próximo pago
-  diaPago         Int?      // Día del mes en que se paga
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id               Int       @id @default(autoincrement())
+  gastoId          Int       @unique
+  userId           String
+  cantidadCuotas   Int
+  cuotasPagadas    Int       @default(0)
+  cuotasRestantes  Int
+  montoCuota       Float
+  fechaPrimerPago  DateTime?
+  fechaProximoPago DateTime?
+  diaPago          Int?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  gasto            Gasto     @relation(fields: [gastoId], references: [id], onDelete: Cascade)
+  user             User      @relation(fields: [userId], references: [id])
 }

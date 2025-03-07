@@ -42,6 +42,27 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/', request.url))
     }
 
+    // Agregar token de depuración para ver info del usuario en caso de sesión inconsistente
+    if (token && request.nextUrl.pathname.startsWith('/api/') && 
+        !request.nextUrl.pathname.startsWith('/api/auth/')) {
+      // Adjuntar información del token al request para depuración
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set('x-user-id', token.sub || '');
+      requestHeaders.set('x-user-email', token.email || '');
+      
+      const requestWithHeaders = new NextRequest(request.url, {
+        headers: requestHeaders,
+        method: request.method,
+        body: request.body,
+        redirect: request.redirect,
+        signal: request.signal,
+      });
+      
+      return NextResponse.next({
+        request: requestWithHeaders
+      });
+    }
+
     return NextResponse.next()
   } catch (error) {
     console.error('Error en middleware:', error)

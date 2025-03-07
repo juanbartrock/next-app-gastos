@@ -6,13 +6,23 @@ import { options } from '@/app/api/auth/[...nextauth]/options'
 // GET - Obtener todas las categorías
 export async function GET() {
   try {
-    // Obtener categorías activas
-    const categorias = await prisma.$queryRaw`
-      SELECT id, descripcion, grupo_categoria, status, createdAt, updatedAt
-      FROM Categoria
-      WHERE status = true
-      ORDER BY descripcion ASC
-    `;
+    // Obtener categorías activas usando el cliente de Prisma en lugar de SQL directo
+    const categorias = await prisma.categoria.findMany({
+      where: {
+        status: true
+      },
+      orderBy: {
+        descripcion: 'asc'
+      },
+      select: {
+        id: true,
+        descripcion: true,
+        grupo_categoria: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
     
     return NextResponse.json(categorias)
   } catch (error) {
@@ -29,42 +39,36 @@ export async function POST(request: Request) {
   try {
     const session = await getServerSession(options)
     
-    // Verificar autenticación
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return NextResponse.json(
-        { error: 'No autorizado' },
+        { error: "No autenticado" },
         { status: 401 }
       )
     }
     
-    const { descripcion, grupo_categoria, status } = await request.json()
+    const data = await request.json()
+    const { descripcion, grupo_categoria } = data
     
     if (!descripcion) {
       return NextResponse.json(
-        { error: 'La descripción es obligatoria' },
+        { error: 'Falta el nombre de la categoría' },
         { status: 400 }
       )
     }
+
+    // Crear la nueva categoría
+    const nuevaCategoria = await prisma.categoria.create({
+      data: {
+        descripcion,
+        grupo_categoria,
+        status: true
+      }
+    })
     
-    const statusValue = status !== undefined ? status : true;
-    
-    // Usar SQL directo para insertar
-    const result = await prisma.$executeRaw`
-      INSERT INTO Categoria (descripcion, grupo_categoria, status, createdAt, updatedAt)
-      VALUES (${descripcion}, ${grupo_categoria}, ${statusValue}, datetime('now'), datetime('now'))
-    `;
-    
-    // Obtener la categoría recién creada
-    const categorias = await prisma.$queryRaw`
-      SELECT * FROM Categoria 
-      WHERE descripcion = ${descripcion}
-      ORDER BY id DESC
-      LIMIT 1
-    `;
-    
-    const categoria = Array.isArray(categorias) && categorias.length > 0 ? categorias[0] : null;
-    
-    return NextResponse.json(categoria)
+    return NextResponse.json(
+      { mensaje: 'Categoría creada con éxito', categoria: nuevaCategoria },
+      { status: 201 }
+    )
   } catch (error) {
     console.error('Error al crear categoría:', error)
     return NextResponse.json(
@@ -74,44 +78,53 @@ export async function POST(request: Request) {
   }
 }
 
-// PUT - Actualizar una categoría
+// PUT - Actualizar una categoría existente
 export async function PUT(request: Request) {
   try {
     const session = await getServerSession(options)
     
-    // Verificar autenticación
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return NextResponse.json(
-        { error: 'No autorizado' },
+        { error: "No autenticado" },
         { status: 401 }
       )
     }
     
-    const { id, descripcion, grupo_categoria, status } = await request.json()
+    const data = await request.json()
+    const { id, descripcion, grupo_categoria, status } = data
     
     if (!id) {
       return NextResponse.json(
-        { error: 'El ID es obligatorio' },
+        { error: 'Falta el ID de la categoría' },
         { status: 400 }
       )
     }
+
+    // Verificar que la categoría existe
+    const categoriaExistente = await prisma.categoria.findUnique({
+      where: { id: Number(id) }
+    })
+
+    if (!categoriaExistente) {
+      return NextResponse.json(
+        { error: 'Categoría no encontrada' },
+        { status: 404 }
+      )
+    }
+
+    // Actualizar la categoría
+    const categoriaActualizada = await prisma.categoria.update({
+      where: { id: Number(id) },
+      data: {
+        descripcion: descripcion ?? categoriaExistente.descripcion,
+        grupo_categoria: grupo_categoria !== undefined ? grupo_categoria : categoriaExistente.grupo_categoria,
+        status: status !== undefined ? status : categoriaExistente.status
+      }
+    })
     
-    // Actualizar mediante SQL directo
-    await prisma.$executeRaw`
-      UPDATE Categoria
-      SET 
-        descripcion = ${descripcion},
-        grupo_categoria = ${grupo_categoria},
-        status = ${status},
-        updatedAt = datetime('now')
-      WHERE id = ${id}
-    `;
-    
-    // Obtener la categoría actualizada
-    const categorias = await prisma.$queryRaw`SELECT * FROM Categoria WHERE id = ${id}`;
-    const categoria = Array.isArray(categorias) && categorias.length > 0 ? categorias[0] : null;
-    
-    return NextResponse.json(categoria)
+    return NextResponse.json(
+      { mensaje: 'Categoría actualizada con éxito', categoria: categoriaActualizada }
+    )
   } catch (error) {
     console.error('Error al actualizar categoría:', error)
     return NextResponse.json(
@@ -121,41 +134,49 @@ export async function PUT(request: Request) {
   }
 }
 
-// DELETE - Desactivar una categoría (soft delete)
+// DELETE - Eliminar una categoría (marca como inactiva)
 export async function DELETE(request: Request) {
   try {
     const session = await getServerSession(options)
     
-    // Verificar autenticación
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return NextResponse.json(
-        { error: 'No autorizado' },
+        { error: "No autenticado" },
         { status: 401 }
       )
     }
     
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
+    const url = new URL(request.url)
+    const id = url.searchParams.get('id')
     
     if (!id) {
       return NextResponse.json(
-        { error: 'El ID es obligatorio' },
+        { error: 'Falta el ID de la categoría' },
         { status: 400 }
       )
     }
+
+    // Verificar que la categoría existe
+    const categoriaExistente = await prisma.categoria.findUnique({
+      where: { id: Number(id) }
+    })
+
+    if (!categoriaExistente) {
+      return NextResponse.json(
+        { error: 'Categoría no encontrada' },
+        { status: 404 }
+      )
+    }
+
+    // Marcar como inactiva (soft delete)
+    const categoriaDesactivada = await prisma.categoria.update({
+      where: { id: Number(id) },
+      data: { status: false }
+    })
     
-    // Desactivar mediante SQL directo
-    await prisma.$executeRaw`
-      UPDATE Categoria
-      SET status = false, updatedAt = datetime('now')
-      WHERE id = ${parseInt(id)}
-    `;
-    
-    // Obtener la categoría actualizada
-    const categorias = await prisma.$queryRaw`SELECT * FROM Categoria WHERE id = ${parseInt(id)}`;
-    const categoria = Array.isArray(categorias) && categorias.length > 0 ? categorias[0] : null;
-    
-    return NextResponse.json(categoria)
+    return NextResponse.json(
+      { mensaje: 'Categoría eliminada con éxito', categoria: categoriaDesactivada }
+    )
   } catch (error) {
     console.error('Error al eliminar categoría:', error)
     return NextResponse.json(

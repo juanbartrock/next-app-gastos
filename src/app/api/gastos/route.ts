@@ -1,7 +1,13 @@
-import { NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
-import { options } from '@/app/api/auth/[...nextauth]/options'
+import { NextRequest, NextResponse } from "next/server"
+import prisma from "@/lib/prisma"
+import { getServerSession } from "next-auth"
+import { options } from "@/app/api/auth/[...nextauth]/options"
+import { createInitialCategories } from "@/lib/dbSetup";
+
+// Llamar a la función de inicialización al inicio para asegurar que existen las categorías
+createInitialCategories().catch(error => {
+  console.error("Error al inicializar categorías al cargar el módulo:", error);
+});
 
 export async function GET() {
   try {
@@ -83,22 +89,48 @@ async function crearCategoriasIniciales() {
   ];
 
   try {
-    // Verificar si ya hay categorías
-    const categoriasExistentes = await prisma.$queryRaw`SELECT COUNT(*) as count FROM Categoria`;
-    const count = (categoriasExistentes as any)[0]?.count || 0;
-
-    if (count === 0) {
-      // No hay categorías, crear las predefinidas
+    console.log("Inicializando categorías...");
+    
+    // Primero verificamos si ya existen categorías para no duplicarlas
+    let categoriasExistentes = [];
+    try {
+      // Intentamos listar las categorías existentes
+      categoriasExistentes = await prisma.categoria.findMany({
+        select: { descripcion: true }
+      });
+      console.log(`Se encontraron ${categoriasExistentes.length} categorías existentes`);
+    } catch (error) {
+      console.error("Error al consultar categorías existentes:", error);
+      // Si hay un error consultando, asumimos que no hay categorías
+      categoriasExistentes = [];
+    }
+    
+    // Si no hay categorías, las creamos una por una
+    if (categoriasExistentes.length === 0) {
+      console.log("No se encontraron categorías. Creando categorías iniciales...");
+      
+      // Usamos un bucle for para crear cada categoría individualmente
+      // Esto es más seguro que createMany en caso de problemas de conexión
       for (const cat of categoriasPredefinidas) {
-        await prisma.$executeRaw`
-          INSERT INTO Categoria (descripcion, grupo_categoria, status, createdAt, updatedAt) 
-          VALUES (${cat.descripcion}, ${cat.grupo_categoria}, true, datetime('now'), datetime('now'))
-        `;
+        try {
+          const nuevaCategoria = await prisma.categoria.create({
+            data: {
+              descripcion: cat.descripcion,
+              grupo_categoria: cat.grupo_categoria,
+              status: true
+            }
+          });
+          console.log(`Categoría creada: ${nuevaCategoria.descripcion}`);
+        } catch (errorCreacion) {
+          console.error(`Error al crear categoría ${cat.descripcion}:`, errorCreacion);
+        }
       }
-      console.log("Categorías iniciales creadas");
+      console.log("Proceso de creación de categorías iniciales completado");
+    } else {
+      console.log("Ya existen categorías en la base de datos, no se crearán nuevas");
     }
   } catch (error) {
-    console.error("Error al crear categorías iniciales:", error);
+    console.error("Error general al crear categorías iniciales:", error);
   }
 }
 
@@ -144,8 +176,10 @@ export async function POST(request: Request) {
     let nombreCategoria = categoria;
     
     if (categoriaId) {
-      const resultado = await prisma.$queryRaw`SELECT * FROM Categoria WHERE id = ${categoriaId}`;
-      categoriaExiste = Array.isArray(resultado) && resultado.length > 0 ? resultado[0] : null;
+      // Usar Prisma client 
+      categoriaExiste = await prisma.categoria.findUnique({
+        where: { id: Number(categoriaId) }
+      });
       
       if (!categoriaExiste) {
         return NextResponse.json(

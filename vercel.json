@@ -18,9 +18,13 @@
       "source": "/api/twilio",
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "POST, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "X-Twilio-Signature, Content-Type" }
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "X-Twilio-Signature, Content-Type, Accept" },
+        { "key": "Access-Control-Max-Age", "value": "86400" }
       ]
     }
+  ],
+  "routes": [
+    { "src": "/api/twilio", "dest": "/api/twilio" }
   ]
 } 
