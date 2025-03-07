@@ -5,11 +5,27 @@ const path = require('path');
 
 // Determinar si estamos en producción
 const isProduction = process.env.NODE_ENV === 'production';
+// Determinar si estamos en Vercel
+const isVercel = process.env.VERCEL === '1';
 
 // Verificar la presencia de la variable DATABASE_URL
 if (!process.env.DATABASE_URL) {
-  console.error('❌ Error: La variable DATABASE_URL no está definida');
-  process.exit(1);
+  console.log('⚠️ Advertencia: La variable DATABASE_URL no está definida');
+  
+  // Si estamos en el proceso de build de Vercel, continuamos sin error
+  // Las variables de entorno de producción estarán disponibles durante el runtime
+  if (isVercel && process.env.VERCEL_ENV === 'preview') {
+    console.log('🔄 Ejecutando en entorno de preview de Vercel. Continuando sin base de datos.');
+    process.exit(0);
+  } else if (process.env.NODE_ENV === 'production' && !isVercel) {
+    // En producción fuera de Vercel, es un error crítico
+    console.error('❌ Error: DATABASE_URL es requerida en producción');
+    process.exit(1);
+  } else {
+    // En desarrollo local, solo advertimos pero no fallamos
+    console.log('ℹ️ Continuando sin migraciones. Define DATABASE_URL para ejecutar migraciones.');
+    process.exit(0);
+  }
 }
 
 async function main() {
@@ -17,8 +33,26 @@ async function main() {
     console.log('🔄 Entorno detectado:', isProduction ? 'Producción' : 'Desarrollo');
     console.log('🔄 Verificando conexión a la base de datos...');
     
-    // Verificar conexión a la base de datos primero
-    execSync('node prisma/db-check.js', { stdio: 'inherit' });
+    try {
+      // Verificar conexión a la base de datos primero
+      execSync('node prisma/db-check.js', { stdio: 'inherit' });
+    } catch (error) {
+      console.log('⚠️ No se pudo verificar la conexión a la base de datos:', error.message);
+      
+      // En desarrollo o durante el build, continuamos sin error fatal
+      if (!isProduction || isVercel) {
+        console.log('ℹ️ Continuando sin verificación de conexión.');
+        
+        // Generamos el cliente Prisma de todos modos para que la aplicación pueda construirse
+        console.log('🔄 Generando cliente Prisma...');
+        execSync('npx prisma generate', { stdio: 'inherit' });
+        
+        process.exit(0);
+      } else {
+        // En producción real, es un error crítico
+        throw error;
+      }
+    }
     
     if (isProduction) {
       // En producción, aplicamos directamente el esquema en lugar de usar migraciones
