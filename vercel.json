@@ -23,8 +23,5 @@
         { "key": "Access-Control-Max-Age", "value": "86400" }
       ]
     }
-  ],
-  "routes": [
-    { "src": "/api/twilio", "dest": "/api/twilio" }
   ]
 } 
