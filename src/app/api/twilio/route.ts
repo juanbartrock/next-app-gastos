@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Verificar si es una solicitud legítima de Twilio (opcional en desarrollo, recomendado en producción)
-    /*
+    
     const signature = request.headers.get('X-Twilio-Signature') || '';
     const url = request.url;
     const params: Record<string, string> = {};
@@ -37,7 +37,6 @@ export async function POST(request: NextRequest) {
       console.error("Firma de Twilio inválida");
       return NextResponse.json({ error: "Firma inválida" }, { status: 403 });
     }
-    */
     
     // Extraer número de teléfono sin el prefijo "whatsapp:"
     const phoneNumber = from.replace('whatsapp:', '');

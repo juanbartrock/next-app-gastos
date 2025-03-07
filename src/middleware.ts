@@ -15,6 +15,7 @@ export async function middleware(request: NextRequest) {
   if (
     request.nextUrl.pathname.startsWith('/_next') || 
     request.nextUrl.pathname.startsWith('/api/auth') ||
+    request.nextUrl.pathname.startsWith('/api/twilio') ||
     request.nextUrl.pathname === '/favicon.ico'
   ) {
     return NextResponse.next()
@@ -51,6 +52,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!login|register|api/auth|_next/static|_next/image|favicon.ico).*)",
+    "/((?!login|register|api/auth|api/twilio|_next/static|_next/image|favicon.ico).*)",
   ]
 } 
