@@ -1,90 +1,89 @@
-# Guía para Probar el Asesor Financiero Personalizado
+# Generador de Datos Financieros para Pruebas
 
-Este documento explica cómo poblar tu base de datos con datos financieros de prueba y cómo utilizar estos datos para evaluar el asesor financiero personalizado.
+Este script genera un conjunto completo de datos financieros para probar todas las funcionalidades de la aplicación, incluyendo el asesor financiero personalizado.
 
-## 1. Preparación de Datos de Prueba
+## Características principales
 
-Hemos creado un script que generará automáticamente datos financieros realistas para los primeros meses de 2024, siguiendo una distribución de gastos razonable en diferentes categorías.
+- **Datos para los últimos 6 meses**: Genera automáticamente datos históricos para los últimos 6 meses hasta el mes actual
+- **Datos realistas**: Incluye variaciones mensuales, tendencias y eventos especiales para simular un uso real
+- **Conjunto completo de datos**: Crea transacciones, gastos recurrentes, presupuestos y financiaciones
+- **Perfiles financieros coherentes**: Mantiene una distribución realista de gastos por categoría
 
-### Datos que se generarán:
+## Cómo ejecutar el script
 
-- **Transacciones** para enero, febrero y marzo de 2024
-- **Gastos recurrentes** con diferentes periodicidades (80% mensuales, 15% bimestrales, 5% semestrales)
-- **Presupuestos** mensuales hasta junio de 2024
-- **Financiación** para una compra grande en marzo
-
-### Para ejecutar el script:
+1. Asegúrate de tener Node.js instalado
+2. Abre una terminal y navega a la raíz de tu proyecto
+3. Ejecuta el siguiente comando:
 
 ```bash
-# Desde la raíz del proyecto
-node scripts/run-populate.js
+node generate-test-data.js
 ```
 
-> **IMPORTANTE**: El script limpiará los datos existentes de 2024 para los meses mencionados antes de crear los nuevos datos de prueba.
+## Datos que se generan
 
-## 2. Evaluación del Asesor Financiero
+### 1. Transacciones
+- Ingreso mensual (salario) con pequeñas variaciones
+- Gastos distribuidos entre diferentes categorías:
+  - Vivienda (25%)
+  - Alimentación (20%)
+  - Transporte (10%)
+  - Servicios (8%)
+  - Y más...
+- Tipos de movimiento: efectivo, digital, ahorro y tarjeta
+- Conceptos realistas para cada categoría (ej: "Supermercado", "Electricidad", etc.)
 
-Una vez que hayas poblado la base de datos con los datos de prueba, puedes evaluar el asesor financiero utilizando un conjunto de preguntas predefinidas.
+### 2. Gastos Recurrentes
+- Distribuidos según periodicidad:
+  - 80% mensuales (alquiler, suscripciones, servicios)
+  - 15% bimestrales (mantenimiento, impuestos)
+  - 5% semestrales (seguros)
 
-### Pasos para probar:
+### 3. Presupuestos
+- Creados para cada grupo de categorías y cada mes
+- Ajustados automáticamente según los ingresos esperados
 
-1. **Iniciar la aplicación** (si no está en ejecución):
-   ```bash
-   npm run dev
-   ```
+### 4. Eventos Especiales
+- Compras grandes ocasionales (viajes, tecnología)
+- Financiación para compras importantes
+- Bonos semestrales de ingresos
 
-2. **Abrir el asesor financiero** en tu aplicación
-   - Navega a http://localhost:3000/dashboard
-   - Busca el botón flotante del asesor en la esquina inferior derecha
+### 5. Tendencias
+- Evolución de ingresos a lo largo del tiempo
+- Patrones de gasto con pequeñas variaciones mensuales
 
-3. **Realizar preguntas de prueba**
-   - Utiliza las preguntas del archivo `set-de-prueba.md`
-   - Copia y pega cada pregunta en el chat del asesor
-
-4. **Evaluar las respuestas**
-   - Observa si las respuestas son personalizadas (tendrán una marca verde)
-   - Verifica si mencionan datos específicos de tu perfil financiero
-   - Comprueba si los consejos están adaptados a tu situación particular
-
-## 3. Set de Preguntas de Prueba
-
-Hemos preparado un conjunto de 20 preguntas organizadas en categorías para evaluar diferentes aspectos del asesor. Estas preguntas están disponibles en el archivo `set-de-prueba.md`.
-
-Las categorías incluyen:
-- Preguntas básicas sobre datos financieros
-- Preguntas sobre tendencias y análisis
-- Preguntas sobre recomendaciones personalizadas
-- Preguntas específicas para verificar la personalización
-
-## 4. Estructura de los Datos de Prueba
+## Estructura de Datos
 
 ### Ingresos
-- Salario mensual de $3,000
+- Salario mensual base de $3,000
+- Bonificaciones semestrales (50% del salario)
 
-### Distribución de gastos
-- Vivienda: 25%
-- Alimentación: 20%
-- Transporte: 10%
-- Servicios: 8%
-- Ocio (Entretenimiento, Restaurantes, Viajes): 18%
-- Otros: 19%
+### Conceptos de Gastos
+El script utiliza conceptos realistas para cada categoría:
+- **Vivienda**: Alquiler, Hipoteca, Mantenimiento, etc.
+- **Alimentación**: Supermercado, Verdulería, Carnicería, etc.
+- **Transporte**: Gasolina, Transporte público, Taxi, etc.
+- **Servicios**: Electricidad, Agua, Gas, Internet, etc.
+- **Salud**: Farmacia, Consulta médica, Dentista, etc.
+- Y muchos más...
 
-### Variaciones mensuales
-- Enero: Nivel base de gastos
-- Febrero: Reducción del 10% en gastos
-- Marzo: Aumento del 10% en gastos + compra grande financiada
+## Qué hacer después de ejecutar el script
 
-## 5. Interpretación de Resultados
+1. **Reinicia el servidor de desarrollo** (si está en ejecución)
+2. **Navega al dashboard** para ver los nuevos datos
+3. **Prueba el asesor financiero** utilizando las preguntas en `set-de-prueba.md`
+4. **Explora los reportes y gráficos** para ver cómo se visualizan los datos históricos
 
-Después de realizar las pruebas, evalúa:
+## Personalización
 
-1. **Precisión**: ¿El asesor refleja correctamente tus datos financieros?
-2. **Personalización**: ¿Las recomendaciones están adaptadas a tu perfil?
-3. **Utilidad**: ¿Los consejos son prácticos y aplicables?
-4. **Comprensión**: ¿El asesor entiende correctamente tus preguntas?
+Puedes modificar estos parámetros al inicio del script:
 
-Si encuentras áreas de mejora, puedes ajustar el prompt del sistema en `src/app/api/financial-advisor/route.ts` para mejorar la calidad de las respuestas.
+```javascript
+// Configuración principal
+const MESES = 6;                // Número de meses a generar
+const INGRESO_BASE = 3000;      // Ingreso mensual base
+const USUARIO_EMAIL = null;     // Email específico o null para usar el primer usuario
+```
 
 ---
 
-¡Esperamos que disfrutes probando el asesor financiero personalizado! 
+¡Disfruta explorando tu aplicación con datos financieros realistas! 

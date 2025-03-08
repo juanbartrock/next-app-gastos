@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
+import { useSession, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { BarChart, Bell, ChevronLeft, ChevronRight, CreditCard, DollarSign, Edit2, LogOut, Moon, Settings, Sun, User, Bot, ChevronUp, ChevronDown } from "lucide-react"
@@ -301,7 +301,13 @@ export default function BankingDashboard() {
                     Configuración
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => router.push('/api/auth/signout')}>
+                  <DropdownMenuItem onClick={async () => {
+                    await signOut({ 
+                      callbackUrl: '/login',
+                      redirect: true
+                    });
+                    router.push('/login');
+                  }}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Cerrar sesión
                   </DropdownMenuItem>

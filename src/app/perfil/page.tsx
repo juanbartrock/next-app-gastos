@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, Save, User, Mail, LogOut } from "lucide-react";
+import { ChevronLeft, Save, User, Mail, LogOut, Phone } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -18,7 +18,8 @@ export default function ProfilePage() {
   
   const [formData, setFormData] = useState({
     name: "",
-    email: ""
+    email: "",
+    phoneNumber: ""
   });
   const [loading, setLoading] = useState(false);
 
@@ -30,7 +31,8 @@ export default function ProfilePage() {
     if (session?.user) {
       setFormData({
         name: session.user.name || "",
-        email: session.user.email || ""
+        email: session.user.email || "",
+        phoneNumber: session.user.phoneNumber || ""
       });
     }
   }, [session, status, router]);
@@ -48,13 +50,29 @@ export default function ProfilePage() {
     setLoading(true);
     
     try {
-      // Aquí se implementaría la actualización real del perfil
-      // Por ahora solo actualizamos la sesión localmente
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          phoneNumber: formData.phoneNumber
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al actualizar el perfil');
+      }
+
+      const updatedUser = await response.json();
+      
       await update({
         ...session,
         user: {
           ...session?.user,
-          name: formData.name
+          name: formData.name,
+          phoneNumber: formData.phoneNumber
         }
       });
       
@@ -145,6 +163,28 @@ export default function ProfilePage() {
                     El correo electrónico no se puede modificar.
                   </p>
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phoneNumber">
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-gray-500" />
+                      Teléfono
+                    </div>
+                  </Label>
+                  <Input
+                    id="phoneNumber"
+                    name="phoneNumber"
+                    type="tel"
+                    pattern="^\+[0-9]{10,15}$"
+                    title="Ingresa el número con código de país (ej: +54911234567)"
+                    value={formData.phoneNumber}
+                    onChange={handleChange}
+                    placeholder="+54911234567"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Incluye el código de país (ej: +54 para Argentina)
+                  </p>
+                </div>
               </div>
               
               <Button type="submit" className="w-full" disabled={loading}>
@@ -163,7 +203,13 @@ export default function ProfilePage() {
               <Button 
                 variant="destructive" 
                 className="w-full"
-                onClick={() => signOut({ callbackUrl: "/login" })}
+                onClick={async () => {
+                  await signOut({ 
+                    callbackUrl: '/login',
+                    redirect: true
+                  });
+                  router.push('/login');
+                }}
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 Cerrar sesión

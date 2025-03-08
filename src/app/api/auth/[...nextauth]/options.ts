@@ -12,6 +12,7 @@ declare module "next-auth" {
       name?: string | null;
       email?: string | null;
       image?: string | null;
+      phoneNumber?: string | null;
     }
   }
 }
@@ -71,8 +72,10 @@ export const options: NextAuthOptions = {
   callbacks: {
     async redirect({ url, baseUrl }) {
       try {
-        // Simplificación: siempre redirigir a /home después del login
-        // excepto para rutas específicas con callbackUrl
+        // Si es una redirección de signOut, ir a /login
+        if (url.includes('signOut=true') || url.includes('/login')) {
+          return `${baseUrl}/login`;
+        }
         
         // Si hay un callbackUrl específico que no sea la raíz, respetarlo
         if (url.includes('callbackUrl=')) {
@@ -94,6 +97,22 @@ export const options: NextAuthOptions = {
       try {
         if (session.user) {
           session.user.id = token.sub!
+          
+          // Obtener datos actualizados del usuario
+          const user = await prisma.user.findUnique({
+            where: { id: token.sub },
+            select: {
+              name: true,
+              email: true,
+              phoneNumber: true,
+            }
+          });
+
+          if (user) {
+            session.user.name = user.name;
+            session.user.email = user.email;
+            session.user.phoneNumber = user.phoneNumber;
+          }
         }
         return session
       } catch (error) {

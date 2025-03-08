@@ -21,6 +21,7 @@ export default function RegisterPage() {
     const email = formData.get("email") as string
     const password = formData.get("password") as string
     const confirmPassword = formData.get("confirmPassword") as string
+    const phoneNumber = formData.get("phoneNumber") as string
 
     if (password !== confirmPassword) {
       setError("Las contraseñas no coinciden")
@@ -38,6 +39,7 @@ export default function RegisterPage() {
           name,
           email,
           password,
+          phoneNumber,
         }),
       })
 
@@ -96,6 +98,18 @@ export default function RegisterPage() {
                 required
                 className="dark:bg-gray-700"
                 placeholder="tu@email.com"
+              />
+            </div>
+            <div>
+              <Label htmlFor="phoneNumber">Teléfono (con código de país)</Label>
+              <Input
+                id="phoneNumber"
+                name="phoneNumber"
+                type="tel"
+                pattern="^\+[0-9]{10,15}$"
+                title="Ingresa el número con código de país (ej: +54911234567)"
+                className="dark:bg-gray-700"
+                placeholder="+54911234567"
               />
             </div>
             <div>

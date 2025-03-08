@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     const body = await req.json()
     console.log("Datos recibidos:", { ...body, password: '[REDACTED]' })
     
-    const { name, email, password } = body
+    const { name, email, password, phoneNumber } = body
 
     if (!name || !email || !password) {
       console.log("Faltan campos requeridos:", { name: !!name, email: !!email, password: !!password })
@@ -46,6 +46,7 @@ export async function POST(req: Request) {
         name,
         email,
         password: hashedPassword,
+        phoneNumber,
       },
     })
 

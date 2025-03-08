@@ -56,7 +56,7 @@ export async function PUT(request: NextRequest) {
     }
     
     const data = await request.json();
-    const { phoneNumber } = data;
+    const { name, phoneNumber } = data;
     
     // Validación básica
     if (phoneNumber && !phoneNumber.match(/^\+[0-9]{10,15}$/)) {
@@ -69,7 +69,10 @@ export async function PUT(request: NextRequest) {
     // Actualizar usuario
     const updatedUser = await prisma.user.update({
       where: { id: session.user.id },
-      data: { phoneNumber },
+      data: { 
+        name,
+        phoneNumber 
+      },
       select: {
         id: true,
         name: true,
