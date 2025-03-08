@@ -178,4 +178,33 @@ model Servicio {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  promociones     Promocion[]
+}
+
+model Promocion {
+  id                Int                    @id @default(autoincrement())
+  titulo            String
+  descripcion       String
+  urlOrigen         String?
+  descuento         Float?
+  porcentajeAhorro  Float?
+  fechaVencimiento  DateTime?
+  fechaCreacion     DateTime               @default(now())
+  fechaActualizacion DateTime              @updatedAt
+  servicioId        Int?
+  estado            String                 @default("active") // active, expired, used
+  servicio          Servicio?              @relation(fields: [servicioId], references: [id], onDelete: SetNull)
+  alternativas      ServicioAlternativo[]
+}
+
+model ServicioAlternativo {
+  id              Int       @id @default(autoincrement())
+  nombre          String
+  descripcion     String?
+  monto           Float
+  urlOrigen       String?
+  promocionId     Int
+  promocion       Promocion @relation(fields: [promocionId], references: [id], onDelete: Cascade)
+  fechaCreacion   DateTime  @default(now())
+  fechaActualizacion DateTime @updatedAt
 }

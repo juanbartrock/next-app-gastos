@@ -25,6 +25,19 @@ export default function AdminPage() {
               </Link>
             </div>
             
+            <div className="border rounded-lg p-6 bg-gray-50 hover:bg-gray-100 transition">
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Gestión de Scrapers</h2>
+              <p className="text-gray-600 mb-4">
+                Supervisa y ejecuta los scrapers para obtener recomendaciones de ahorro en tiempo real.
+              </p>
+              <Link 
+                href="/admin/scraping"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              >
+                Ir a Scrapers
+              </Link>
+            </div>
+            
             {/* Puedes añadir más secciones de administración aquí en el futuro */}
           </div>
         </div>
