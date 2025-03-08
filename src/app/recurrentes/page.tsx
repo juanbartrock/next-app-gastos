@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { useCurrency } from "@/contexts/CurrencyContext"
+import { FinancialSummary } from "@/components/FinancialSummary"
 
 // Tipos
 type GastoRecurrente = {
@@ -554,28 +555,31 @@ export default function RecurrentesPage() {
 
         {/* Total de gastos del mes actual y Servicios Contratados */}
         <Card className="w-full bg-white dark:bg-gray-800 shadow-lg mb-6">
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-gray-900 dark:text-white">
-              Resumen Financiero
-            </CardTitle>
-          </CardHeader>
           <CardContent className="p-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-0 divide-y md:divide-y-0 md:divide-x divide-gray-200 dark:divide-gray-700">
-              {/* Total de gastos recurrentes */}
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">Total gastos recurrentes</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</p>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-0 divide-y md:divide-y-0 md:divide-x divide-gray-200 dark:divide-gray-700">
+              {/* Columna izquierda: Total gastos recurrentes y Análisis Financiero */}
+              <div className="md:col-span-5 flex flex-col">
+                {/* Total de gastos recurrentes */}
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">Total gastos recurrentes</h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</p>
+                    </div>
+                    <div className="text-3xl font-bold text-primary">
+                      {formatMoney(totalMesActual)}
+                    </div>
                   </div>
-                  <div className="text-3xl font-bold text-primary">
-                    {formatMoney(totalMesActual)}
-                  </div>
+                </div>
+                
+                {/* Análisis Financiero Personalizado */}
+                <div className="p-4 flex-grow">
+                  <FinancialSummary className="shadow-sm h-full" />
                 </div>
               </div>
               
-              {/* Servicios contratados */}
-              <div className="p-6">
+              {/* Columna derecha: Servicios contratados */}
+              <div className="md:col-span-7 p-4">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">Servicios contratados</h3>
                   <div className="text-3xl font-bold text-primary">
