@@ -3,6 +3,7 @@
 import { ReactNode } from "react"
 import { Sidebar } from "@/components/Sidebar"
 import { useSidebar } from "@/contexts/SidebarContext"
+import { FloatingAdvisor } from "@/components/FloatingAdvisor"
 
 interface PageLayoutProps {
   children: ReactNode
@@ -20,6 +21,9 @@ export function PageLayout({ children }: PageLayoutProps) {
       <div className={`flex-1 transition-all duration-300 p-4 ${isOpen ? 'ml-64' : 'ml-20'}`}>
         {children}
       </div>
+
+      {/* Asesor Financiero Flotante */}
+      <FloatingAdvisor />
     </div>
   )
 } 

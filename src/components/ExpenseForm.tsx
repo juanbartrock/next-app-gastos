@@ -51,7 +51,6 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
   const [grupos, setGrupos] = useState<Grupo[]>([])
   const [selectedGrupoId, setSelectedGrupoId] = useState<string>("personal")
   const [loadingGrupos, setLoadingGrupos] = useState(false)
-  // Nuevo estado para categorías
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [loadingCategorias, setLoadingCategorias] = useState(false)
   
@@ -59,6 +58,9 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
   const [cantidadCuotas, setCantidadCuotas] = useState<string>("1")
   const [fechaPrimerPago, setFechaPrimerPago] = useState<Date | undefined>(undefined)
   const [diaPago, setDiaPago] = useState<string>("")
+
+  // Estado para controlar la visibilidad de opciones avanzadas
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState<boolean>(false)
 
   const { currency, formatMoney } = useCurrency()
 
@@ -244,53 +246,71 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
   }
 
   return (
-    <div className="mt-8 space-y-4">
-      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 text-center">Nuevo Registro</h3>
-
+    <div className="space-y-6">
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">
+        <div className="p-3 rounded-md bg-red-50 text-red-600 text-sm dark:bg-red-900/50 dark:text-red-200">
           {error}
         </div>
       )}
-
       {success && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-3 py-2 rounded text-sm">
-          ¡Registro creado exitosamente!
+        <div className="p-3 rounded-md bg-green-50 text-green-600 text-sm dark:bg-green-900/50 dark:text-green-200">
+          Transacción guardada correctamente
         </div>
       )}
-
+      
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
+          <Label>Tipo de Transacción</Label>
+          <RadioGroup
+            defaultValue="expense"
+            value={transactionType}
+            onValueChange={(value) => setTransactionType(value as "income" | "expense")}
+            className="flex"
+          >
+            <div className="flex items-center space-x-2 mr-4">
+              <RadioGroupItem value="expense" id="expense" />
+              <Label htmlFor="expense" className="flex items-center">
+                <ArrowDown className="mr-1 h-4 w-4 text-red-500" />
+                Gasto
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="income" id="income" />
+              <Label htmlFor="income" className="flex items-center">
+                <ArrowUp className="mr-1 h-4 w-4 text-green-500" />
+                Ingreso
+              </Label>
+            </div>
+          </RadioGroup>
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="amount">Monto</Label>
-          <Input
-            id="amount"
-            type="text"
-            placeholder="$0,00"
-            value={amount}
-            onChange={handleAmountChange}
-            autoComplete="off"
-            autoFocus
-            className={amount ? "border-green-500 dark:border-green-600" : ""}
-          />
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Ingrese el monto en pesos argentinos (ARS). La visualización en otra moneda es solo informativa.
-          </p>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+              {currency === 'ARS' ? '$' : 'US$'}
+            </span>
+            <Input
+              id="amount"
+              name="amount"
+              type="text"
+              value={amount}
+              onChange={handleAmountChange}
+              className="pl-8"
+              placeholder="0.00"
+              required
+            />
+          </div>
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="concepto">Concepto</Label>
-          <Input
-            id="concepto"
-            name="concepto"
-            type="text"
-            placeholder="Ej: Compra supermercado"
-            className="dark:bg-gray-700 dark:text-white"
-          />
+          <Input id="concepto" name="concepto" placeholder="Ej: Supermercado" required />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="categoriaId">Categoría</Label>
-          <Select name="categoriaId">
+          <Label htmlFor="categoria">Categoría</Label>
+          <Select name="categoriaId" required>
             <SelectTrigger>
               <SelectValue placeholder="Seleccionar categoría" />
             </SelectTrigger>
@@ -322,86 +342,26 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="date">Fecha</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="w-full justify-start text-left font-normal"
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? (
-                  format(date, 'PPP', { locale: es })
-                ) : (
-                  <span>Seleccionar fecha</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={setDate}
-                initialFocus
-                locale={es}
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Tipo de Transacción</Label>
-          <RadioGroup
-            defaultValue="expense"
-            value={transactionType}
-            onValueChange={(value) => setTransactionType(value as "income" | "expense")}
-            className="flex"
-          >
-            <div className="flex items-center space-x-2 mr-4">
-              <RadioGroupItem value="expense" id="expense" />
-              <Label htmlFor="expense" className="flex items-center">
-                <ArrowDown className="mr-1 h-4 w-4 text-red-500" />
-                Gasto
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="income" id="income" />
-              <Label htmlFor="income" className="flex items-center">
-                <ArrowUp className="mr-1 h-4 w-4 text-green-500" />
-                Ingreso
-              </Label>
-            </div>
-          </RadioGroup>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Tipo de Movimiento</Label>
-          <RadioGroup
-            defaultValue="efectivo"
-            value={movementType}
+          <Label htmlFor="movementType">Tipo de Movimiento</Label>
+          <Select 
+            value={movementType} 
             onValueChange={(value) => setMovementType(value as "efectivo" | "digital" | "ahorro" | "tarjeta")}
-            className="flex flex-wrap"
           >
-            <div className="flex items-center space-x-2 mr-4 mb-2">
-              <RadioGroupItem value="efectivo" id="efectivo" />
-              <Label htmlFor="efectivo">Efectivo</Label>
-            </div>
-            <div className="flex items-center space-x-2 mr-4 mb-2">
-              <RadioGroupItem value="digital" id="digital" />
-              <Label htmlFor="digital">Digital</Label>
-            </div>
-            <div className="flex items-center space-x-2 mr-4 mb-2">
-              <RadioGroupItem value="ahorro" id="ahorro" />
-              <Label htmlFor="ahorro">Ahorro</Label>
-            </div>
-            <div className="flex items-center space-x-2 mb-2">
-              <RadioGroupItem value="tarjeta" id="tarjeta" />
-              <Label htmlFor="tarjeta" className="flex items-center">
-                <CreditCard className="mr-1 h-4 w-4" />
-                Tarjeta
-              </Label>
-            </div>
-          </RadioGroup>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="efectivo">Efectivo</SelectItem>
+              <SelectItem value="digital">Digital</SelectItem>
+              <SelectItem value="ahorro">Ahorro</SelectItem>
+              <SelectItem value="tarjeta">
+                <div className="flex items-center">
+                  <CreditCard className="mr-1 h-4 w-4" />
+                  Tarjeta
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Campos adicionales para financiación con tarjeta */}
@@ -475,25 +435,67 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
           </div>
         )}
 
-        <div className="space-y-2">
-          <Label>Grupo (opcional)</Label>
-          <Select value={selectedGrupoId} onValueChange={setSelectedGrupoId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar grupo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="personal">Personal (sin grupo)</SelectItem>
-              {loadingGrupos ? (
-                <SelectItem value="loading" disabled>Cargando grupos...</SelectItem>
-              ) : (
-                grupos.map((grupo) => (
-                  <SelectItem key={grupo.id} value={grupo.id}>
-                    {grupo.nombre}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+        {/* Botón para mostrar/ocultar opciones avanzadas */}
+        <Button 
+          type="button" 
+          variant="outline" 
+          className="w-full flex items-center justify-center"
+          onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+        >
+          {showAdvancedOptions ? "Ocultar opciones avanzadas" : "Mostrar opciones avanzadas"}
+          <Plus className={`ml-2 h-4 w-4 transition-transform ${showAdvancedOptions ? "rotate-45" : ""}`} />
+        </Button>
+
+        {/* Contenido visible siempre */}
+        <div className={`space-y-4 ${showAdvancedOptions ? "" : "hidden"}`}>
+          <div className="space-y-2">
+            <Label htmlFor="date">Fecha</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date ? (
+                    format(date, 'PPP', { locale: es })
+                  ) : (
+                    <span>Seleccionar fecha</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={setDate}
+                  initialFocus
+                  locale={es}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Grupo (opcional)</Label>
+            <Select value={selectedGrupoId} onValueChange={setSelectedGrupoId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar grupo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="personal">Personal (sin grupo)</SelectItem>
+                {loadingGrupos ? (
+                  <SelectItem value="loading" disabled>Cargando grupos...</SelectItem>
+                ) : (
+                  grupos.map((grupo) => (
+                    <SelectItem key={grupo.id} value={grupo.id}>
+                      {grupo.nombre}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <Button type="submit" className="w-full">

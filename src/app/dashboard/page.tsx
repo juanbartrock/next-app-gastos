@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart, Bell, ChevronLeft, ChevronRight, CreditCard, DollarSign, Edit2, LogOut, Moon, Settings, Sun, User } from "lucide-react"
+import { BarChart, Bell, ChevronLeft, ChevronRight, CreditCard, DollarSign, Edit2, LogOut, Moon, Settings, Sun, User, Bot } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { cn } from "@/lib/utils"
@@ -162,69 +162,77 @@ export default function BankingDashboard() {
   const balanceData = (() => {
     if (!transactions.length) return { income: 0, expenses: 0, balance: 0, efectivo: 0, digital: 0, ahorro: 0 }
 
-    // Filtrar transacciones del mes actual
-    const currentTransactions = transactions.filter(transaction => {
-      const transactionDate = new Date(transaction.fecha)
+    try {
+      // Filtrar transacciones del mes actual
+      const currentTransactions = transactions.filter(transaction => {
+        const transactionDate = new Date(transaction.fecha)
 
-      // Convertir la fecha a UTC para evitar problemas con zonas horarias
-      const transactionMonth = transactionDate.getUTCMonth()
-      const transactionYear = transactionDate.getUTCFullYear()
+        // Convertir la fecha a UTC para evitar problemas con zonas horarias
+        const transactionMonth = transactionDate.getUTCMonth()
+        const transactionYear = transactionDate.getUTCFullYear()
 
-      const isCurrentMonth = transactionMonth === currentMonth && transactionYear === currentYear
-      const isNotTarjeta = transaction.tipoMovimiento !== 'tarjeta'
+        const isCurrentMonth = transactionMonth === currentMonth && transactionYear === currentYear
+        const isNotTarjeta = transaction.tipoMovimiento !== 'tarjeta'
 
-      return isCurrentMonth && isNotTarjeta
-    })
+        return isCurrentMonth && isNotTarjeta
+      })
 
-    // Calcular gastos e ingresos del mes
-    let totalExpenses = 0
-    let totalIncome = 0
+      // Calcular gastos e ingresos del mes
+      let totalExpenses = 0
+      let totalIncome = 0
 
-    currentTransactions.forEach(transaction => {
-      const amount = Number(transaction.monto)
-      // Asumimos que si no es ingreso, es gasto
-      if (transaction.tipoTransaccion === 'ingreso') {
-        totalIncome += amount
-      } else {
-        totalExpenses += amount
-      }
-    })
-      
-    // Calcular saldos por tipo de movimiento (excluyendo tarjeta)
-    const totals = transactions
-      .filter(t => t.tipoMovimiento !== 'tarjeta')
-      .reduce((acc, t) => {
-        const amount = t.tipoTransaccion === 'ingreso' ? Number(t.monto) : -Number(t.monto)
-        
-        // Actualizar total general
-        acc.total += amount
-        
-        // Actualizar totales por tipo de movimiento
-        if (t.tipoMovimiento === 'efectivo') {
-          acc.efectivo += amount
-        } else if (t.tipoMovimiento === 'digital') {
-          acc.digital += amount
-        } else if (t.tipoMovimiento === 'ahorro') {
-          acc.ahorro += amount
+      currentTransactions.forEach(transaction => {
+        const amount = Number(transaction.monto)
+        // Asumimos que si no es ingreso, es gasto
+        if (transaction.tipoTransaccion === 'ingreso') {
+          totalIncome += amount
+        } else {
+          totalExpenses += amount
         }
+      })
         
-        return acc
-      }, { total: 0, efectivo: 0, digital: 0, ahorro: 0 })
+      // Calcular saldos por tipo de movimiento (excluyendo tarjeta)
+      const totals = transactions
+        .filter(t => t.tipoMovimiento !== 'tarjeta')
+        .reduce((acc, t) => {
+          const amount = t.tipoTransaccion === 'ingreso' ? Number(t.monto) : -Number(t.monto)
+          
+          // Actualizar total general
+          acc.total += amount
+          
+          // Actualizar totales por tipo de movimiento
+          if (t.tipoMovimiento === 'efectivo') {
+            acc.efectivo += amount
+          } else if (t.tipoMovimiento === 'digital') {
+            acc.digital += amount
+          } else if (t.tipoMovimiento === 'ahorro') {
+            acc.ahorro += amount
+          }
+          
+          return acc
+        }, { total: 0, efectivo: 0, digital: 0, ahorro: 0 })
 
-    return {
-      income: totalIncome,
-      expenses: totalExpenses,
-      balance: totalIncome - totalExpenses,
-      ...totals
+      return {
+        income: totalIncome || 0,
+        expenses: totalExpenses || 0,
+        balance: (totalIncome - totalExpenses) || 0,
+        total: totals.total || 0,
+        efectivo: totals.efectivo || 0,
+        digital: totals.digital || 0,
+        ahorro: totals.ahorro || 0
+      }
+    } catch (error) {
+      console.error('Error al calcular balances:', error)
+      return { income: 0, expenses: 0, balance: 0, total: 0, efectivo: 0, digital: 0, ahorro: 0 }
     }
   })()
   
   // Definir tipos de balance para navegación
   const balanceTypes = [
-    { label: "Saldo total", amount: formatMoney(balanceData.total) },
-    { label: "Total Efectivo", amount: formatMoney(balanceData.efectivo) },
-    { label: "Total Digital", amount: formatMoney(balanceData.digital) },
-    { label: "Total Ahorros", amount: formatMoney(balanceData.ahorro) },
+    { label: "Saldo total", amount: formatMoney(isNaN(balanceData.total) ? 0 : balanceData.total) },
+    { label: "Total Efectivo", amount: formatMoney(isNaN(balanceData.efectivo) ? 0 : balanceData.efectivo) },
+    { label: "Total Digital", amount: formatMoney(isNaN(balanceData.digital) ? 0 : balanceData.digital) },
+    { label: "Total Ahorros", amount: formatMoney(isNaN(balanceData.ahorro) ? 0 : balanceData.ahorro) },
   ]
 
   return (
@@ -281,41 +289,38 @@ export default function BankingDashboard() {
 
       <main className="flex-1 p-4 md:p-6">
         <div className="grid gap-6">
-          {/* Balance y Widget Financiero en dos columnas */}
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Columna izquierda: Balance navegable */}
-            <Card className="bg-blue-900 dark:bg-blue-950 text-white">
-              <CardHeader className="text-center">
-                <CardTitle className="text-lg font-medium text-blue-200">
-                  {balanceTypes[balanceIndex].label}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 items-center">
-                  <div className="flex justify-center">
-                    <button 
-                      onClick={() => navigateBalanceType("prev")}
-                      className="text-blue-300 hover:text-white transition-colors"
-                    >
-                      <ChevronLeft className="h-6 w-6" />
-                    </button>
-                  </div>
-                  <div className="text-4xl font-bold text-center">{balanceTypes[balanceIndex].amount}</div>
-                  <div className="flex justify-center">
-                    <button 
-                      onClick={() => navigateBalanceType("next")}
-                      className="text-blue-300 hover:text-white transition-colors"
-                    >
-                      <ChevronRight className="h-6 w-6" />
-                    </button>
-                  </div>
+          {/* Widget de saldo */}
+          <Card className="col-span-full md:col-span-1">
+            <CardHeader className="text-center">
+              <CardTitle className="text-lg font-medium text-blue-200">
+                {balanceTypes[balanceIndex].label}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 items-center">
+                <div className="flex justify-center">
+                  <button 
+                    onClick={() => navigateBalanceType("prev")}
+                    className="text-blue-300 hover:text-white transition-colors"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </button>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="text-4xl font-bold text-center">{balanceTypes[balanceIndex].amount}</div>
+                <div className="flex justify-center">
+                  <button 
+                    onClick={() => navigateBalanceType("next")}
+                    className="text-blue-300 hover:text-white transition-colors"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Columna derecha: Widget Financiero */}
-            <FinancialDataWidget />
-          </div>
+          {/* Widget Financiero */}
+          <FinancialDataWidget />
 
           {/* Balance Cards */}
           <div className="grid gap-4 md:grid-cols-3">
