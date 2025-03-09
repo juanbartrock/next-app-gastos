@@ -17,19 +17,31 @@ Observaciones funcionalidad AppGastos:
 - Alerta panel (Implementar)
 -4-
 - Crear página inicial con 3 posilidades -> carga de gasto/ingreso, acceso al dashboard, acceso a informes. Que sean botones/íconos grandes con las 3 opciones distribuidas en la pantalla con algún mensaje de bienvenida.
--5-aun no implementado
-- Implementar Presupuesto de gastos (dinero destinado para distintos conceptos y que controle el limite de lo presupuestado vs el gasto del mes en curso)
+-5-- Implementar Presupuesto de gastos (dinero destinado para distintos conceptos y que controle el limite de lo presupuestado vs el gasto del mes en curso)
 - Dar la posibilidad de ver el saldo en pesos argentinos o dolares (y dar la posibilidad de que se tome dolar oficial, dolar blue o dolar crypto)
 - Desarrollar informes y mostrar gráficos (tablero de estado de situación)
+-6-
+- poner en cero saldos cuando no hay transacciones
+- asesor financiero
+- Informacion sobre suscripciones (siempre estan en TC y no se es muy bien cuanto salen)
+- Futuro buscador de precios para esas suscripciones
+- --->>> Buscador de precios/oportunidades/promos. 
+- scrappers
 ---------------------------TODO ARREGLADO---------------------------
 
 
 ---------------------------EN PROGRESO---------------------------
-
+--panel de inversiones
+- revisar asesores que perdieron fiabilidad con lo de la sinversiones
 ---------------------------EN PROGRESO---------------------------
 
 
 ---------------------------AUN NO ENCARADO---------------------------
+
+- tomar foto de ticket para ver que productos compró
+	- scrapear productos
+	- ofrecer informe
+	- responder si determinada fecha hay productos mejores
 
 
 

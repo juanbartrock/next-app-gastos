@@ -1,14 +1,14 @@
 # Documentación: Aplicación de Gestión de Gastos
 
 ## Descripción General
-Esta aplicación está diseñada para ayudar a los usuarios a gestionar sus gastos personales y grupales. Permite el registro de transacciones financieras, la categorización de gastos, la formación de grupos para gastos compartidos y ofrece visualizaciones para análisis financiero.
+Esta aplicación está diseñada para ayudar a los usuarios a gestionar sus gastos personales y grupales. Permite el registro de transacciones financieras, la categorización de gastos, la formación de grupos para gastos compartidos y ofrece visualizaciones para análisis financiero. Además, incluye gestión de presupuestos, servicios contratados, promociones y recomendaciones de ahorro.
 
 ## Tecnologías Utilizadas
 
 ### Backend
 - **Next.js**: Framework React con renderizado del lado del servidor (SSR) y generación de sitios estáticos (SSG).
 - **Prisma**: ORM (Object-Relational Mapping) para manejar la base de datos.
-- **SQLite**: Base de datos relacional utilizada en desarrollo.
+- **PostgreSQL**: Base de datos relacional utilizada en producción.
 - **NextAuth.js**: Solución de autenticación para Next.js.
 
 ### Frontend
@@ -25,6 +25,9 @@ Esta aplicación está diseñada para ayudar a los usuarios a gestionar sus gast
 - `/src/app`: Contiene las rutas y páginas de la aplicación.
 - `/src/components`: Componentes reutilizables.
 - `/src/lib`: Funciones y utilidades.
+- `/src/contexts`: Contextos de React para gestión de estado.
+- `/src/providers`: Proveedores para la aplicación.
+- `/src/scraping`: Herramientas para scraping de información financiera.
 - `/prisma`: Configuración y esquema de la base de datos.
 - `/public`: Archivos estáticos.
 
@@ -32,11 +35,19 @@ Esta aplicación está diseñada para ayudar a los usuarios a gestionar sus gast
 - `/`: Página principal (dashboard)
 - `/login`: Autenticación de usuarios
 - `/register`: Registro de nuevos usuarios
+- `/dashboard`: Panel principal con resumen financiero
 - `/transacciones`: Gestión de transacciones
 - `/grupos`: Gestión de grupos de gastos compartidos
 - `/recurrentes`: Gestión de gastos recurrentes
 - `/financiacion`: Gestión de financiaciones con tarjeta
 - `/voz`: Reconocimiento de voz para registro de gastos
+- `/presupuestos`: Gestión de presupuestos mensuales
+- `/perfil`: Gestión del perfil de usuario
+- `/configuracion`: Configuración de la aplicación
+- `/recomendaciones-ahorro`: Sugerencias para ahorrar dinero
+- `/informes`: Informes detallados y análisis financiero
+- `/financial-advisor`: Asistente financiero inteligente
+- `/admin`: Panel de administración
 
 ## Modelos de Datos
 
@@ -44,7 +55,8 @@ Esta aplicación está diseñada para ayudar a los usuarios a gestionar sus gast
 Almacena información de usuarios, incluyendo autenticación y perfiles.
 - ID, nombre, email, contraseña, etc.
 - Relación con gastos, grupos y sesiones.
-- Relación con gastos recurrentes y financiaciones.
+- Relación con gastos recurrentes, financiaciones y presupuestos.
+- Relación con servicios contratados.
 
 ### Gasto (Gasto)
 Registra las transacciones financieras.
@@ -81,6 +93,36 @@ Para gestión de gastos financiados con tarjeta de crédito.
 - Fechas de pago y día de pago mensual
 - Relación con usuario
 
+### Presupuesto (Presupuesto)
+Para gestión de presupuestos mensuales por categoría.
+- Nombre, monto, categoría
+- Mes y año de aplicación
+- Relación con usuario
+- Control de presupuesto por categoría
+
+### Servicio (Servicio)
+Para gestión de servicios contratados (suscripciones, servicios mensuales, etc.).
+- Nombre, descripción, monto
+- Medio de pago y tarjeta utilizada
+- Fechas de cobro y vencimiento
+- Relación con usuario
+- Asociación con promociones
+
+### Promoción (Promocion)
+Para gestión de promociones y ofertas de servicios.
+- Título, descripción, URL de origen
+- Descuento y porcentaje de ahorro
+- Fechas de vencimiento
+- Estado (activa, expirada, utilizada)
+- Relación con servicio
+- Servicios alternativos asociados
+
+### Servicio Alternativo (ServicioAlternativo)
+Para comparación de servicios y promociones.
+- Nombre, descripción, monto
+- URL de origen
+- Relación con promoción
+
 ## Funcionalidades Principales
 
 ### Gestión de Gastos
@@ -105,6 +147,7 @@ Para gestión de gastos financiados con tarjeta de crédito.
 - Tendencias de gastos por período
 - Distribución de ingresos vs gastos
 - Balance general de finanzas
+- Informes detallados y personalizables
 
 ### Gastos Recurrentes
 - Registro y seguimiento de gastos periódicos
@@ -124,11 +167,48 @@ Para gestión de gastos financiados con tarjeta de crédito.
 - Análisis de contenido para registro de gastos
 - Procesamiento de lenguaje natural para identificar detalles del gasto
 
+### Presupuestos
+- Creación y gestión de presupuestos mensuales
+- Seguimiento de gastos vs presupuesto
+- Alertas de sobrepasamiento de límites
+- Análisis de cumplimiento de presupuesto
+
+### Gestión de Servicios
+- Registro y seguimiento de servicios contratados
+- Alertas de fechas de cobro
+- Gestión de medios de pago
+- Comparación de servicios alternativos
+
+### Recomendaciones de Ahorro
+- Análisis de patrones de gasto
+- Identificación de oportunidades de ahorro
+- Sugerencias de servicios alternativos más económicos
+- Promociones disponibles para servicios similares
+
+### Asistente Financiero
+- Recomendaciones personalizadas
+- Análisis de hábitos financieros
+- Consejos para mejorar salud financiera
+- Interfaz conversacional para consultas financieras
+
+## Componentes Principales
+
+### Interfaz de Usuario
+- **Sidebar**: Navegación principal de la aplicación
+- **FinancialSummary**: Resumen de información financiera
+- **ExpenseForm**: Formulario para registro de gastos
+- **TransactionsList**: Lista de transacciones
+- **PresupuestoForm**: Formulario para gestión de presupuestos
+- **RecurringPaymentAlert**: Alertas de pagos recurrentes
+- **FinancialAdvisor**: Asistente financiero inteligente
+- **DatePickerWithRange**: Selector de rango de fechas
+
 ## Configuración y Despliegue
 
 ### Requisitos Previos
 - Node.js v16 o superior
 - npm o yarn
+- PostgreSQL (para producción)
 
 ### Instalación
 ```bash
@@ -140,7 +220,7 @@ npm install
 
 # Configurar variables de entorno
 # Crear archivo .env con:
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="postgresql://usuario:contraseña@localhost:5432/mibasededatos"
 NEXTAUTH_SECRET="tu-secreto"
 NEXTAUTH_URL="http://localhost:3000"
 

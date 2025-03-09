@@ -4,13 +4,15 @@ import { FinancialAdvisor } from "@/components/FinancialAdvisor"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Bot, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useEffect } from "react"
 
 export default function FinancialAdvisorPage() {
   const router = useRouter()
   const { status } = useSession()
+  const searchParams = useSearchParams()
+  const inversionId = searchParams.get('investment')
 
   // Redireccionar si no está autenticado
   useEffect(() => {
@@ -53,14 +55,22 @@ export default function FinancialAdvisorPage() {
 
       <Card className="flex-1 shadow-lg">
         <CardHeader className="bg-primary/5 dark:bg-primary/10 rounded-t-lg">
-          <CardTitle className="text-xl">Consulta con tu asesor financiero personal</CardTitle>
+          <CardTitle className="text-xl">
+            {inversionId 
+              ? "Consulta sobre tu inversión"
+              : "Consulta con tu asesor financiero personal"
+            }
+          </CardTitle>
           <CardDescription>
-            Pregunta sobre finanzas personales, ahorro, inversiones, presupuestos y más
+            {inversionId 
+              ? "Obtén análisis y recomendaciones personalizadas sobre tu inversión"
+              : "Pregunta sobre finanzas personales, ahorro, inversiones, presupuestos y más"
+            }
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           <div className="h-[calc(100vh-280px)] md:h-[calc(100vh-240px)]">
-            <FinancialAdvisor />
+            <FinancialAdvisor inversionId={inversionId || undefined} />
           </div>
         </CardContent>
       </Card>

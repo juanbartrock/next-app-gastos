@@ -6,6 +6,8 @@ import * as netflix from './services/netflix';
 import * as spotify from './services/spotify';
 import * as personal from './services/personal';
 import * as claro from './services/claro';
+import * as movistar from './services/movistar';
+import * as elmejortrato from './services/elmejortrato';
 // Aquí importaremos más servicios conforme los vayamos implementando
 
 // Registro de todos los scrapers disponibles
@@ -14,6 +16,8 @@ export const scrapers: Record<string, ScraperService> = {
   spotify: spotify.spotify,
   personal: personal.personal,
   claro: claro.claro,
+  movistar: movistar.movistar,
+  elmejortrato: elmejortrato.elmejortrato,
   // Añadir más servicios aquí
 };
 

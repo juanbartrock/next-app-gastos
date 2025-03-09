@@ -10,7 +10,8 @@ import {
   PieChart, 
   Repeat, 
   Users,
-  LightbulbIcon
+  LightbulbIcon,
+  TrendingUp
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSidebar } from "@/contexts/SidebarContext"
@@ -68,6 +69,16 @@ export function Sidebar() {
         >
           <Grid className="w-5 h-5" />
           {isOpen && <span className="ml-3">Dashboard</span>}
+        </Button>
+        
+        <Button 
+          variant={isActive("/inversiones") ? "secondary" : "ghost"}
+          className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400 mb-1"
+          style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+          onClick={() => handleNavigation('/inversiones')}
+        >
+          <TrendingUp className="w-5 h-5 text-green-500" />
+          {isOpen && <span className="ml-3">Inversiones</span>}
         </Button>
         
         <Button 

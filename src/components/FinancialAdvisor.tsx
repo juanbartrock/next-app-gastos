@@ -22,18 +22,22 @@ interface FinancialAdvisorProps {
   containerClassName?: string;
   showHeader?: boolean;
   maxHeight?: string;
+  inversionId?: string; // ID de la inversión para contextualizar
 }
 
 export function FinancialAdvisor({
   className,
   containerClassName,
   showHeader = true,
-  maxHeight = "400px"
+  maxHeight = "400px",
+  inversionId
 }: FinancialAdvisorProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "¡Hola! Soy tu asesor financiero virtual. ¿En qué puedo ayudarte hoy? Puedes preguntarme sobre estrategias de ahorro, gestión de deudas, consejos para invertir, o cualquier otra consulta financiera."
+      content: inversionId 
+        ? "¡Hola! Veo que estás consultando sobre una de tus inversiones. ¿En qué puedo ayudarte? Puedo analizar su rendimiento, compararlo con otras alternativas, o sugerirte estrategias para optimizar tu cartera."
+        : "¡Hola! Soy tu asesor financiero virtual. ¿En qué puedo ayudarte hoy? Puedes preguntarme sobre estrategias de ahorro, gestión de deudas, consejos para invertir, o cualquier otra consulta financiera."
     }
   ])
   const [input, setInput] = useState("")
@@ -56,14 +60,16 @@ export function FinancialAdvisor({
     setIsLoading(true)
 
     try {
-      // Llamada a la API (pendiente de implementar)
+      // Llamada a la API con el contexto de inversión si está disponible
       const response = await fetch("/api/financial-advisor", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          messages: [...messages, userMessage]
+          messages: [...messages, userMessage],
+          inversionId: inversionId || null, // Incluir el ID de inversión si existe
+          context: inversionId ? "inversion" : "general"
         })
       })
 

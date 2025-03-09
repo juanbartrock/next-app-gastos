@@ -95,6 +95,23 @@ export const serviceConfig: Record<string, ServiceConfig> = {
       'https://www.directv.com.ar/paquetes'
     ],
     scrapingFrequency: 'weekly'
+  },
+  elmejortrato: {
+    url: 'https://www.elmejortrato.com.ar/',
+    name: 'elmejortrato',
+    displayName: 'El Mejor Trato',
+    category: 'aggregator',
+    country: 'ar',
+    currency: 'ARS',
+    enabled: true,
+    scrapingUrls: [
+      'https://www.elmejortrato.com.ar/servicios/internet',
+      'https://www.elmejortrato.com.ar/servicios/tv-cable-satelital',
+      'https://www.elmejortrato.com.ar/servicios/telefonia',
+      'https://www.elmejortrato.com.ar/salud/obras-sociales',
+      'https://www.elmejortrato.com.ar/salud/prepagas'
+    ],
+    scrapingFrequency: 'weekly'
   }
 };
 

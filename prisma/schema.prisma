@@ -50,6 +50,8 @@ model User {
   presupuestos      Presupuesto[]
   servicios         Servicio[]
   sessions          Session[]
+  inversiones       Inversion[]       // Relación con Inversiones
+  tiposInversion    TipoInversion[]   // Relación con tipos de inversión personalizados
 }
 
 model VerificationToken {
@@ -207,4 +209,70 @@ model ServicioAlternativo {
   promocion       Promocion @relation(fields: [promocionId], references: [id], onDelete: Cascade)
   fechaCreacion   DateTime  @default(now())
   fechaActualizacion DateTime @updatedAt
+}
+
+// Modelo para tipos de inversión
+model TipoInversion {
+  id            String      @id @default(cuid())
+  nombre        String
+  descripcion   String?
+  icono         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  userId        String?     // Si es null, es un tipo predefinido del sistema
+  inversiones   Inversion[]
+  user          User?       @relation(fields: [userId], references: [id])
+
+  @@unique([nombre, userId])
+}
+
+// Modelo para inversiones
+model Inversion {
+  id                String                @id @default(cuid())
+  nombre            String
+  descripcion       String?
+  montoInicial      Float
+  montoActual       Float
+  rendimientoTotal  Float                 @default(0)
+  rendimientoAnual  Float?                // Porcentaje estimado anual 
+  fechaInicio       DateTime              @default(now())
+  fechaVencimiento  DateTime?             // Para inversiones con plazo fijo
+  estado            String                @default("activa") // activa, cerrada, vencida
+  tipoId            String
+  userId            String
+  plataforma        String?               // Banco, broker, exchange, etc.
+  notas             String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  tipo              TipoInversion         @relation(fields: [tipoId], references: [id])
+  user              User                  @relation(fields: [userId], references: [id])
+  transacciones     TransaccionInversion[]
+  cotizaciones      CotizacionInversion[]
+}
+
+// Modelo para transacciones de inversión (depósitos, retiros, dividendos, etc.)
+model TransaccionInversion {
+  id            String    @id @default(cuid())
+  inversionId   String
+  tipo          String    // deposito, retiro, dividendo, interes, comision
+  monto         Float
+  fecha         DateTime  @default(now())
+  descripcion   String?
+  comprobante   String?   // URL o referencia a un comprobante
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  inversion     Inversion @relation(fields: [inversionId], references: [id], onDelete: Cascade)
+}
+
+// Modelo para cotizaciones históricas de inversiones
+model CotizacionInversion {
+  id            String    @id @default(cuid())
+  inversionId   String
+  valor         Float     // Valor/precio unitario o total
+  fecha         DateTime  @default(now())
+  fuente        String?   // De dónde se obtuvo la cotización 
+  createdAt     DateTime  @default(now())
+  inversion     Inversion @relation(fields: [inversionId], references: [id], onDelete: Cascade)
+  
+  @@unique([inversionId, fecha]) // Solo una cotización por fecha para cada inversión
 }
