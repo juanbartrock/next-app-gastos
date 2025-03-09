@@ -103,6 +103,7 @@ model Gasto {
   categoriaRel    Categoria?    @relation(fields: [categoriaId], references: [id])
   grupo           Grupo?        @relation(fields: [grupoId], references: [id])
   user            User?         @relation(fields: [userId], references: [id])
+  detalles        GastoDetalle[] // Relación con GastoDetalle
 }
 
 model Categoria {
@@ -275,4 +276,17 @@ model CotizacionInversion {
   inversion     Inversion @relation(fields: [inversionId], references: [id], onDelete: Cascade)
   
   @@unique([inversionId, fecha]) // Solo una cotización por fecha para cada inversión
+}
+
+// Modelo para detalles de un gasto (ej. productos en un ticket)
+model GastoDetalle {
+  id            Int      @id @default(autoincrement())
+  gastoId       Int      // Relación con el gasto principal
+  descripcion   String   // Descripción del producto/servicio
+  cantidad      Float    @default(1)
+  precioUnitario Float?  // Precio por unidad si está disponible
+  subtotal      Float    // Monto total de este ítem
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  gasto         Gasto    @relation(fields: [gastoId], references: [id], onDelete: Cascade)
 }

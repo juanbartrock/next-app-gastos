@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Mic, PencilLine } from "lucide-react"
+import { ArrowLeft, Camera, Mic, PencilLine } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ExpenseForm } from "@/components/ExpenseForm"
 
@@ -37,7 +37,7 @@ export default function NuevoRegistroPage() {
       <main className="flex-1 p-4 md:p-6">
         <div className="max-w-3xl mx-auto">
           <Tabs defaultValue="manual" className="w-full" onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2 mb-8">
+            <TabsList className="grid w-full grid-cols-3 mb-8">
               <TabsTrigger value="manual" className="flex items-center gap-2">
                 <PencilLine className="h-4 w-4" />
                 <span>Ingreso Manual</span>
@@ -45,6 +45,10 @@ export default function NuevoRegistroPage() {
               <TabsTrigger value="voz" className="flex items-center gap-2">
                 <Mic className="h-4 w-4" />
                 <span>Ingreso por Voz</span>
+              </TabsTrigger>
+              <TabsTrigger value="foto" className="flex items-center gap-2">
+                <Camera className="h-4 w-4" />
+                <span>Foto de Ticket</span>
               </TabsTrigger>
             </TabsList>
             
@@ -75,6 +79,27 @@ export default function NuevoRegistroPage() {
                   >
                     <Mic className="h-5 w-5" />
                     Iniciar Asistente de Voz
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="foto" className="mt-4 space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Captura de Ticket</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center justify-center p-8">
+                  <p className="text-center text-muted-foreground mb-6">
+                    Toma una foto de tu ticket para registrar automáticamente los detalles de la compra.
+                  </p>
+                  <Button 
+                    size="lg" 
+                    onClick={() => router.push('/transacciones/foto')}
+                    className="gap-2"
+                  >
+                    <Camera className="h-5 w-5" />
+                    Escanear Ticket
                   </Button>
                 </CardContent>
               </Card>
