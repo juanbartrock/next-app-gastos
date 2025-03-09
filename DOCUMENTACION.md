@@ -1,7 +1,7 @@
 # Documentación: Aplicación de Gestión de Gastos
 
 ## Descripción General
-Esta aplicación está diseñada para ayudar a los usuarios a gestionar sus gastos personales y grupales. Permite el registro de transacciones financieras, la categorización de gastos, la formación de grupos para gastos compartidos y ofrece visualizaciones para análisis financiero. Además, incluye gestión de presupuestos, servicios contratados, promociones y recomendaciones de ahorro.
+Esta aplicación está diseñada para ayudar a los usuarios a gestionar sus gastos personales y grupales. Permite el registro de transacciones financieras, la categorización de gastos, la formación de grupos para gastos compartidos y ofrece visualizaciones para análisis financiero. Además, incluye gestión de presupuestos, servicios contratados, promociones, inversiones y recomendaciones de ahorro.
 
 ## Tecnologías Utilizadas
 
@@ -40,6 +40,7 @@ Esta aplicación está diseñada para ayudar a los usuarios a gestionar sus gast
 - `/grupos`: Gestión de grupos de gastos compartidos
 - `/recurrentes`: Gestión de gastos recurrentes
 - `/financiacion`: Gestión de financiaciones con tarjeta
+- `/inversiones`: Gestión de inversiones y seguimiento de rendimientos
 - `/voz`: Reconocimiento de voz para registro de gastos
 - `/presupuestos`: Gestión de presupuestos mensuales
 - `/perfil`: Gestión del perfil de usuario
@@ -48,6 +49,8 @@ Esta aplicación está diseñada para ayudar a los usuarios a gestionar sus gast
 - `/informes`: Informes detallados y análisis financiero
 - `/financial-advisor`: Asistente financiero inteligente
 - `/admin`: Panel de administración
+- `/home`: Página de inicio para usuarios no autenticados
+- `/welcome`: Página de bienvenida para nuevos usuarios
 
 ## Modelos de Datos
 
@@ -56,7 +59,8 @@ Almacena información de usuarios, incluyendo autenticación y perfiles.
 - ID, nombre, email, contraseña, etc.
 - Relación con gastos, grupos y sesiones.
 - Relación con gastos recurrentes, financiaciones y presupuestos.
-- Relación con servicios contratados.
+- Relación con servicios contratados e inversiones.
+- Relación con tipos de inversión personalizados.
 
 ### Gasto (Gasto)
 Registra las transacciones financieras.
@@ -65,6 +69,14 @@ Registra las transacciones financieras.
 - Tipo de movimiento: efectivo, digital, ahorro, tarjeta
 - Asociación con usuario y/o grupo
 - Relación con financiación (para gastos con tarjeta)
+- Detalles del gasto (para tickets con múltiples ítems)
+
+### Detalle de Gasto (GastoDetalle)
+Almacena detalles individuales de un gasto (como productos en un ticket).
+- Descripción del producto/servicio
+- Cantidad y precio unitario
+- Subtotal
+- Relación con el gasto principal
 
 ### Grupo (Grupo)
 Para gestión de gastos compartidos.
@@ -123,6 +135,35 @@ Para comparación de servicios y promociones.
 - URL de origen
 - Relación con promoción
 
+### Tipo de Inversión (TipoInversion)
+Clasifica los diferentes tipos de inversiones disponibles.
+- Nombre, descripción, icono
+- Sistema predefinido o personalizado por usuario
+- Relación con inversiones y usuario
+
+### Inversión (Inversion)
+Registra y hace seguimiento de inversiones financieras.
+- Nombre, descripción, monto inicial y actual
+- Rendimiento total y anual estimado
+- Fechas de inicio y vencimiento
+- Estado (activa, cerrada, vencida)
+- Plataforma (banco, broker, exchange)
+- Relación con usuario y tipo de inversión
+- Transacciones y cotizaciones asociadas
+
+### Transacción de Inversión (TransaccionInversion)
+Registra movimientos relacionados con una inversión.
+- Tipo (depósito, retiro, dividendo, interés, comisión)
+- Monto y fecha
+- Descripción y comprobante
+- Relación con la inversión principal
+
+### Cotización de Inversión (CotizacionInversion)
+Registra valores históricos de una inversión.
+- Valor/precio de la inversión
+- Fecha y fuente de la cotización
+- Relación con la inversión principal
+
 ## Funcionalidades Principales
 
 ### Gestión de Gastos
@@ -130,6 +171,7 @@ Para comparación de servicios y promociones.
 - Categorización
 - Filtrado por fecha, categoría, tipo
 - Visualización en gráficos y tablas
+- Registro detallado de ítems para tickets con múltiples productos
 
 ### Gestión de Grupos
 - Creación y administración de grupos
@@ -160,6 +202,14 @@ Para comparación de servicios y promociones.
 - Seguimiento de cuotas pagadas y pendientes
 - Cálculo de montos restantes
 - Registro de pagos de cuotas
+
+### Gestión de Inversiones
+- Registro y seguimiento de diversas inversiones financieras
+- Clasificación por tipos (acciones, bonos, plazo fijo, criptomonedas, etc.)
+- Registro de transacciones (depósitos, retiros, dividendos)
+- Seguimiento de rendimientos y valor actual
+- Historial de cotizaciones
+- Comparativas de rendimiento entre inversiones
 
 ### Reconocimiento de Voz
 - Carga de archivos de audio
@@ -202,6 +252,9 @@ Para comparación de servicios y promociones.
 - **RecurringPaymentAlert**: Alertas de pagos recurrentes
 - **FinancialAdvisor**: Asistente financiero inteligente
 - **DatePickerWithRange**: Selector de rango de fechas
+- **InversionDashboard**: Panel de control para inversiones
+- **InversionForm**: Formulario para registro de inversiones
+- **RendimientoChart**: Gráfico de rendimiento de inversiones
 
 ## Configuración y Despliegue
 
