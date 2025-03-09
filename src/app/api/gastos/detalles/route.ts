@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
 
     // Crear los detalles de productos
     const detallesCreados = []
+    let totalAdicional = 0
     
     for (const producto of productos) {
       const { descripcion, cantidad, precioUnitario, subtotal } = producto
@@ -94,6 +95,25 @@ export async function POST(request: NextRequest) {
       })
       
       detallesCreados.push(detalle)
+      totalAdicional += subtotal
+    }
+
+    // Actualizar el monto total del gasto
+    if (totalAdicional > 0) {
+      // Obtener el gasto actual
+      const gastoActual = await prisma.gasto.findUnique({
+        where: { id: parseInt(gastoId) }
+      })
+      
+      if (gastoActual) {
+        // Actualizar el monto del gasto
+        await prisma.gasto.update({
+          where: { id: parseInt(gastoId) },
+          data: {
+            monto: gastoActual.monto + totalAdicional
+          }
+        })
+      }
     }
 
     return NextResponse.json({

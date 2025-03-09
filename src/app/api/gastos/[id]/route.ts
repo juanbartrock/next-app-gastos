@@ -5,7 +5,7 @@ import { options } from "@/app/api/auth/[...nextauth]/options"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     // Verificar sesión
@@ -17,7 +17,17 @@ export async function GET(
       )
     }
 
+    // Extraer y validar el ID de manera segura
+    const { params } = context
     const id = parseInt(params.id)
+    
+    if (isNaN(id)) {
+      return NextResponse.json(
+        { error: "ID inválido" },
+        { status: 400 }
+      )
+    }
+    
     const includeDetails = request.nextUrl.searchParams.get('includeDetails') === 'true'
     
     // Buscar el usuario por email
@@ -92,10 +102,19 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
+    const { params } = context
     const id = parseInt(params.id)
+    
+    if (isNaN(id)) {
+      return NextResponse.json(
+        { error: "ID inválido" },
+        { status: 400 }
+      )
+    }
+    
     const { concepto, monto, categoria, tipoTransaccion, tipoMovimiento, fecha } = await request.json()
 
     const gasto = await prisma.gasto.update({
