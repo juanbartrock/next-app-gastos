@@ -10,6 +10,7 @@ export interface ServiceConfig {
   country: string;
   currency: string;
   enabled: boolean;
+  useForRecommendations: boolean;
   scrapingUrls: string[];
   scrapingFrequency: 'daily' | 'weekly' | 'monthly';
 }
@@ -24,6 +25,7 @@ export const serviceConfig: Record<string, ServiceConfig> = {
     country: 'ar',
     currency: 'ARS',
     enabled: true,
+    useForRecommendations: false,
     scrapingUrls: [
       'https://www.netflix.com/ar/browse/plan-selector',
       'https://help.netflix.com/es-es/node/24926'
@@ -38,6 +40,7 @@ export const serviceConfig: Record<string, ServiceConfig> = {
     country: 'ar',
     currency: 'ARS',
     enabled: true,
+    useForRecommendations: false,
     scrapingUrls: [
       'https://www.spotify.com/ar/premium/',
       'https://www.spotify.com/ar/premium/#plans'
@@ -52,6 +55,7 @@ export const serviceConfig: Record<string, ServiceConfig> = {
     country: 'ar',
     currency: 'ARS',
     enabled: true,
+    useForRecommendations: true,
     scrapingUrls: [
       'https://www.personal.com.ar/planes/movil'
     ],
@@ -65,6 +69,7 @@ export const serviceConfig: Record<string, ServiceConfig> = {
     country: 'ar',
     currency: 'ARS',
     enabled: true,
+    useForRecommendations: false,
     scrapingUrls: [
       'https://tienda.claro.com.ar/planes/planes-moviles'
     ],
@@ -78,6 +83,7 @@ export const serviceConfig: Record<string, ServiceConfig> = {
     country: 'ar',
     currency: 'ARS',
     enabled: true,
+    useForRecommendations: false,
     scrapingUrls: [
       'https://www.movistar.com.ar/productos-y-servicios/movil/planes'
     ],
@@ -91,6 +97,7 @@ export const serviceConfig: Record<string, ServiceConfig> = {
     country: 'ar',
     currency: 'ARS',
     enabled: true,
+    useForRecommendations: false,
     scrapingUrls: [
       'https://www.directv.com.ar/paquetes'
     ],
@@ -104,6 +111,7 @@ export const serviceConfig: Record<string, ServiceConfig> = {
     country: 'ar',
     currency: 'ARS',
     enabled: true,
+    useForRecommendations: false,
     scrapingUrls: [
       'https://www.elmejortrato.com.ar/servicios/internet',
       'https://www.elmejortrato.com.ar/servicios/tv-cable-satelital',
@@ -118,6 +126,11 @@ export const serviceConfig: Record<string, ServiceConfig> = {
 // Lista de servicios habilitados
 export const enabledServices = Object.keys(serviceConfig).filter(
   key => serviceConfig[key].enabled
+);
+
+// Lista de servicios habilitados para recomendaciones
+export const enabledForRecommendationsServices = Object.keys(serviceConfig).filter(
+  key => serviceConfig[key].enabled && serviceConfig[key].useForRecommendations
 );
 
 export default serviceConfig; 

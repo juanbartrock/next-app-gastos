@@ -3,11 +3,36 @@ import { getServerSession } from 'next-auth/next'
 import { options } from '@/app/api/auth/[...nextauth]/options'
 import prisma from '@/lib/prisma'
 import OpenAI from 'openai'
+import { runScraper, runAllScrapers, ScraperOptions } from '@/scraping'
+import fs from 'fs'
+import path from 'path'
 
 // Inicializar cliente de OpenAI
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
+
+// Definir el tipo de las promociones
+interface PromocionAlternativa {
+  nombre: string;
+  descripcion?: string;
+  monto: number;
+  urlOrigen?: string;
+}
+
+interface Promocion {
+  servicioOriginal?: {
+    id: number;
+    nombre: string;
+    monto: number;
+  } | null;
+  titulo: string;
+  descripcion: string;
+  urlOrigen?: string;
+  descuento?: number | null;
+  porcentajeAhorro?: number | null;
+  alternativas: PromocionAlternativa[];
+}
 
 // Función para analizar los gastos recurrentes y servicios del usuario
 async function analizarGastosRecurrentes(userId: string) {
@@ -62,9 +87,13 @@ async function generarRecomendaciones(datos: any) {
     ${JSON.stringify(datos.servicios, null, 2)}
     
     Tu tarea:
-    1. Identifica servicios o suscripciones que podrían tener alternativas más económicas.
-    2. Para cada uno, sugiere una o más alternativas concretas (nombre real, precio estimado, características).
-    3. Calcula el ahorro potencial.
+    1. PRIORIDAD MÁXIMA: Identifica servicios con costos EXCESIVOS o ANORMALMENTE ALTOS. Por ejemplo, si hay servicios de telefonía móvil con costos superiores a $20,000, internet superiores a $20,000, o cualquier servicio que parezca tener un costo desproporcionado.
+    2. Para cada servicio identificado como excesivo, sugiere alternativas concretas y específicas con precios significativamente menores.
+    3. También identifica otros servicios o suscripciones que podrían tener alternativas más económicas, aunque su costo no sea excesivo.
+    4. Para cada uno, sugiere una o más alternativas concretas (nombre real, precio estimado, características).
+    5. Calcula el ahorro potencial y prioriza las recomendaciones de mayor ahorro.
+    
+    NOTA IMPORTANTE: Presta especial atención a servicios como telefonía móvil, internet, streaming, o cualquier servicio con montos anormalmente altos. Si un servicio de telefonía móvil cuesta más de $15,000-$20,000, definitivamente es excesivo y debe ser la primera recomendación.
     
     Estructura tu respuesta como un array JSON con el siguiente formato:
     [
@@ -91,11 +120,16 @@ async function generarRecomendaciones(datos: any) {
     ]
     
     Ten en cuenta:
-    - Sólo incluye recomendaciones concretas con datos reales.
+    - PRIORIZA servicios con costos excesivos o desproporcionados primero.
+    - Sé muy específico con las alternativas, ofreciendo nombres reales de compañías y planes.
+    - Para telefonía móvil, considera planes de Claro, Personal y Movistar.
+    - Para internet, considera planes de Fibertel, Telecentro y Movistar.
+    - Para streaming, considera planes compartidos o básicos de Netflix, Disney+, HBO Max, etc.
     - Proporciona URLs de ofertas reales cuando sea posible.
     - Sólo propón alternativas que ofrezcan un servicio similar con mejor precio.
     - Calcula el descuento o porcentaje de ahorro para cada recomendación.
     - Considera paquetes combinados o promociones actuales.
+    - Asegúrate de que TODOS los servicios con costos anormalmente altos estén incluidos en tus recomendaciones.
     
     IMPORTANTE: Responde ÚNICAMENTE con un array JSON válido. No incluyas texto explicativo fuera del JSON.`
 
@@ -177,6 +211,64 @@ async function guardarRecomendaciones(recomendaciones: any[], userId: string) {
   }
 }
 
+// Función para obtener los servicios habilitados para recomendaciones
+async function getEnabledForRecommendationsServices(): Promise<string[]> {
+  try {
+    // Leer el archivo de configuración en tiempo de ejecución
+    const configFilePath = path.join(process.cwd(), 'src', 'scraping', 'config', 'services.config.ts');
+    const configContent = fs.readFileSync(configFilePath, 'utf8');
+    
+    console.log("======= DEPURACIÓN DE RECOMENDACIONES =======");
+    console.log("Leyendo configuración de scrapers para recomendaciones");
+    
+    // Método simplificado: buscar líneas individuales con useForRecommendations: true
+    const enabledServices: string[] = [];
+    const lines = configContent.split('\n');
+    
+    // Primero, encontrar todos los nombres de servicios
+    const serviceNames: string[] = [];
+    const serviceStartRegex = /(\w+):\s*{/g;
+    let match;
+    
+    while ((match = serviceStartRegex.exec(configContent)) !== null) {
+      serviceNames.push(match[1]);
+    }
+    
+    console.log("Servicios encontrados en el archivo:", serviceNames);
+    
+    // Para cada servicio, verificar si tiene useForRecommendations: true
+    for (const serviceName of serviceNames) {
+      // Buscar la sección del servicio
+      const serviceStartIndex = configContent.indexOf(`${serviceName}: {`);
+      if (serviceStartIndex === -1) continue;
+      
+      // Buscar el final de la sección (la siguiente llave de cierre)
+      const serviceEndIndex = configContent.indexOf('},', serviceStartIndex);
+      if (serviceEndIndex === -1) continue;
+      
+      // Extraer la sección del servicio
+      const serviceSection = configContent.substring(serviceStartIndex, serviceEndIndex);
+      console.log(`Analizando configuración de ${serviceName}:`, serviceSection);
+      
+      // Verificar si tiene useForRecommendations: true
+      if (serviceSection.includes('useForRecommendations: true')) {
+        enabledServices.push(serviceName);
+        console.log(`✅ ${serviceName} está habilitado para recomendaciones`);
+      } else {
+        console.log(`❌ ${serviceName} NO está habilitado para recomendaciones`);
+      }
+    }
+    
+    console.log("Servicios habilitados para recomendaciones:", enabledServices);
+    console.log("============================================");
+    
+    return enabledServices;
+  } catch (error) {
+    console.error("Error al obtener servicios habilitados para recomendaciones:", error);
+    return [];
+  }
+}
+
 // POST - Generar nuevas recomendaciones de ahorro
 export async function POST() {
   try {
@@ -212,14 +304,73 @@ export async function POST() {
       )
     }
     
-    // Generar recomendaciones
+    // Obtener de manera dinámica los servicios habilitados para recomendaciones
+    const enabledForRecommendationsServices = await getEnabledForRecommendationsServices();
+    
+    // Ejecutar scrapers habilitados para recomendaciones
+    console.log("Ejecutando scrapers para recomendaciones");
+    console.log("Servicios habilitados para recomendaciones:", enabledForRecommendationsServices);
+    
+    let promocionesFromScraping: Promocion[] = [];
+    
+    if (enabledForRecommendationsServices.length > 0) {
+      // Ejecutar los scrapers habilitados para recomendaciones
+      for (const serviceName of enabledForRecommendationsServices) {
+        try {
+          console.log(`Ejecutando scraper para ${serviceName}...`);
+          const result = await runScraper(serviceName);
+          
+          if (result.promotions.length > 0) {
+            console.log(`Se encontraron ${result.promotions.length} promociones para ${serviceName}`);
+            // Adaptar las promociones al formato esperado
+            const promotionsFormatted = result.promotions.map(promo => {
+              // Buscar si hay un servicio similar en los datos del usuario
+              const matchingService = datos.servicios.find(s => 
+                s.nombre.toLowerCase().includes(serviceName.toLowerCase()) ||
+                serviceName.toLowerCase().includes(s.nombre.toLowerCase())
+              );
+              
+              return {
+                servicioOriginal: matchingService ? {
+                  id: matchingService.id,
+                  nombre: matchingService.nombre,
+                  monto: matchingService.monto
+                } : null,
+                titulo: promo.title,
+                descripcion: promo.description,
+                urlOrigen: promo.url,
+                descuento: promo.originalPrice ? (promo.originalPrice - promo.discountedPrice) : null,
+                porcentajeAhorro: promo.discountPercentage,
+                alternativas: [
+                  {
+                    nombre: promo.title,
+                    descripcion: promo.description,
+                    monto: promo.discountedPrice,
+                    urlOrigen: promo.url
+                  }
+                ]
+              };
+            });
+            
+            promocionesFromScraping = [...promocionesFromScraping, ...promotionsFormatted];
+          }
+        } catch (error) {
+          console.error(`Error al ejecutar scraper para ${serviceName}:`, error);
+        }
+      }
+    }
+    
+    // Generar recomendaciones mediante IA
     const recomendaciones = await generarRecomendaciones(datos)
     
-    // Guardar recomendaciones
-    await guardarRecomendaciones(recomendaciones, usuario.id)
+    // Combinar las recomendaciones de IA con las del scraping
+    const recomendacionesCombinadas = [...recomendaciones, ...promocionesFromScraping];
+    
+    // Guardar todas las recomendaciones
+    await guardarRecomendaciones(recomendacionesCombinadas, usuario.id)
     
     // Retornar recomendaciones
-    return NextResponse.json(recomendaciones)
+    return NextResponse.json(recomendacionesCombinadas)
   } catch (error) {
     console.error('Error al generar recomendaciones:', error)
     return NextResponse.json(

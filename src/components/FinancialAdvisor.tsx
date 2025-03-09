@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils"
 interface Message {
   role: "user" | "assistant"
   content: string
+  isPersonalized?: boolean
 }
 
 interface FinancialAdvisorProps {
@@ -37,7 +38,8 @@ export function FinancialAdvisor({
       role: "assistant",
       content: inversionId 
         ? "¡Hola! Veo que estás consultando sobre una de tus inversiones. ¿En qué puedo ayudarte? Puedo analizar su rendimiento, compararlo con otras alternativas, o sugerirte estrategias para optimizar tu cartera."
-        : "¡Hola! Soy tu asesor financiero virtual. ¿En qué puedo ayudarte hoy? Puedes preguntarme sobre estrategias de ahorro, gestión de deudas, consejos para invertir, o cualquier otra consulta financiera."
+        : "¡Hola! Soy tu asesor financiero virtual. ¿En qué puedo ayudarte hoy? Puedes preguntarme sobre estrategias de ahorro, gestión de deudas, consejos para invertir, o cualquier otra consulta financiera.",
+      isPersonalized: false // El mensaje inicial siempre es genérico
     }
   ])
   const [input, setInput] = useState("")
@@ -79,10 +81,19 @@ export function FinancialAdvisor({
 
       const data = await response.json()
 
+      // Determinar si la respuesta es personalizada
+      let isPersonalized = false;
+      
+      // Si la API proporciona información de depuración, la usamos
+      if (data.debug) {
+        isPersonalized = data.debug.isPersonalized;
+      }
+
       // Agregar la respuesta del asistente a los mensajes
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: data.response
+        content: data.response,
+        isPersonalized
       }])
     } catch (error) {
       console.error("Error:", error)
@@ -142,11 +153,27 @@ export function FinancialAdvisor({
                     className={cn(
                       "p-3 rounded-lg",
                       message.role === "assistant"
-                        ? "bg-secondary text-secondary-foreground"
+                        ? message.isPersonalized 
+                          ? "bg-green-50 dark:bg-green-900/20 text-foreground border border-green-200 dark:border-green-800"
+                          : "bg-secondary text-secondary-foreground"
                         : "bg-primary text-primary-foreground"
                     )}
                   >
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    
+                    {/* Mostrar indicador de respuesta personalizada si aplica */}
+                    {message.role === "assistant" && (
+                      <span className={cn(
+                        "mt-1 text-xs block",
+                        message.isPersonalized
+                          ? "text-green-600 dark:text-green-400 font-medium"
+                          : "text-muted-foreground italic"
+                      )}>
+                        {message.isPersonalized 
+                          ? "✓ Respuesta personalizada basada en tus datos"
+                          : "ⓘ Respuesta genérica"}
+                      </span>
+                    )}
                   </div>
                   
                   {message.role === "user" && (

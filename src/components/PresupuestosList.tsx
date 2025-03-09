@@ -16,6 +16,8 @@ import {
 import PresupuestoForm from './PresupuestoForm'
 import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useCurrency } from '@/contexts/CurrencyContext'
+import { cn } from '@/lib/utils'
 
 interface Presupuesto {
   id: number
@@ -41,6 +43,7 @@ export default function PresupuestosList() {
   const [mesActual, setMesActual] = useState(new Date().getMonth() + 1) // 1-12
   const [añoActual, setAñoActual] = useState(new Date().getFullYear())
   const [dialogOpen, setDialogOpen] = useState(false)
+  const { formatMoney } = useCurrency()
   
   // Opciones de meses
   const meses = [
@@ -220,33 +223,24 @@ export default function PresupuestosList() {
                 <div className="space-y-4">
                   <div className="flex justify-between text-sm mb-1">
                     <span>
-                      Gastado: {presupuesto.gastoActual.toLocaleString('es-ES', {
-                        style: 'currency',
-                        currency: 'EUR',
-                      })}
+                      Gastado: {formatMoney(presupuesto.gastoActual)}
                     </span>
                     <span>
-                      Meta: {presupuesto.monto.toLocaleString('es-ES', {
-                        style: 'currency',
-                        currency: 'EUR',
-                      })}
+                      Meta: {formatMoney(presupuesto.monto)}
                     </span>
                   </div>
                   
                   <Progress
                     value={Math.min(presupuesto.porcentajeConsumido, 100)}
                     className="h-2"
-                    indicatorClassName={getProgressColor(presupuesto.porcentajeConsumido)}
+                    indicatorColor={getProgressColor(presupuesto.porcentajeConsumido)}
                   />
                   
                   <div className="flex justify-between mt-2">
                     <div>
                       <div className="text-sm text-muted-foreground">Disponible</div>
                       <div className={`font-medium ${presupuesto.disponible < 0 ? 'text-red-500' : ''}`}>
-                        {presupuesto.disponible.toLocaleString('es-ES', {
-                          style: 'currency',
-                          currency: 'EUR',
-                        })}
+                        {formatMoney(presupuesto.disponible)}
                       </div>
                     </div>
                     <div>

@@ -134,11 +134,19 @@ export default function RecomendacionesAhorroPage() {
       setIsGenerating(true)
       toast.info("Buscando nuevas oportunidades de ahorro... Esto puede tardar unos momentos.")
       
+      // Crear el objeto de datos explícitamente
+      const requestData = {
+        forRecommendations: true // Activar el flag para recomendaciones
+      };
+      
+      console.log("Generando recomendaciones con parámetros:", requestData);
+      
       const response = await fetch("/api/recomendaciones-ahorro", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
-        }
+        },
+        body: JSON.stringify(requestData)
       })
       
       if (!response.ok) {
@@ -172,12 +180,19 @@ export default function RecomendacionesAhorroPage() {
       setIsScrapingLoading(true)
       toast.info("Buscando ofertas reales mediante scraping... Esto puede tardar hasta un minuto.")
       
+      // Crear el objeto de datos explícitamente
+      const requestData = {
+        forRecommendations: true // Activar el flag para recomendaciones
+      };
+      
+      console.log("Ejecutando scraping con parámetros:", requestData);
+      
       const response = await fetch("/api/scraping/run", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({})
+        body: JSON.stringify(requestData)
       })
       
       if (!response.ok) {

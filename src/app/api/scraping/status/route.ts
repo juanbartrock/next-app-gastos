@@ -3,6 +3,64 @@ import { getServerSession } from 'next-auth/next';
 import { options } from '@/app/api/auth/[...nextauth]/options';
 import { checkServiceAvailability, getAvailableServices, ScraperOptions } from '@/scraping';
 import prisma from '@/lib/prisma';
+import fs from 'fs';
+import path from 'path';
+
+// Función para obtener la configuración de los servicios
+function getServicesConfig() {
+  try {
+    const configFilePath = path.join(process.cwd(), 'src', 'scraping', 'config', 'services.config.ts');
+    const configContent = fs.readFileSync(configFilePath, 'utf8');
+    
+    console.log("======= DEPURACIÓN DE STATUS =======");
+    console.log("Leyendo configuración de servicios");
+    
+    // Método simplificado: buscar servicios y su configuración
+    const servicesConfig: Record<string, { useForRecommendations: boolean }> = {};
+    
+    // Primero, encontrar todos los nombres de servicios
+    const serviceNames: string[] = [];
+    const serviceStartRegex = /(\w+):\s*{/g;
+    let match;
+    
+    while ((match = serviceStartRegex.exec(configContent)) !== null) {
+      serviceNames.push(match[1]);
+    }
+    
+    console.log("Servicios encontrados en el archivo:", serviceNames);
+    
+    // Para cada servicio, verificar su configuración
+    for (const serviceName of serviceNames) {
+      // Buscar la sección del servicio
+      const serviceStartIndex = configContent.indexOf(`${serviceName}: {`);
+      if (serviceStartIndex === -1) continue;
+      
+      // Buscar el final de la sección (la siguiente llave de cierre)
+      const serviceEndIndex = configContent.indexOf('},', serviceStartIndex);
+      if (serviceEndIndex === -1) continue;
+      
+      // Extraer la sección del servicio
+      const serviceSection = configContent.substring(serviceStartIndex, serviceEndIndex);
+      
+      // Verificar si tiene useForRecommendations: true
+      const isForRecommendations = serviceSection.includes('useForRecommendations: true');
+      
+      servicesConfig[serviceName] = {
+        useForRecommendations: isForRecommendations
+      };
+      
+      console.log(`${serviceName} - useForRecommendations: ${isForRecommendations}`);
+    }
+    
+    console.log("Configuración de servicios:", servicesConfig);
+    console.log("=================================");
+    
+    return servicesConfig;
+  } catch (error) {
+    console.error("Error al obtener configuración de servicios:", error);
+    return {};
+  }
+}
 
 /**
  * API para verificar el estado de los scrapers
@@ -35,11 +93,18 @@ export async function GET() {
     // Obtener todos los servicios disponibles
     const servicios = getAvailableServices();
     
+    // Obtener configuración de los servicios
+    const servicesConfig = getServicesConfig();
+    
     // Verificar el estado de cada servicio
     const resultados = await Promise.all(
       servicios.map(async (servicio) => {
         const disponible = await checkServiceAvailability(servicio);
-        return { servicio, disponible };
+        return { 
+          servicio, 
+          disponible,
+          useForRecommendations: servicesConfig[servicio]?.useForRecommendations || false
+        };
       })
     );
     

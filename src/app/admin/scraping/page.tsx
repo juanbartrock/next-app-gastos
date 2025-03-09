@@ -27,6 +27,7 @@ import { toast } from "sonner"
 interface ScraperStatus {
   servicio: string;
   disponible: boolean;
+  useForRecommendations?: boolean;
 }
 
 interface ScraperHistorial {
@@ -166,6 +167,45 @@ export default function ScrapingAdminPage() {
     return colores[servicio] || 'bg-gray-500'
   }
   
+  // Nueva función para cambiar el estado de "useForRecommendations"
+  const toggleRecommendationsUse = async (servicio: string, currentValue: boolean) => {
+    try {
+      const response = await fetch("/api/scraping/update-config", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ 
+          serviceName: servicio, 
+          updates: { useForRecommendations: !currentValue } 
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error al actualizar configuración de ${servicio}`);
+      }
+      
+      // Actualizar el estado local
+      setScraperData(prevData => {
+        if (!prevData) return prevData;
+        
+        return {
+          ...prevData,
+          servicios: prevData.servicios.map(s => 
+            s.servicio === servicio 
+              ? { ...s, useForRecommendations: !currentValue } 
+              : s
+          )
+        };
+      });
+      
+      toast.success(`Configuración de recomendaciones actualizada para ${servicio}`);
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Error al actualizar configuración");
+    }
+  };
+  
   // Verificar autenticación
   if (status === "loading") {
     return (
@@ -200,75 +240,69 @@ export default function ScrapingAdminPage() {
           <TabsTrigger value="ejecutar" className="flex-1">Ejecutar</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="estado">
-          <Card>
-            <CardHeader>
-              <CardTitle>Estado de los Scrapers</CardTitle>
-              <CardDescription>
-                Estado actual de disponibilidad de cada servicio para scraping
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {scraperData?.servicios.map((item) => (
-                    <Card key={item.servicio} className="overflow-hidden">
-                      <div className={`h-1 ${obtenerColorServicio(item.servicio)}`}></div>
-                      <CardContent className="pt-6">
-                        <div className="flex justify-between items-center">
-                          <div className="font-semibold capitalize">{item.servicio}</div>
-                          {item.disponible ? (
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                              <Check className="h-3.5 w-3.5 mr-1" />
-                              Disponible
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                              <X className="h-3.5 w-3.5 mr-1" />
-                              No disponible
-                            </Badge>
-                          )}
-                        </div>
-                        
-                        {/* Encontrar historial para este servicio */}
-                        {scraperData?.historial.find(h => h.servicio === item.servicio) && (
-                          <div className="mt-4 text-sm text-muted-foreground">
-                            <div className="flex items-center">
-                              <Clock className="h-3.5 w-3.5 mr-1" />
-                              Última ejecución: {formatearFecha(
-                                scraperData.historial.find(h => h.servicio === item.servicio)?.ultimaEjecucion || ''
-                              )}
-                            </div>
-                            <div className="flex items-center mt-1">
-                              <BarChart className="h-3.5 w-3.5 mr-1" />
-                              Promociones: {
-                                scraperData.historial.find(h => h.servicio === item.servicio)?.totalPromociones || 0
-                              }
-                            </div>
-                          </div>
+        <TabsContent value="estado" className="border rounded-lg p-4">
+          <h2 className="text-xl font-semibold mb-3">Estado de Scrapers</h2>
+          <ScrollArea className="h-96">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Servicio</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Usar en Recomendaciones</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {scraperData?.servicios.map((scraper) => (
+                  <TableRow key={scraper.servicio}>
+                    <TableCell className="font-medium flex items-center">
+                      <div className={`w-3 h-3 rounded-full mr-2 ${obtenerColorServicio(scraper.servicio)}`}></div>
+                      {scraper.servicio.charAt(0).toUpperCase() + scraper.servicio.slice(1)}
+                    </TableCell>
+                    <TableCell>
+                      {scraper.disponible ? (
+                        <Badge variant="outline" className="bg-green-100 border-green-300 text-green-700 dark:bg-green-900 dark:border-green-700 dark:text-green-300">
+                          <Check className="h-3 w-3 mr-1" /> Disponible
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-red-100 border-red-300 text-red-700 dark:bg-red-900 dark:border-red-700 dark:text-red-300">
+                          <X className="h-3 w-3 mr-1" /> No disponible
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant={scraper.useForRecommendations ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => toggleRecommendationsUse(scraper.servicio, !!scraper.useForRecommendations)}
+                        className={scraper.useForRecommendations ? "bg-blue-600 hover:bg-blue-700" : ""}
+                      >
+                        {scraper.useForRecommendations ? "Habilitado" : "Deshabilitado"}
+                      </Button>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => ejecutarScraper(scraper.servicio)}
+                        disabled={!scraper.disponible || ejecutando !== null}
+                      >
+                        {ejecutando === scraper.servicio ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-1 animate-spin" /> Ejecutando
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-4 w-4 mr-1" /> Ejecutar
+                          </>
                         )}
-                      </CardContent>
-                      <CardFooter className="bg-muted/50">
-                        <Button 
-                          size="sm" 
-                          className="w-full" 
-                          disabled={!item.disponible || ejecutando !== null} 
-                          onClick={() => ejecutarScraper(item.servicio)}
-                        >
-                          <Play className="h-4 w-4 mr-1" />
-                          Ejecutar
-                        </Button>
-                      </CardFooter>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </ScrollArea>
         </TabsContent>
         
         <TabsContent value="historial">

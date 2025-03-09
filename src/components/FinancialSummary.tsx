@@ -9,9 +9,10 @@ import { cn } from "@/lib/utils"
 
 interface FinancialSummaryProps {
   className?: string
+  context?: "dashboard" | "recurrentes" | "general"
 }
 
-export function FinancialSummary({ className }: FinancialSummaryProps) {
+export function FinancialSummary({ className, context = "dashboard" }: FinancialSummaryProps) {
   const [summary, setSummary] = useState<string>("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -34,7 +35,9 @@ export function FinancialSummary({ className }: FinancialSummaryProps) {
               role: "user",
               content: "Por favor, dame un resumen conciso de mi situación financiera actual, incluyendo mis gastos recurrentes y los servicios contratados. NO USES FRASES INTRODUCTORIAS NI DE CORTESÍA como 'Claro, basándome en tus datos financieros...'. Comienza directamente con el resumen estructurado usando los subtítulos (Resumen General, Gastos Principales, etc.). Destaca las áreas de mayor gasto y ofrece recomendaciones concretas para optimizar mi economía."
             }
-          ]
+          ],
+          context: context,
+          isResumenRequest: true  // Flag para indicar que es una solicitud de resumen financiero
         })
       })
 

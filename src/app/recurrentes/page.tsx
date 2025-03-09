@@ -574,7 +574,7 @@ export default function RecurrentesPage() {
                 
                 {/* Análisis Financiero Personalizado */}
                 <div className="p-4 flex-grow">
-                  <FinancialSummary className="shadow-sm h-full" />
+                  <FinancialSummary className="shadow-sm h-full" context="recurrentes" />
                 </div>
               </div>
               

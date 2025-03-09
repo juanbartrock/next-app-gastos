@@ -3,6 +3,66 @@ import { getServerSession } from 'next-auth/next';
 import { options } from '@/app/api/auth/[...nextauth]/options';
 import prisma from '@/lib/prisma';
 import { runScraper, runAllScrapers, ScraperOptions } from '@/scraping';
+import fs from 'fs';
+import path from 'path';
+
+// Función para obtener los servicios habilitados para recomendaciones
+async function getEnabledForRecommendationsServices(): Promise<string[]> {
+  try {
+    // Leer el archivo de configuración en tiempo de ejecución
+    const configFilePath = path.join(process.cwd(), 'src', 'scraping', 'config', 'services.config.ts');
+    const configContent = fs.readFileSync(configFilePath, 'utf8');
+    
+    console.log("======= DEPURACIÓN DE RECOMENDACIONES =======");
+    console.log("Leyendo configuración de scrapers para recomendaciones");
+    
+    // Método simplificado: buscar líneas individuales con useForRecommendations: true
+    const enabledServices: string[] = [];
+    const lines = configContent.split('\n');
+    
+    // Primero, encontrar todos los nombres de servicios
+    const serviceNames: string[] = [];
+    const serviceStartRegex = /(\w+):\s*{/g;
+    let match;
+    
+    while ((match = serviceStartRegex.exec(configContent)) !== null) {
+      serviceNames.push(match[1]);
+    }
+    
+    console.log("Servicios encontrados en el archivo:", serviceNames);
+    
+    // Para cada servicio, verificar si tiene useForRecommendations: true
+    for (const serviceName of serviceNames) {
+      // Buscar la sección del servicio
+      const serviceStartIndex = configContent.indexOf(`${serviceName}: {`);
+      if (serviceStartIndex === -1) continue;
+      
+      // Buscar el final de la sección (la siguiente llave de cierre)
+      const serviceEndIndex = configContent.indexOf('},', serviceStartIndex);
+      if (serviceEndIndex === -1) continue;
+      
+      // Extraer la sección del servicio
+      const serviceSection = configContent.substring(serviceStartIndex, serviceEndIndex);
+      console.log(`Analizando configuración de ${serviceName}:`, serviceSection);
+      
+      // Verificar si tiene useForRecommendations: true
+      if (serviceSection.includes('useForRecommendations: true')) {
+        enabledServices.push(serviceName);
+        console.log(`✅ ${serviceName} está habilitado para recomendaciones`);
+      } else {
+        console.log(`❌ ${serviceName} NO está habilitado para recomendaciones`);
+      }
+    }
+    
+    console.log("Servicios habilitados para recomendaciones:", enabledServices);
+    console.log("============================================");
+    
+    return enabledServices;
+  } catch (error) {
+    console.error("Error al obtener servicios habilitados para recomendaciones:", error);
+    return [];
+  }
+}
 
 /**
  * API para ejecutar scrapers y guardar los resultados
@@ -34,11 +94,67 @@ export async function POST(request: Request) {
     
     // Obtener datos del request
     const data = await request.json();
-    const { serviceName, options: scraperOptions } = data as {
+    const { serviceName, options: scraperOptions, forRecommendations } = data as {
       serviceName?: string;
       options?: ScraperOptions;
+      forRecommendations?: boolean;
     };
     
+    // Si es para recomendaciones, solo usar los servicios habilitados para recomendaciones
+    if (forRecommendations && !serviceName) {
+      console.log("Ejecutando scrapers específicamente para recomendaciones");
+      console.log("Parámetros recibidos:", data);
+      
+      const enabledForRecommendationsServices = await getEnabledForRecommendationsServices();
+      console.log("Servicios habilitados encontrados:", enabledForRecommendationsServices);
+      
+      if (enabledForRecommendationsServices.length === 0) {
+        console.log("⚠️ No se encontraron servicios habilitados para recomendaciones");
+        return NextResponse.json({
+          success: false,
+          message: "No hay servicios habilitados para recomendaciones",
+          totalPromotions: 0
+        });
+      }
+      
+      // Ejecutar solo los scrapers habilitados para recomendaciones
+      const startTime = Date.now();
+      const results: Record<string, any> = {};
+      const errors: Record<string, any> = {};
+      const allPromotions: any[] = [];
+      
+      for (const service of enabledForRecommendationsServices) {
+        try {
+          console.log(`Ejecutando scraper para recomendaciones: ${service}`);
+          const result = await runScraper(service, scraperOptions);
+          results[service] = result;
+          allPromotions.push(...result.promotions);
+        } catch (error) {
+          console.error(`Error al ejecutar scraper ${service}:`, error);
+          errors[service] = error instanceof Error ? error.message : String(error);
+        }
+      }
+      
+      // Guardar las promociones encontradas
+      await guardarPromociones(allPromotions, usuario.id);
+      
+      // Preparar resumen de resultados
+      const summary = Object.entries(results).map(([service, result]) => ({
+        service,
+        promotionsFound: result.promotions.length,
+        timestamp: result.timestamp
+      }));
+      
+      return NextResponse.json({
+        success: true,
+        summary,
+        errors: Object.keys(errors).length > 0 ? errors : undefined,
+        totalPromotions: allPromotions.length,
+        timeElapsed: Date.now() - startTime
+      });
+    }
+    
+    // Ejecución normal (sin filtro de recomendaciones)
     // Ejecutar scraper específico o todos
     const startTime = Date.now();
     let result;

@@ -21,7 +21,8 @@ export function FloatingAdvisor() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "¡Hola! Soy tu asesor financiero virtual. ¿En qué puedo ayudarte hoy? Puedes preguntarme sobre ahorro, inversión, o cualquier consulta financiera."
+      content: "¡Hola! Soy tu asesor financiero virtual. ¿En qué puedo ayudarte hoy? Puedes preguntarme sobre ahorro, inversión, o cualquier consulta financiera.",
+      isPersonalized: false
     }
   ])
   const [input, setInput] = useState("")
@@ -66,7 +67,8 @@ export function FloatingAdvisor() {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          messages: [...messages, userMessage]
+          messages: [...messages, userMessage],
+          context: "dashboard"
         })
       })
 
@@ -76,14 +78,21 @@ export function FloatingAdvisor() {
 
       const data = await response.json()
       
-      // Verificar si hay datos de depuración para mostrar información
-      const isPersonalized = data.debug?.financialDataExists || false;
-      const debugInfo = data.debug;
+      // Determinar si la respuesta es personalizada usando la información de depuración
+      let isPersonalized = false;
       
-      if (debugInfo) {
-        console.log("Información de depuración:", debugInfo);
+      // Si la API proporciona información de depuración, la usamos
+      if (data.debug) {
+        isPersonalized = data.debug.isPersonalized;
+        console.log("Información de depuración:", data.debug);
+      } else {
+        // Fallback: Determinamos por patrones en el texto
+        const responseText = data.response;
+        const hasSpecificNumbers = /\d{2,}\.00|\d{3,}/.test(responseText);
+        const hasPersonalPhrases = /(tus finanzas|tu situación|tus gastos|tus ingresos|tus datos|tu balance)/i.test(responseText);
+        isPersonalized = hasSpecificNumbers || hasPersonalPhrases;
       }
-
+      
       // Agregar la respuesta del asistente a los mensajes
       setMessages(prev => [...prev, {
         role: "assistant",
