@@ -286,6 +286,7 @@ model GastoDetalle {
   cantidad      Float    @default(1)
   precioUnitario Float?  // Precio por unidad si está disponible
   subtotal      Float    // Monto total de este ítem
+  seguimiento   Boolean  @default(false) // Indicador para seguimiento de precios
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   gasto         Gasto    @relation(fields: [gastoId], references: [id], onDelete: Cascade)

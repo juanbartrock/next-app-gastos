@@ -22,6 +22,7 @@ interface GastoDetalle {
   cantidad: number
   precioUnitario: number | null
   subtotal: number
+  seguimiento: boolean
   createdAt: string
   updatedAt: string
 }
@@ -60,16 +61,12 @@ export default function TransaccionesPage() {
   const [loading, setLoading] = useState(false)
   const [editingDetalle, setEditingDetalle] = useState<GastoDetalle | null>(null)
   const [mostrarFormDetalle, setMostrarFormDetalle] = useState(false)
-  const [nuevoDetalle, setNuevoDetalle] = useState<{
-    descripcion: string,
-    cantidad: string,
-    precioUnitario: string,
-    subtotal: string
-  }>({
+  const [nuevoDetalle, setNuevoDetalle] = useState({
     descripcion: "",
     cantidad: "1",
     precioUnitario: "",
-    subtotal: ""
+    subtotal: "",
+    seguimiento: false
   })
   
   const router = useRouter()
@@ -170,7 +167,8 @@ export default function TransaccionesPage() {
       descripcion: nuevoDetalle.descripcion,
       cantidad: parseFloat(nuevoDetalle.cantidad) || 1,
       precioUnitario: nuevoDetalle.precioUnitario ? parseFloat(nuevoDetalle.precioUnitario.replace(/[^\d.]/g, "")) : null,
-      subtotal: parseFloat(nuevoDetalle.subtotal.replace(/[^\d.]/g, "")) || 0
+      subtotal: parseFloat(nuevoDetalle.subtotal.replace(/[^\d.]/g, "")) || 0,
+      seguimiento: nuevoDetalle.seguimiento
     }
     
     try {
@@ -199,7 +197,8 @@ export default function TransaccionesPage() {
         descripcion: "",
         cantidad: "1",
         precioUnitario: "",
-        subtotal: ""
+        subtotal: "",
+        seguimiento: false
       })
       
       setMostrarFormDetalle(false)
@@ -243,7 +242,8 @@ export default function TransaccionesPage() {
       descripcion: detalle.descripcion,
       cantidad: detalle.cantidad.toString(),
       precioUnitario: detalle.precioUnitario ? detalle.precioUnitario.toString() : "",
-      subtotal: detalle.subtotal.toString()
+      subtotal: detalle.subtotal.toString(),
+      seguimiento: detalle.seguimiento
     })
     setMostrarFormDetalle(true)
   }
@@ -258,6 +258,17 @@ export default function TransaccionesPage() {
     }
     
     try {
+      setLoading(true);
+      
+      // Obtener el monto original del detalle antes de eliminarlo
+      const montoOriginal = editingDetalle.subtotal;
+      
+      // Calcular el nuevo subtotal
+      const nuevoSubtotal = parseFloat(nuevoDetalle.subtotal.replace(/[^\d.]/g, "")) || 0;
+      
+      // Calcular la diferencia para ajustar el total del gasto
+      const diferencia = nuevoSubtotal - montoOriginal;
+      
       // Primero eliminamos el detalle existente
       const deleteResponse = await fetch(`/api/gastos/detalles/${editingDetalle.id}`, {
         method: 'DELETE'
@@ -272,7 +283,8 @@ export default function TransaccionesPage() {
         descripcion: nuevoDetalle.descripcion,
         cantidad: parseFloat(nuevoDetalle.cantidad) || 1,
         precioUnitario: nuevoDetalle.precioUnitario ? parseFloat(nuevoDetalle.precioUnitario.replace(/[^\d.]/g, "")) : null,
-        subtotal: parseFloat(nuevoDetalle.subtotal.replace(/[^\d.]/g, "")) || 0
+        subtotal: nuevoSubtotal,
+        seguimiento: nuevoDetalle.seguimiento
       }
       
       const createResponse = await fetch('/api/gastos/detalles', {
@@ -290,27 +302,94 @@ export default function TransaccionesPage() {
         throw new Error("Error al crear el nuevo detalle")
       }
       
-      // Recargar los detalles
-      const gastoActualizado = await fetch(`/api/gastos/${selectedTransaction.id}?includeDetails=true`)
-      const data = await gastoActualizado.json()
-      setSelectedTransaction(data)
+      // Actualizar el monto total del gasto
+      const nuevoMontoGasto = selectedTransaction.monto + diferencia;
+      
+      const updateGastoResponse = await fetch(`/api/gastos/${selectedTransaction.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          monto: nuevoMontoGasto
+        }),
+      });
+      
+      if (!updateGastoResponse.ok) {
+        console.warn("No se pudo actualizar el monto total del gasto");
+      }
+      
+      // Recargar los detalles y el gasto actualizado
+      const gastoActualizado = await fetch(`/api/gastos/${selectedTransaction.id}?includeDetails=true`);
+      const data = await gastoActualizado.json();
+      
+      // Actualizar tanto en el gasto seleccionado como en la lista de transacciones
+      setSelectedTransaction(data);
+      setTransactions(transactions.map(t => 
+        t.id === data.id ? {...t, monto: data.monto} : t
+      ));
       
       // Resetear estado
-      setEditingDetalle(null)
+      setEditingDetalle(null);
       setNuevoDetalle({
         descripcion: "",
         cantidad: "1",
         precioUnitario: "",
-        subtotal: ""
-      })
-      setMostrarFormDetalle(false)
+        subtotal: "",
+        seguimiento: false
+      });
+      setMostrarFormDetalle(false);
       
-      toast.success("Detalle actualizado correctamente")
+      toast.success("Detalle actualizado correctamente");
     } catch (error) {
-      console.error("Error al editar detalle:", error)
-      toast.error("No se pudo actualizar el detalle")
+      console.error("Error al editar detalle:", error);
+      toast.error("No se pudo actualizar el detalle");
+    } finally {
+      setLoading(false);
     }
-  }
+  };
+
+  // Función para actualizar el seguimiento de un producto
+  const actualizarSeguimiento = async (detalleId: number, seguimiento: boolean) => {
+    try {
+      console.log(`Actualizando seguimiento del detalle ${detalleId} a ${seguimiento}`);
+      
+      const response = await fetch(`/api/gastos/detalles/${detalleId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ seguimiento }),
+      });
+
+      const responseData = await response.json();
+      console.log('Respuesta del servidor:', responseData);
+
+      if (response.ok) {
+        // Actualizar el estado local
+        if (selectedTransaction && selectedTransaction.detalles) {
+          const updatedDetalles = selectedTransaction.detalles.map(d => 
+            d.id === detalleId ? { ...d, seguimiento } : d
+          );
+          setSelectedTransaction({
+            ...selectedTransaction,
+            detalles: updatedDetalles
+          });
+          
+          toast.success(seguimiento 
+            ? "Producto agregado al seguimiento de precios" 
+            : "Producto eliminado del seguimiento de precios"
+          );
+        }
+      } else {
+        console.error('Error en la respuesta:', responseData);
+        toast.error(`No se pudo actualizar el seguimiento: ${responseData.error || 'Error desconocido'}`);
+      }
+    } catch (error) {
+      console.error("Error al actualizar seguimiento:", error);
+      toast.error("Error al actualizar el seguimiento");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 p-6">
@@ -547,6 +626,24 @@ export default function TransaccionesPage() {
                         </div>
                       </div>
                       
+                      <div className="mb-3">
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id="seguimiento-nuevo"
+                            checked={nuevoDetalle.seguimiento}
+                            onChange={(e) => setNuevoDetalle({...nuevoDetalle, seguimiento: e.target.checked})}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                          />
+                          <label htmlFor="seguimiento-nuevo" className="ml-2 text-sm font-medium">
+                            Seguir precio de este producto
+                          </label>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Recibirás alertas si encontramos este producto a un precio menor
+                        </p>
+                      </div>
+                      
                       <div className="flex justify-end gap-2">
                         <Button 
                           variant="outline" 
@@ -558,7 +655,8 @@ export default function TransaccionesPage() {
                               descripcion: "",
                               cantidad: "1",
                               precioUnitario: "",
-                              subtotal: ""
+                              subtotal: "",
+                              seguimiento: false
                             })
                           }}
                         >
@@ -580,7 +678,24 @@ export default function TransaccionesPage() {
                         <div key={detalle.id} className="border-b pb-3 last:border-0 last:pb-0">
                           <div className="flex justify-between items-center">
                             <div>
-                              <div className="font-medium">{detalle.descripcion}</div>
+                              <div className="font-medium flex items-center gap-2">
+                                <span>{detalle.descripcion}</span>
+                                <div className="flex items-center ml-2">
+                                  <input
+                                    type="checkbox"
+                                    id={`seguimiento-${detalle.id}`}
+                                    checked={detalle.seguimiento}
+                                    onChange={(e) => {
+                                      e.stopPropagation();
+                                      actualizarSeguimiento(detalle.id, e.target.checked);
+                                    }}
+                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                  />
+                                  <label htmlFor={`seguimiento-${detalle.id}`} className="ml-1 text-xs text-muted-foreground">
+                                    Seguir precio
+                                  </label>
+                                </div>
+                              </div>
                               <div className="text-sm text-muted-foreground">
                                 {detalle.cantidad} {detalle.cantidad > 1 ? "unidades" : "unidad"}
                                 {detalle.precioUnitario ? ` × ${formatMoney(detalle.precioUnitario)}` : ""}

@@ -49,4 +49,30 @@ export class ScraperError extends Error {
     super(message);
     this.name = 'ScraperError';
   }
+}
+
+// Resultado de búsqueda de precio
+export interface PriceSearchResult {
+  productName: string;           // Nombre del producto
+  price: number;                 // Precio encontrado
+  store: string;                 // Tienda donde se encontró
+  url: string;                   // URL del producto
+  imageUrl?: string;             // URL de la imagen del producto (opcional)
+  availability?: boolean;        // Disponibilidad del producto (opcional)
+  timestamp: Date;               // Fecha y hora de la búsqueda
+}
+
+// Opciones para la búsqueda de precios
+export interface PriceSearchOptions {
+  exactMatch?: boolean;          // Si debe buscar coincidencia exacta
+  maxResults?: number;           // Número máximo de resultados
+  timeout?: number;              // Tiempo máximo de espera en ms
+}
+
+// Interfaz para servicios de búsqueda de precios
+export interface PriceSearchService {
+  serviceName: string;                                                                // Nombre del servicio (ej. "precialo", "ratoneando")
+  serviceUrl: string;                                                                 // URL base del servicio
+  search: (query: string, options?: PriceSearchOptions) => Promise<PriceSearchResult[]>; // Método de búsqueda
+  isAvailable: () => Promise<boolean>;                                                // Verificar disponibilidad
 } 

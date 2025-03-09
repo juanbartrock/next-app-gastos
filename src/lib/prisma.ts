@@ -2,11 +2,30 @@ import { PrismaClient } from '@prisma/client'
 
 // Añadir manejo global de errores y configuración de log
 const prismaClientSingleton = () => {
-  return new PrismaClient({
+  const client = new PrismaClient({
     log: process.env.NODE_ENV === 'development' 
       ? ['query', 'error', 'warn'] 
       : ['error'],
     errorFormat: 'pretty',
+  });
+  
+  // Crear un proxy que permita acceder a modelos que no sean reconocidos por TypeScript
+  return new Proxy(client, {
+    get(target, prop) {
+      // Si es una propiedad conocida del cliente, devuélvela
+      if (prop in target) return target[prop as keyof typeof target];
+      
+      // Para gastoDetalle y GastoDetalle, usar la versión correcta del modelo
+      if (prop === 'gastoDetalle' || prop === 'GastoDetalle') {
+        console.log(`Accediendo a modelo ${String(prop)} (normalizado a "gastoDetalle")`);
+        // @ts-ignore - Permitir acceder al modelo aunque TypeScript no lo reconozca
+        return target['gastoDetalle'] || target['$queryRaw'];
+      }
+      
+      // Para otras propiedades, intentar acceder como están
+      // @ts-ignore - Permitir acceder a propiedades que TypeScript no reconoce
+      return target[prop];
+    }
   });
 };
 

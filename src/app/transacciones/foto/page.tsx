@@ -102,29 +102,65 @@ export default function FotoTicketPage() {
     }
   }
 
-  // Función para manejar la carga de la imagen
+  // Función para manejar la carga de una imagen
   const handleImagenCargada = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
-    if (!files || files.length === 0) return
-
-    // Reset del estado
+    
+    if (!files || files.length === 0) {
+      return
+    }
+    
     setCargandoImagen(true)
-    setEsVistaPrevia(true)
+    
+    // Limpiar todo el estado previo
     setProcesado(false)
-    setProductos([])
-    setTotal(0)
+    setEsVistaPrevia(true)
     setConcepto("")
-
+    setTotal(0)
+    setProductos([])
+    setCategoriaSeleccionada("")
+    
     const file = files[0]
+    
+    // Verificar que el archivo sea una imagen
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error",
+        description: "Por favor, selecciona una imagen válida",
+        variant: "destructive"
+      })
+      setCargandoImagen(false)
+      return
+    }
+    
+    // Verificar tamaño (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "La imagen es demasiado grande. El tamaño máximo es 5MB",
+        variant: "destructive"
+      })
+      setCargandoImagen(false)
+      return
+    }
+    
+    // Cargar la imagen
     const reader = new FileReader()
     
-    reader.onloadend = () => {
-      setImagen(reader.result as string)
-      setCargandoImagen(false)
-      
-      // Resetear el input para permitir seleccionar el mismo archivo nuevamente
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ""
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        // Crear un timestamp único para evitar cacheo de la misma imagen
+        const timestamp = new Date().getTime();
+        const imageWithTimestamp = `${event.target.result.toString()}?t=${timestamp}`;
+        
+        setImagen(imageWithTimestamp)
+        setCargandoImagen(false)
+        
+        // Notificar al usuario que la imagen se cargó correctamente
+        toast({
+          title: "Imagen cargada",
+          description: "La imagen se ha cargado correctamente. Haz clic en 'Procesar' para continuar.",
+        })
       }
     }
     
@@ -136,7 +172,6 @@ export default function FotoTicketPage() {
       })
       setCargandoImagen(false)
       
-      // Resetear el input para permitir intentarlo nuevamente
       if (fileInputRef.current) {
         fileInputRef.current.value = ""
       }
@@ -159,13 +194,18 @@ export default function FotoTicketPage() {
     setProcesandoTexto(true)
     
     try {
+      console.log("Enviando imagen para procesamiento OCR...");
+      
       // Llamar a la API para procesar la imagen
       const response = await fetch("/api/ocr/ticket", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ imagen })
+        body: JSON.stringify({ 
+          imagen,
+          timestamp: new Date().getTime() // Añadir timestamp para evitar cacheo
+        })
       })
       
       if (!response.ok) {
@@ -175,15 +215,41 @@ export default function FotoTicketPage() {
       }
       
       const resultado = await response.json()
+      console.log("Resultado OCR recibido:", resultado);
       
       // Actualizar estado con los datos obtenidos
       setConcepto(resultado.nombreComercio || "Compra")
       setTotal(resultado.total || 0)
-      setProductos(resultado.productos || [])
+      
+      // Verificar que los productos tengan el formato correcto
+      if (Array.isArray(resultado.productos) && resultado.productos.length > 0) {
+        console.log(`Se detectaron ${resultado.productos.length} productos`);
+        setProductos(resultado.productos.map((p: any) => ({
+          descripcion: p.descripcion || "Producto sin descripción",
+          cantidad: p.cantidad || 1,
+          precioUnitario: p.precioUnitario,
+          subtotal: p.subtotal || 0
+        })));
+      } else {
+        console.warn("No se detectaron productos en el ticket");
+        setProductos([]);
+        toast({
+          title: "Información parcial",
+          description: "No se detectaron productos individuales. Puedes agregarlos manualmente."
+        });
+      }
       
       // Si se detectó una fecha, usarla. De lo contrario, mantener la fecha actual
       if (resultado.fecha) {
-        setFecha(format(new Date(resultado.fecha), "yyyy-MM-dd"))
+        try {
+          const fechaDetectada = new Date(resultado.fecha);
+          if (!isNaN(fechaDetectada.getTime())) {
+            setFecha(format(fechaDetectada, "yyyy-MM-dd"));
+            console.log("Fecha detectada:", format(fechaDetectada, "yyyy-MM-dd"));
+          }
+        } catch (err) {
+          console.warn("Error al procesar la fecha detectada:", err);
+        }
       }
       
       setProcesado(true)
@@ -191,23 +257,24 @@ export default function FotoTicketPage() {
       
       toast({
         title: "¡Éxito!",
-        description: "Imagen procesada correctamente",
+        description: `Imagen procesada correctamente. Se detectaron ${resultado.productos?.length || 0} productos.`,
       })
     } catch (error) {
       console.error("Error al procesar imagen:", error)
       let mensaje = "No se pudo procesar la imagen. Intenta con otra imagen o ingresa los datos manualmente."
       
       if (error instanceof Error) {
-        if (error.message.includes("model")) {
-          mensaje = "Error con el servicio de reconocimiento de imágenes. Por favor, intenta más tarde."
-        }
+        mensaje = error.message
       }
       
       toast({
-        title: "Error",
+        title: "Error al procesar",
         description: mensaje,
         variant: "destructive"
       })
+      
+      // Si hay un error, permitir al usuario cambiar a modo manual
+      cambiarAModoManual()
     } finally {
       setProcesandoTexto(false)
     }
