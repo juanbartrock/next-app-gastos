@@ -5,11 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { ArrowUpDown, ExternalLink, RefreshCcw, Search, ShoppingBag } from "lucide-react"
+import { ArrowUpDown, ExternalLink, RefreshCcw, Search, ShoppingBag, ArrowLeft } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { useCurrency } from "@/contexts/CurrencyContext"
 import { toast } from "sonner"
+import Link from "next/link"
 
 interface Producto {
   id: number
@@ -108,7 +109,15 @@ export default function SeguimientoPreciosPage() {
     <div className="container mx-auto py-6">
       <div className="flex flex-col gap-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Seguimiento de Precios</h1>
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard">
+              <Button variant="outline" className="flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Volver
+              </Button>
+            </Link>
+            <h1 className="text-3xl font-bold">Seguimiento de Precios</h1>
+          </div>
           <div>
             <Button 
               onClick={buscarOfertas} 

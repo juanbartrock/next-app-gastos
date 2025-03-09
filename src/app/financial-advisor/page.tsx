@@ -6,9 +6,23 @@ import { Bot, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { useEffect } from "react"
+import { useEffect, Suspense } from "react"
 
-export default function FinancialAdvisorPage() {
+// Configurar página como dinámica para evitar pre-rendering en build
+export const dynamic = 'force-dynamic'
+export const runtime = 'edge'
+
+// Componente de carga
+function FinancialAdvisorLoading() {
+  return (
+    <div className="h-screen w-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 dark:border-blue-300"></div>
+    </div>
+  )
+}
+
+// Contenido principal envuelto para resolver errores de useSearchParams
+function FinancialAdvisorContent() {
   const router = useRouter()
   const { status } = useSession()
   const searchParams = useSearchParams()
@@ -27,11 +41,7 @@ export default function FinancialAdvisorPage() {
   }
 
   if (status === "loading") {
-    return (
-      <div className="h-screen w-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 dark:border-blue-300"></div>
-      </div>
-    )
+    return <FinancialAdvisorLoading />
   }
 
   return (
@@ -80,5 +90,14 @@ export default function FinancialAdvisorPage() {
         <p>Para asesoramiento financiero personalizado, consulta con un profesional.</p>
       </div>
     </div>
+  )
+}
+
+// Componente principal con Suspense
+export default function FinancialAdvisorPage() {
+  return (
+    <Suspense fallback={<FinancialAdvisorLoading />}>
+      <FinancialAdvisorContent />
+    </Suspense>
   )
 } 

@@ -12,7 +12,9 @@ import {
   Users,
   LightbulbIcon,
   TrendingUp,
-  Tag
+  Tag,
+  Wallet,
+  DollarSign
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSidebar } from "@/contexts/SidebarContext"
@@ -50,12 +52,12 @@ export function Sidebar() {
 
       {/* Logo y título */}
       <div className="p-4 flex items-center mb-6">
-        <div className="w-10 h-10 flex items-center justify-center bg-blue-100 dark:bg-blue-900 rounded-lg">
-          <Grid className="w-6 h-6 text-blue-600 dark:text-blue-300" />
+        <div className="w-10 h-10 flex items-center justify-center bg-green-100 dark:bg-green-900 rounded-lg">
+          <Wallet className="w-6 h-6 text-green-600 dark:text-green-300" />
         </div>
         {isOpen && (
           <div className="ml-3">
-            <h1 className="font-bold text-gray-900 dark:text-white">App de Gastos</h1>
+            <h1 className="font-bold text-gray-900 dark:text-white">Ayudante Financiero</h1>
           </div>
         )}
       </div>

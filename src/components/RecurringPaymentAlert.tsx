@@ -205,33 +205,6 @@ export function RecurringPaymentAlert() {
         ) : paymentsToAlert.length === 0 ? (
           <>
             <div className="py-2 px-4 text-sm text-gray-500">No hay pagos próximos a vencer</div>
-            
-            {/* Sección de depuración - útil para desarrollo */}
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
-              <AlertTriangle className="h-4 w-4 text-blue-500" />
-              Información de depuración
-            </DropdownMenuLabel>
-            <div className="py-2 px-4 text-xs font-mono text-gray-600 dark:text-gray-400 max-h-[200px] overflow-y-auto whitespace-pre-wrap">
-              {debugInfo.map((line, index) => (
-                <div key={index}>{line}</div>
-              ))}
-            </div>
-            
-            {/* Datos recibidos - para depurar */}
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className="flex items-center gap-2 text-purple-800 dark:text-purple-200">
-              <AlertTriangle className="h-4 w-4 text-purple-500" />
-              Datos sin filtrar
-            </DropdownMenuLabel>
-            <div className="py-2 px-4 text-xs text-gray-600 dark:text-gray-400 max-h-[200px] overflow-y-auto">
-              {rawData.map((payment, idx) => (
-                <div key={idx} className="border-b border-gray-200 dark:border-gray-700 py-1">
-                  <p className="font-semibold">{payment.nombre || "Sin nombre"}</p>
-                  <p className="truncate">Fecha: {JSON.stringify(payment.proximoPago)}</p>
-                </div>
-              ))}
-            </div>
           </>
         ) : (
           paymentsToAlert.map((payment) => (

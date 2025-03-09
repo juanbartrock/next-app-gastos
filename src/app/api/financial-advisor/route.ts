@@ -4,6 +4,9 @@ import { options } from "../auth/[...nextauth]/options"
 import prisma from "@/lib/prisma"
 import OpenAI from "openai"
 
+// Configuración para evitar pre-rendering de la API
+export const dynamic = 'force-dynamic'
+
 // Inicializar cliente de OpenAI
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY

@@ -45,7 +45,15 @@ export function FinancialAdvisor({
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const { formatMoney } = useCurrency()
+  
+  // Usar try-catch para evitar errores durante el renderizado si el contexto no está disponible
+  let formatMoney;
+  try {
+    const { formatMoney: formatMoneyFunc } = useCurrency();
+    formatMoney = formatMoneyFunc;
+  } catch (e) {
+    formatMoney = (val: number) => `$${val.toFixed(2)}`;
+  }
 
   // Función para enviar un mensaje al asesor
   const sendMessage = async () => {

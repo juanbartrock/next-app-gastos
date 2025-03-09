@@ -9,76 +9,112 @@ import { createInitialCategories } from "@/lib/dbSetup";
 //   console.error("Error al inicializar categorías al cargar el módulo:", error);
 // });
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Verificar y crear categorías si es necesario, solo cuando se solicitan los gastos
-    await crearCategoriasIniciales();
-    
     const session = await getServerSession(options)
+
+    // Obtener parámetros de fecha de la URL
+    const url = new URL(request.url)
+    const desde = url.searchParams.get('desde')
+    const hasta = url.searchParams.get('hasta')
     
-    // Si hay un usuario autenticado, filtrar por sus gastos
-    if (session?.user?.email) {
-      const usuario = await prisma.user.findUnique({
-        where: { email: session.user.email }
-      })
-      
-      // Si encontramos al usuario, obtenemos sus gastos personales y los de sus grupos
-      if (usuario) {
-        // Obtener IDs de grupos a los que pertenece el usuario
-        const gruposMiembro = await prisma.grupoMiembro.findMany({
-          where: { userId: usuario.id },
-          select: { grupoId: true }
-        })
-        
-        const gruposIds = gruposMiembro.map(g => g.grupoId)
-        
-        // Obtener gastos personales y de los grupos a los que pertenece
-        const gastos = await prisma.gasto.findMany({
-          where: {
-            OR: [
-              { userId: usuario.id },
-              { grupoId: { in: gruposIds.length > 0 ? gruposIds : undefined } }
-            ],
-            // Excluir los gastos de tipo tarjeta para que no impacten en el flujo de dinero
-            AND: [
-              { 
-                NOT: { 
-                  tipoMovimiento: "tarjeta" 
-                } 
-              }
-            ]
-          },
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            grupo: {
-              select: {
-                id: true,
-                nombre: true
-              }
-            }
-          },
-          orderBy: {
-            fecha: 'desc'
-          }
-        })
-        
-        return NextResponse.json(gastos)
-      }
+    // Convertir fechas si fueron proporcionadas
+    const fechaDesde = desde ? new Date(desde) : null
+    const fechaHasta = hasta ? new Date(hasta) : null
+    
+    // Verificar que las fechas sean válidas si se proporcionaron
+    if ((desde && isNaN(fechaDesde?.getTime() || 0)) || (hasta && isNaN(fechaHasta?.getTime() || 0))) {
+      return NextResponse.json(
+        { error: 'Formato de fecha inválido' },
+        { status: 400 }
+      )
     }
     
-    // Si no hay usuario autenticado o no se encontró, devolver todos los gastos
-    const gastos = await prisma.gasto.findMany({
-      orderBy: {
-        fecha: 'desc'
+    // Buscar usuario por email
+    const usuario = session?.user?.email 
+      ? await prisma.user.findUnique({
+          where: { email: session.user.email }
+        })
+      : null
+
+    // Si encontramos al usuario, obtenemos sus gastos personales y los de sus grupos
+    if (usuario) {
+      // Obtener IDs de grupos a los que pertenece el usuario
+      const gruposMiembro = await prisma.grupoMiembro.findMany({
+        where: { userId: usuario.id },
+        select: { grupoId: true }
+      })
+      
+      const gruposIds = gruposMiembro.map(g => g.grupoId)
+      
+      // Construir condiciones de consulta
+      let whereCondition: any = {
+        OR: [
+          { userId: usuario.id },
+          { grupoId: { in: gruposIds.length > 0 ? gruposIds : undefined } }
+        ],
+        // Excluir los gastos de tipo tarjeta para que no impacten en el flujo de dinero
+        AND: [
+          { 
+            NOT: { 
+              tipoMovimiento: "tarjeta" 
+            } 
+          }
+        ]
       }
-    })
-    return NextResponse.json(gastos)
+      
+      // Agregar condiciones de fecha si se proporcionaron
+      if (fechaDesde || fechaHasta) {
+        whereCondition.AND = whereCondition.AND || []
+        
+        if (fechaDesde) {
+          whereCondition.AND.push({
+            fecha: {
+              gte: fechaDesde
+            }
+          })
+        }
+        
+        if (fechaHasta) {
+          whereCondition.AND.push({
+            fecha: {
+              lte: fechaHasta
+            }
+          })
+        }
+      }
+      
+      // Obtener gastos personales y de los grupos a los que pertenece
+      const gastos = await prisma.gasto.findMany({
+        where: whereCondition,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          },
+          grupo: {
+            select: {
+              id: true,
+              nombre: true
+            }
+          }
+        },
+        orderBy: {
+          fecha: 'desc'
+        }
+      })
+      
+      return NextResponse.json(gastos)
+    }
+    
+    // Si no hay usuario autenticado o no se encontró, devolver error
+    return NextResponse.json(
+      { error: 'No autorizado' },
+      { status: 401 }
+    )
   } catch (error) {
     console.error('Error al obtener gastos:', error)
     return NextResponse.json(
