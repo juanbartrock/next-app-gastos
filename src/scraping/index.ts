@@ -8,6 +8,8 @@ import * as personal from './services/personal';
 import * as claro from './services/claro';
 import * as movistar from './services/movistar';
 import * as elmejortrato from './services/elmejortrato';
+import ratoneandoService from './services/ratoneando';
+import precialoService from './services/precialo';
 // Aquí importaremos más servicios conforme los vayamos implementando
 
 // Registro de todos los scrapers disponibles
@@ -18,6 +20,31 @@ export const scrapers: Record<string, ScraperService> = {
   claro: claro.claro,
   movistar: movistar.movistar,
   elmejortrato: elmejortrato.elmejortrato,
+  // Servicios de búsqueda de precios
+  ratoneando: {
+    serviceName: 'ratoneando',
+    serviceUrl: 'https://ratoneando.ar',
+    isAvailable: async () => await ratoneandoService.isAvailable(),
+    run: async (options?: ScraperOptions) => {
+      const demoResults: ScraperResult = {
+        promotions: [],
+        timestamp: new Date()
+      };
+      return demoResults;
+    }
+  },
+  precialo: {
+    serviceName: 'precialo',
+    serviceUrl: 'https://precialo.com.ar',
+    isAvailable: async () => await precialoService.isAvailable(),
+    run: async (options?: ScraperOptions) => {
+      const demoResults: ScraperResult = {
+        promotions: [],
+        timestamp: new Date()
+      };
+      return demoResults;
+    }
+  }
   // Añadir más servicios aquí
 };
 

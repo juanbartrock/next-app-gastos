@@ -101,7 +101,9 @@ function mapearDominioAServicio(dominio: string): string {
     'personal.com.ar': 'personal',
     'claro.com.ar': 'claro',
     'movistar.com.ar': 'movistar',
-    'directv.com.ar': 'directv'
+    'directv.com.ar': 'directv',
+    'ratoneando.ar': 'ratoneando',
+    'precialo.com.ar': 'precialo'
   };
   
   // Buscar el dominio en el mapeo
