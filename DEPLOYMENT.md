@@ -48,7 +48,15 @@ Durante el primer despliegue:
 
 1. Navega a la URL de tu aplicación
 2. Regístrate como el primer usuario (este será el administrador)
-3. La aplicación estará lista para usar con todas las funcionalidades habilitadas
+3. Inicializa los datos básicos del sistema ejecutando los siguientes scripts:
+   ```bash
+   # Inicializar planes (Gratuito y Premium)
+   node scripts/create-plans.js
+   
+   # Inicializar funcionalidades y asignarlas a los planes
+   node scripts/create-funcionalidades.js
+   ```
+4. La aplicación estará lista para usar con todas las funcionalidades habilitadas
 
 ## Solución de Problemas
 

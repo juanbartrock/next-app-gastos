@@ -30,6 +30,8 @@ Esta aplicación está diseñada para ayudar a los usuarios a gestionar sus gast
 - `/src/scraping`: Herramientas para scraping de información financiera.
 - `/prisma`: Configuración y esquema de la base de datos.
 - `/public`: Archivos estáticos.
+- `/scripts`: Scripts de utilidades y generación de datos.
+- `/GeneracionDatosPrueba`: Scripts para generar datos de prueba.
 
 ### Rutas Principales
 - `/`: Página principal (dashboard)
@@ -43,12 +45,16 @@ Esta aplicación está diseñada para ayudar a los usuarios a gestionar sus gast
 - `/inversiones`: Gestión de inversiones y seguimiento de rendimientos
 - `/voz`: Reconocimiento de voz para registro de gastos
 - `/presupuestos`: Gestión de presupuestos mensuales
-- `/perfil`: Gestión del perfil de usuario
+- `/perfil`: Gestión del perfil de usuario y planes
 - `/configuracion`: Configuración de la aplicación
 - `/recomendaciones-ahorro`: Sugerencias para ahorrar dinero
 - `/informes`: Informes detallados y análisis financiero
 - `/financial-advisor`: Asistente financiero inteligente
 - `/admin`: Panel de administración
+  - `/admin/categorias`: Gestión de categorías
+  - `/admin/scraping`: Gestión de scrapers
+  - `/admin/planes`: Gestión de planes y funcionalidades
+  - `/admin/scripts-prueba`: Ejecución de scripts de datos de prueba
 - `/home`: Página de inicio para usuarios no autenticados
 - `/welcome`: Página de bienvenida para nuevos usuarios
 
@@ -61,6 +67,7 @@ Almacena información de usuarios, incluyendo autenticación y perfiles.
 - Relación con gastos recurrentes, financiaciones y presupuestos.
 - Relación con servicios contratados e inversiones.
 - Relación con tipos de inversión personalizados.
+- Relación con plan de suscripción.
 
 ### Gasto (Gasto)
 Registra las transacciones financieras.
@@ -164,6 +171,25 @@ Registra valores históricos de una inversión.
 - Fecha y fuente de la cotización
 - Relación con la inversión principal
 
+### Plan
+Gestiona los planes de suscripción disponibles.
+- Nombre, descripción
+- Tipo de plan (gratuito o pago)
+- Precio mensual (para planes de pago)
+- Relación con usuarios
+- Relación con funcionalidades disponibles
+
+### Funcionalidad
+Define las funcionalidades disponibles en la aplicación.
+- Nombre, descripción, slug (identificador único)
+- Icono para representación visual
+- Relación con planes que la incluyen
+
+### FuncionalidadPlan
+Relación entre funcionalidades y planes.
+- Define qué funcionalidades están disponibles en cada plan
+- Control de activación/desactivación de funcionalidades por plan
+
 ## Funcionalidades Principales
 
 ### Gestión de Gastos
@@ -241,6 +267,19 @@ Registra valores históricos de una inversión.
 - Consejos para mejorar salud financiera
 - Interfaz conversacional para consultas financieras
 
+### Gestión de Planes y Funcionalidades
+- Planes gratuitos y pagos
+- Restricción de funcionalidades según el plan del usuario
+- Configuración flexible de qué funcionalidades están disponibles en cada plan
+- Actualización de plan desde el perfil de usuario
+
+### Administración
+- Panel de control para administradores
+- Gestión de categorías
+- Monitoreo y ejecución de scrapers
+- Gestión de planes y funcionalidades
+- Ejecución de scripts para generar datos de prueba
+
 ## Componentes Principales
 
 ### Interfaz de Usuario
@@ -255,6 +294,8 @@ Registra valores históricos de una inversión.
 - **InversionDashboard**: Panel de control para inversiones
 - **InversionForm**: Formulario para registro de inversiones
 - **RendimientoChart**: Gráfico de rendimiento de inversiones
+- **PlanesManager**: Gestión de planes y funcionalidades
+- **ScriptsRunner**: Ejecución de scripts de datos de prueba
 
 ## Configuración y Despliegue
 
@@ -280,6 +321,10 @@ NEXTAUTH_URL="http://localhost:3000"
 # Inicializar la base de datos
 npx prisma migrate dev
 
+# Inicializar los datos básicos
+node scripts/create-plans.js
+node scripts/create-funcionalidades.js
+
 # Iniciar el servidor de desarrollo
 npm run dev
 ```
@@ -289,11 +334,20 @@ npm run dev
 - `npm run build`: Construye la aplicación para producción
 - `npm start`: Inicia la aplicación en modo producción
 - `npm run lint`: Ejecuta el linter
+- `scripts/create-plans.js`: Inicializa los planes (Gratuito y Premium)
+- `scripts/create-funcionalidades.js`: Inicializa las funcionalidades y las asigna a los planes
+- `GeneracionDatosPrueba/`: Contiene scripts para generar datos de prueba
 
 ## Mantenimiento y Extensión
 
 ### Agregar Nuevas Categorías
 Modificar el modelo Categoria en el esquema de Prisma y ejecutar una migración.
+
+### Agregar Nuevas Funcionalidades
+1. Añadir la nueva funcionalidad al script `create-funcionalidades.js`
+2. Asignar la funcionalidad a los planes correspondientes
+3. Regenerar el cliente de Prisma con `npx prisma generate`
+4. Reiniciar el servidor
 
 ### Personalización de UI
 Los componentes UI se encuentran en `/src/components/ui` y utilizan TailwindCSS para estilos.
