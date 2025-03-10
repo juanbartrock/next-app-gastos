@@ -45,7 +45,8 @@ function generarDatosEjemplo() {
         precioUnitario: 219.00,
         subtotal: 219.00
       }
-    ]
+    ],
+    esDatoEjemplo: true
   }
 }
 

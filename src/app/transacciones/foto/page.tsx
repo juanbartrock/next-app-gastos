@@ -149,11 +149,9 @@ export default function FotoTicketPage() {
     
     reader.onload = (event) => {
       if (event.target?.result) {
-        // Crear un timestamp único para evitar cacheo de la misma imagen
-        const timestamp = new Date().getTime();
-        const imageWithTimestamp = `${event.target.result.toString()}?t=${timestamp}`;
-        
-        setImagen(imageWithTimestamp)
+        // No añadir timestamp a la cadena base64, ya que rompe el formato
+        // Simplemente usar la imagen tal como viene
+        setImagen(event.target.result.toString())
         setCargandoImagen(false)
         
         // Notificar al usuario que la imagen se cargó correctamente
@@ -191,6 +189,16 @@ export default function FotoTicketPage() {
       return
     }
     
+    // Verificar que la imagen está en formato base64 válido
+    if (!imagen.startsWith('data:image/')) {
+      toast({
+        title: "Error",
+        description: "El formato de la imagen no es válido",
+        variant: "destructive"
+      })
+      return
+    }
+    
     setProcesandoTexto(true)
     
     try {
@@ -216,6 +224,16 @@ export default function FotoTicketPage() {
       
       const resultado = await response.json()
       console.log("Resultado OCR recibido:", resultado);
+      
+      // Verificar si estamos usando datos de ejemplo
+      if (resultado.esDatoEjemplo) {
+        toast({
+          title: "¡Atención!",
+          description: "Se están usando datos de ejemplo porque no se pudo procesar la imagen correctamente. Los datos mostrados NO corresponden a tu ticket real.",
+          variant: "destructive",
+          duration: 10000 // Mostrar por 10 segundos para que el usuario lo note
+        });
+      }
       
       // Actualizar estado con los datos obtenidos
       setConcepto(resultado.nombreComercio || "Compra")
