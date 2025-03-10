@@ -41,6 +41,7 @@ model User {
   image             String?
   password          String?
   phoneNumber       String?
+  planId            String?           // Relación con el plan del usuario
   accounts          Account[]
   financiaciones    Financiacion[]
   gastos            Gasto[]
@@ -52,6 +53,7 @@ model User {
   sessions          Session[]
   inversiones       Inversion[]       // Relación con Inversiones
   tiposInversion    TipoInversion[]   // Relación con tipos de inversión personalizados
+  plan              Plan?             @relation(fields: [planId], references: [id])
 }
 
 model VerificationToken {
@@ -290,4 +292,40 @@ model GastoDetalle {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   gasto         Gasto    @relation(fields: [gastoId], references: [id], onDelete: Cascade)
+}
+
+model Plan {
+  id            String                @id @default(cuid())
+  nombre        String
+  descripcion   String?
+  esPago        Boolean               @default(false)
+  precioMensual Float?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  usuarios      User[]
+  funcionalidades FuncionalidadPlan[]
+}
+
+model Funcionalidad {
+  id          String              @id @default(cuid())
+  nombre      String
+  descripcion String?
+  slug        String              @unique // Identificador único para la funcionalidad
+  icono       String?             // Nombre del icono de Lucide
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  planes      FuncionalidadPlan[]
+}
+
+model FuncionalidadPlan {
+  id              String        @id @default(cuid())
+  planId          String
+  funcionalidadId String
+  activo          Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  plan            Plan          @relation(fields: [planId], references: [id], onDelete: Cascade)
+  funcionalidad   Funcionalidad @relation(fields: [funcionalidadId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, funcionalidadId])
 }

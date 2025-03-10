@@ -38,7 +38,18 @@ export default function AdminPage() {
               </Link>
             </div>
             
-            {/* Puedes añadir más secciones de administración aquí en el futuro */}
+            <div className="border rounded-lg p-6 bg-gray-50 hover:bg-gray-100 transition">
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Planes y Servicios</h2>
+              <p className="text-gray-600 mb-4">
+                Administra los planes disponibles y configura qué servicios están incluidos en cada plan.
+              </p>
+              <Link 
+                href="/admin/planes"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+              >
+                Ir a Planes
+              </Link>
+            </div>
           </div>
         </div>
         

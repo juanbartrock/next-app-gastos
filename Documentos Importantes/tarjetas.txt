@@ -1,0 +1,52 @@
+tarjetas:
+
+30/01/2025	
+Titular
+
+MERPAGO*MERCADOLIBRE 02/02 - Cuota
+
+30.774,60
+
+21/02/2025	
+Titular
+
+MERPAGO*CATARCAFE 01/02 - Cuota
+
+5.150,00
+
+28/02/2025	
+Titular
+
+MERPAGO*CATARCAFE 01/02 - Cuota
+
+5.150,00
+
+27/01/2025	
+Titular
+
+EPV SERVICIOS SRL 02/03 - Cuota
+
+79.700,00
+
+23/12/2024	
+Titular
+
+TODOS LOS PERFUMES 03/06 - Cuota
+
+49.333,33
+
+08/12/2024	
+Titular
+
+MERPAGO*3PRODUCTOS 04/06 - Cuota
+
+39.755,46
+
+23/08/2024	
+Titular
+
+PERSONAL FLOW 07/09 - Cuota
+
+71.333,22
+
+---------------------------------------------------------------

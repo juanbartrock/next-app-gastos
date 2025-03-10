@@ -34,18 +34,16 @@ Observaciones funcionalidad AppGastos:
 - idea mariaco:
     1-	Pedir al usuario q marque interés en productos que compre y hacerle seguimiento a esos productos. Indicando dónde puede conseguirlos más baratos.
 	Ej... Jabón de ropa, leche primera línea y aceite de oliva
+- revisar asesores que perdieron fiabilidad con lo de las inversiones
 ---------------------------TODO ARREGLADO---------------------------
 
 
 ---------------------------EN PROGRESO---------------------------
 
-
-
 ---------------------------EN PROGRESO---------------------------
 
 
 ---------------------------AUN NO ENCARADO---------------------------
-- revisar asesores que perdieron fiabilidad con lo de la sinversiones
 
     2-	A partir de una necesitad de compra de productos, hacer el cálculo de cuánto valdrían y previsionarlo.
 	ej mensaje input: Comprar sif / lavandina/ esponjas d platos y acero y virulana / repuesto baño / desengrasante!
