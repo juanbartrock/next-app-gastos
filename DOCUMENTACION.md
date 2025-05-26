@@ -46,6 +46,8 @@ Esta aplicación está diseñada para ayudar a los usuarios a gestionar sus gast
 - `/financiacion`: Gestión de financiaciones con tarjeta
 - `/inversiones`: Gestión de inversiones y seguimiento de rendimientos
 - `/prestamos`: Gestión de préstamos y créditos bancarios
+- `/tareas`: Gestión de tareas personales y financieras
+  - `/tareas/nueva`: Formulario para crear nuevas tareas
 - `/voz`: Reconocimiento de voz para registro de gastos
 - `/presupuestos`: Gestión de presupuestos mensuales
 - `/perfil`: Gestión del perfil de usuario y planes
@@ -201,6 +203,17 @@ Gestiona los planes de suscripción disponibles.
 - Relación con usuarios
 - Relación con funcionalidades disponibles
 
+### Tarea (Tarea)
+Gestiona tareas personales y financieras del usuario.
+- Título, descripción detallada
+- Fecha de vencimiento y prioridad (alta, media, baja)
+- Estado (pendiente, en_progreso, completada, cancelada)
+- Categorización (personal, financiera, trabajo, otros)
+- Recordatorio configurado
+- Vinculación opcional con elementos financieros (préstamos, gastos recurrentes, inversiones, presupuestos)
+- Fecha de finalización
+- Relación con usuario
+
 ### Funcionalidad
 Define las funcionalidades disponibles en la aplicación.
 - Nombre, descripción, slug (identificador único)
@@ -299,6 +312,22 @@ Relación entre funcionalidades y planes.
 - Consejos para mejorar salud financiera
 - Interfaz conversacional para consultas financieras
 
+### Gestión de Tareas
+- Creación y gestión de tareas personales y financieras
+- Sistema de prioridades (alta, media, baja) con códigos de color
+- Estados de tarea (pendiente, en progreso, completada, cancelada)
+- Categorización flexible (personal, financiera, trabajo, otros)
+- Vinculación inteligente con elementos financieros:
+  - Préstamos (seguimiento de pagos y vencimientos)
+  - Gastos recurrentes (recordatorios de pago)
+  - Inversiones (fechas de vencimiento y revisiones)
+  - Presupuestos (alertas de seguimiento mensual)
+- Widget de dashboard mostrando próximas tareas prioritarias
+- Filtros avanzados por estado, categoría, prioridad y tipo
+- Búsqueda de tareas por contenido
+- Estadísticas de cumplimiento
+- Recordatorios configurables
+
 ### Gestión de Planes y Funcionalidades
 - Planes gratuitos y pagos
 - Restricción de funcionalidades según el plan del usuario
@@ -315,8 +344,20 @@ Relación entre funcionalidades y planes.
 ## Componentes Principales
 
 ### Interfaz de Usuario
-- **Sidebar**: Navegación principal de la aplicación
-- **FinancialSummary**: Resumen de información financiera
+
+#### Dashboard Principal
+- **Layout optimizado**: Organización jerárquica de información financiera
+- **Header inteligente**: Saldo total con navegación + cotizaciones de dólares
+- **Situación mensual**: Cards de ingresos, gastos y balance mensual
+- **Panel dual**: Gráfico de distribución de gastos + widget de tareas próximas
+- **Navegación temporal**: Controles para navegar entre meses
+- **Formularios**: Registro rápido + historial de transacciones
+
+#### Componentes Core
+- **Sidebar**: Navegación principal de la aplicación con sección de tareas
+- **FinancialDataWidget**: Gráfico de distribución de gastos del mes (simplificado)
+- **DollarIndicator**: Widget compacto de cotizaciones de dólares (oficial y blue)
+- **TareasWidget**: Widget de dashboard con próximas tareas prioritarias
 - **ExpenseForm**: Formulario para registro de gastos
 - **TransactionsList**: Lista de transacciones
 - **PresupuestoForm**: Formulario para gestión de presupuestos
@@ -328,6 +369,12 @@ Relación entre funcionalidades y planes.
 - **RendimientoChart**: Gráfico de rendimiento de inversiones
 - **PlanesManager**: Gestión de planes y funcionalidades
 - **ScriptsRunner**: Ejecución de scripts de datos de prueba
+
+#### Gestión de Tareas
+- **TareasPage**: Página principal de gestión de tareas con filtros avanzados
+- **TareaForm**: Formulario completo para crear/editar tareas
+- **TareasList**: Lista filtrable y ordenable de tareas
+- **TareasStats**: Estadísticas de cumplimiento y productividad
 
 ## Configuración y Despliegue
 
@@ -394,6 +441,31 @@ Para agregar nuevas funcionalidades:
 ## Contribuciones y Soporte
 Para contribuir al proyecto o reportar problemas, por favor abra un issue en el repositorio de GitHub.
 
+## Cambios Recientes (Enero 2025)
+
+### Sistema de Tareas Implementado
+- ✅ **Modelo de datos completo** para tareas personales y financieras
+- ✅ **API completa** con endpoints CRUD y operaciones especiales
+- ✅ **Widget de dashboard** mostrando próximas tareas prioritarias
+- ✅ **Página de gestión** con filtros avanzados y estadísticas
+- ✅ **Formulario completo** para crear tareas con vista previa
+- ✅ **Integración** con elementos financieros (préstamos, inversiones, etc.)
+- ✅ **Navegación** agregada al sidebar principal
+
+### Mejoras del Dashboard
+- ✅ **Reorganización del layout** para mejor flujo de información
+- ✅ **Header optimizado** con saldo total y cotizaciones de dólares
+- ✅ **Widget de cotizaciones** compacto y alineado
+- ✅ **Simplificación** del panel financiero (solo gráfico de gastos)
+- ✅ **Orden jerárquico** mejorado: situación mensual → gráficos → formularios
+- ✅ **Eliminación** de elementos redundantes y obsoletos
+
+### Correcciones Técnicas
+- ✅ **Problemas de autenticación** resueltos con variables de entorno
+- ✅ **Componentes UI faltantes** instalados (AlertDialog, Sonner)
+- ✅ **Usuario de prueba** creado (test@test.com / 123456)
+- ✅ **Sistema de notificaciones** configurado correctamente
+
 ---
 
-Documentación actualizada: Marzo 2024 
+Documentación actualizada: Enero 2025 

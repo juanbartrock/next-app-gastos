@@ -29,32 +29,44 @@ export const options: NextAuthOptions = {
       },
       async authorize(credentials) {
         try {
+          console.log('🔐 Iniciando autorización...');
+          console.log('📧 Email recibido:', credentials?.email);
+          console.log('🔗 DATABASE_URL disponible:', !!process.env.DATABASE_URL);
+          
           if (!credentials?.email || !credentials?.password) {
+            console.log('❌ Faltan credenciales');
             throw new Error('Por favor, ingresa todos los campos')
           }
 
+          console.log('🔍 Buscando usuario en base de datos...');
           const user = await prisma.user.findUnique({
             where: {
               email: credentials.email
             }
           })
 
+          console.log('👤 Usuario encontrado:', !!user);
           if (!user || !user.password) {
+            console.log('❌ Usuario no encontrado o sin password');
             throw new Error('Usuario no encontrado')
           }
 
+          console.log('🔑 Validando contraseña...');
           const isPasswordValid = await bcrypt.compare(
             credentials.password,
             user.password
           )
 
+          console.log('✅ Contraseña válida:', isPasswordValid);
           if (!isPasswordValid) {
+            console.log('❌ Contraseña incorrecta');
             throw new Error('Contraseña incorrecta')
           }
 
+          console.log('🎉 Autorización exitosa para:', user.email);
           return user
         } catch (error) {
-          console.error("Error en authorize:", error);
+          console.error("💥 Error en authorize:", error);
           throw error;
         }
       }

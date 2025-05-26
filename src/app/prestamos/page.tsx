@@ -328,7 +328,7 @@ export default function PrestamosPage() {
                           <div className="text-right">
                             <div className="font-semibold">{formatMoney(prestamo.cuotaMensual)}</div>
                             <div className="text-sm text-muted-foreground">
-                              {prestamo.tasaInteres}% anual
+                              {prestamo.tasaInteres}% anual + IVA
                             </div>
                           </div>
                         </TableCell>

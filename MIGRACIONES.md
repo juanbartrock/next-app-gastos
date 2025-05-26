@@ -1,67 +1,60 @@
-# Guía de Migraciones de Base de Datos
+# 🗃️ **Guía de Migraciones de Base de Datos**
 
-## ⚠️ IMPORTANTE: Migraciones Seguras
+## 📋 **Configuración Actual**
 
-Este proyecto ya NO resetea automáticamente la base de datos en producción para proteger tus datos.
+La aplicación utiliza **PostgreSQL** a través de **Neon** tanto en desarrollo como en producción.
 
-## 🔄 Cómo aplicar cambios al esquema de base de datos
-
-### En Desarrollo Local:
+### **Variables de Entorno**
 ```bash
-# 1. Hacer cambios en prisma/schema.prisma
-# 2. Crear y aplicar migración
-npx prisma migrate dev --name nombre_de_la_migracion
+DATABASE_URL=postgresql://neondb_owner:npg_0vBJYCp8lIbq@ep-holy-brook-acnscqwx-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require
+NEXTAUTH_SECRET=tu-secreto-super-seguro-para-desarrollo
+NEXTAUTH_URL=http://localhost:3000
+```
 
-# 3. Generar cliente actualizado
+## 🔧 **Comandos Básicos**
+
+### **Desarrollo Local**
+```bash
+# Generar cliente Prisma
 npx prisma generate
-```
 
-### En Producción (Neon/Vercel):
-```bash
-# OPCIÓN 1: Migración segura (RECOMENDADO)
-npx prisma migrate deploy
-
-# OPCIÓN 2: Solo si es absolutamente necesario y tienes backup
+# Sincronizar schema con la base de datos
 npx prisma db push
+
+# Ver datos en Prisma Studio
+npx prisma studio
+
+# Verificar conexión
+npx prisma db pull
 ```
 
-## 🚨 Scripts Eliminados por Seguridad
-
-Los siguientes scripts fueron eliminados para proteger tus datos:
-- `postbuild`: Ya no ejecuta migraciones automáticas
-- `seed`: Ya no puebla la base con datos de prueba
-- `db:reset`: Ya no resetea la base de datos
-- `prisma/migrations.cjs`: Script que reseteaba la base en producción
-- `prisma/db-check.js`: Script de verificación que podía causar problemas
-
-## 📋 Proceso Recomendado para Cambios de Esquema
-
-1. **Desarrollo Local:**
-   - Modifica `prisma/schema.prisma`
-   - Ejecuta `npx prisma migrate dev`
-   - Prueba los cambios localmente
-
-2. **Staging/Preview:**
-   - Haz commit y push de los cambios
-   - Vercel construirá automáticamente
-   - La base de datos NO se modificará automáticamente
-
-3. **Producción:**
-   - Ejecuta manualmente `npx prisma migrate deploy` en tu base de Neon
-   - O usa la interfaz de Neon para aplicar cambios
-
-## 🛡️ Protección de Datos
-
-- ✅ La base de datos en Neon ya NO se resetea automáticamente
-- ✅ Los deploys de Vercel ya NO afectan los datos existentes
-- ✅ Solo se genera el cliente Prisma durante el build
-- ✅ Las migraciones deben aplicarse manualmente en producción
-
-## 🔧 Si Necesitas Resetear (Solo en Emergencias)
-
+### **Migraciones en Producción**
 ```bash
-# SOLO EN DESARROLLO LOCAL
-npx prisma migrate reset
+# ⚠️ SOLO para cambios de schema importantes
+npx prisma migrate deploy
+```
 
-# NUNCA ejecutes esto en producción sin backup
-``` 
+## 🚨 **Advertencias de Seguridad**
+
+1. **NO usar `npx prisma db push --accept-data-loss` en producción**
+2. **NO usar `npx prisma migrate reset` en producción**
+3. **Siempre hacer backup antes de migraciones importantes**
+4. **Los datos son compartidos entre desarrollo y producción**
+
+## 📊 **Ventajas de la Configuración Actual**
+
+- ✅ **Datos consistentes** entre desarrollo y producción
+- ✅ **Sin reseteo accidental** de base de datos
+- ✅ **Configuración simplificada** (solo PostgreSQL)
+- ✅ **Backup automático** por Neon
+- ✅ **Escalabilidad** de PostgreSQL
+
+## 🔄 **Flujo de Trabajo**
+
+1. **Desarrollo**: Trabajar directamente con Neon
+2. **Cambios de Schema**: Usar `npx prisma db push`
+3. **Deploy**: Automático sin scripts de migración
+4. **Datos**: Persistentes y compartidos
+
+---
+*Última actualización: $(Get-Date -Format "yyyy-MM-dd")* 

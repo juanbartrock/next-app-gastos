@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Users, UserPlus, Settings, ArrowLeft, Edit, Trash, LogOut } from "lucide-react"
+import { Users, UserPlus, Settings, ArrowLeft, Edit, Trash, LogOut, Loader2 } from "lucide-react"
 import { InvitarUsuarioForm } from "@/components/InvitarUsuarioForm"
 import { toast } from "sonner"
 
@@ -86,6 +86,9 @@ export default function GruposPage() {
   const [openDialog, setOpenDialog] = useState(false)
   const [invitarUsuarioDialogOpen, setInvitarUsuarioDialogOpen] = useState(false)
   const [selectedGrupoId, setSelectedGrupoId] = useState<string | null>(null)
+  const [savingGroup, setSavingGroup] = useState(false)
+  const [deletingGroup, setDeletingGroup] = useState<string | null>(null)
+  const [leavingGroup, setLeavingGroup] = useState<string | null>(null)
   const [formData, setFormData] = useState<FormData>({
     nombre: "",
     descripcion: ""
@@ -186,6 +189,7 @@ export default function GruposPage() {
       return
     }
     
+    setSavingGroup(true)
     try {
       const method = selectedGrupoId ? "PUT" : "POST"
       const url = selectedGrupoId ? `/api/grupos/${selectedGrupoId}` : "/api/grupos"
@@ -214,6 +218,8 @@ export default function GruposPage() {
     } catch (error) {
       console.error("Error al guardar grupo:", error)
       toast.error("Error al procesar la solicitud")
+    } finally {
+      setSavingGroup(false)
     }
   }
   
@@ -223,6 +229,7 @@ export default function GruposPage() {
       return
     }
     
+    setDeletingGroup(grupoId)
     try {
       const response = await fetch(`/api/grupos/${grupoId}`, {
         method: "DELETE"
@@ -238,6 +245,8 @@ export default function GruposPage() {
     } catch (error) {
       console.error("Error al eliminar grupo:", error)
       toast.error("Error al procesar la solicitud")
+    } finally {
+      setDeletingGroup(null)
     }
   }
   
@@ -247,6 +256,7 @@ export default function GruposPage() {
       return
     }
     
+    setLeavingGroup(grupoId)
     try {
       const response = await fetch(`/api/grupos/${grupoId}/miembros`, {
         method: "DELETE"
@@ -262,6 +272,8 @@ export default function GruposPage() {
     } catch (error) {
       console.error("Error al abandonar grupo:", error)
       toast.error("Error al procesar la solicitud")
+    } finally {
+      setLeavingGroup(null)
     }
   }
 
@@ -379,6 +391,7 @@ export default function GruposPage() {
                             size="sm" 
                             className="w-full"
                             onClick={() => handleInvitarUsuario(grupo.id)}
+                            disabled={savingGroup || deletingGroup === grupo.id || leavingGroup === grupo.id}
                           >
                             <UserPlus className="h-4 w-4 mr-2" />
                             Invitar usuarios
@@ -388,6 +401,7 @@ export default function GruposPage() {
                             size="sm" 
                             className="w-full"
                             onClick={() => handleEditarGrupo(grupo.id)}
+                            disabled={savingGroup || deletingGroup === grupo.id || leavingGroup === grupo.id}
                           >
                             <Edit className="h-4 w-4 mr-2" />
                             Editar grupo
@@ -397,14 +411,29 @@ export default function GruposPage() {
                             size="sm" 
                             className="w-full"
                             onClick={() => handleEliminarGrupo(grupo.id)}
+                            disabled={deletingGroup === grupo.id || savingGroup || leavingGroup === grupo.id}
                           >
-                            <Trash className="h-4 w-4 mr-2" />
-                            Eliminar grupo
+                            {deletingGroup === grupo.id ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Eliminando...
+                              </>
+                            ) : (
+                              <>
+                                <Trash className="h-4 w-4 mr-2" />
+                                Eliminar grupo
+                              </>
+                            )}
                           </Button>
                         </div>
                       ) : (
                         <div className="space-y-4">
-                          <Button variant="outline" size="sm" className="w-full">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full"
+                            disabled={savingGroup || deletingGroup === grupo.id || leavingGroup === grupo.id}
+                          >
                             Ver todos los miembros
                           </Button>
                           <Button 
@@ -412,9 +441,19 @@ export default function GruposPage() {
                             size="sm" 
                             className="w-full"
                             onClick={() => handleAbandonarGrupo(grupo.id)}
+                            disabled={leavingGroup === grupo.id || savingGroup || deletingGroup === grupo.id}
                           >
-                            <LogOut className="h-4 w-4 mr-2" />
-                            Abandonar grupo
+                            {leavingGroup === grupo.id ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Abandonando...
+                              </>
+                            ) : (
+                              <>
+                                <LogOut className="h-4 w-4 mr-2" />
+                                Abandonar grupo
+                              </>
+                            )}
                           </Button>
                         </div>
                       )}
@@ -480,8 +519,15 @@ export default function GruposPage() {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit" className="w-full">
-                  {selectedGrupoId ? "Guardar Cambios" : "Crear Grupo"}
+                <Button type="submit" className="w-full" disabled={savingGroup}>
+                  {savingGroup ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {selectedGrupoId ? "Guardando..." : "Creando..."}
+                    </>
+                  ) : (
+                    selectedGrupoId ? "Guardar Cambios" : "Crear Grupo"
+                  )}
                 </Button>
               </DialogFooter>
             </form>

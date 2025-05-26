@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(options);
     
-    if (!session?.user?.email) {
+    if (!session?.user?.email || !session?.user?.id) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(options);
     
-    if (!session?.user?.email) {
+    if (!session?.user?.email || !session?.user?.id) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
     
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
         userId: session.user.id,
       },
     });
-    
+     
     return NextResponse.json(presupuesto);
   } catch (error) {
     console.error('Error al crear presupuesto:', error);

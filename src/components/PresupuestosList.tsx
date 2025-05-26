@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { Trash, PencilIcon, PlusCircle } from 'lucide-react'
+import { Trash, PencilIcon, PlusCircle, Loader2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -40,6 +40,7 @@ export default function PresupuestosList() {
   const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
   const [mesActual, setMesActual] = useState(new Date().getMonth() + 1) // 1-12
   const [añoActual, setAñoActual] = useState(new Date().getFullYear())
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -86,6 +87,7 @@ export default function PresupuestosList() {
       return
     }
     
+    setDeletingId(id)
     try {
       const response = await fetch(`/api/presupuestos/${id}`, {
         method: 'DELETE',
@@ -100,6 +102,8 @@ export default function PresupuestosList() {
     } catch (error) {
       console.error('Error al eliminar presupuesto:', error)
       toast.error('Error al eliminar presupuesto')
+    } finally {
+      setDeletingId(null)
     }
   }
   
@@ -203,6 +207,7 @@ export default function PresupuestosList() {
                       size="icon"
                       variant="ghost"
                       onClick={() => handleEdit(presupuesto.id)}
+                      disabled={deletingId === presupuesto.id}
                     >
                       <PencilIcon className="h-4 w-4" />
                     </Button>
@@ -210,8 +215,13 @@ export default function PresupuestosList() {
                       size="icon"
                       variant="ghost"
                       onClick={() => handleDelete(presupuesto.id)}
+                      disabled={deletingId === presupuesto.id}
                     >
-                      <Trash className="h-4 w-4" />
+                      {deletingId === presupuesto.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash className="h-4 w-4" />
+                      )}
                     </Button>
                   </div>
                 </div>

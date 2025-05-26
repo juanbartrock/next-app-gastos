@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -41,20 +41,21 @@ model User {
   image             String?
   password          String?
   phoneNumber       String?
-  planId            String?           // Relación con el plan del usuario
+  planId            String?
   accounts          Account[]
   financiaciones    Financiacion[]
   gastos            Gasto[]
   gastosRecurrentes GastoRecurrente[]
   gruposAdmin       Grupo[]           @relation("GrupoAdmin")
   grupos            GrupoMiembro[]
-  presupuestos      Presupuesto[]
-  servicios         Servicio[]
   sessions          Session[]
-  inversiones       Inversion[]       // Relación con Inversiones
-  tiposInversion    TipoInversion[]   // Relación con tipos de inversión personalizados
   prestamos         Prestamo[]        // Relación con Préstamos
-  plan              Plan?             @relation(fields: [planId], references: [id])
+  presupuestos      Presupuesto[]     // Relación con Presupuestos
+  tareas            Tarea[]           // Relación con Tareas
+  servicios         Servicio[]        // Relación con Servicios
+  tiposInversion    TipoInversion[]   // Relación con Tipos de Inversión personalizados
+  inversiones       Inversion[]       // Relación con Inversiones
+  plan              Plan?             @relation(fields: [planId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model VerificationToken {
@@ -90,23 +91,23 @@ model GrupoMiembro {
 }
 
 model Gasto {
-  id              Int           @id @default(autoincrement())
+  id              Int             @id @default(autoincrement())
   concepto        String
   monto           Float
-  fecha           DateTime      @default(now())
+  fecha           DateTime        @default(now())
   categoria       String
-  tipoTransaccion String        @default("expense")
-  tipoMovimiento  String        @default("efectivo")
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  tipoTransaccion String          @default("expense")
+  tipoMovimiento  String          @default("efectivo")
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
   userId          String?
   grupoId         String?
   categoriaId     Int?
   financiacion    Financiacion?
-  categoriaRel    Categoria?    @relation(fields: [categoriaId], references: [id])
-  grupo           Grupo?        @relation(fields: [grupoId], references: [id])
-  user            User?         @relation(fields: [userId], references: [id])
-  detalles        GastoDetalle[] // Relación con GastoDetalle
+  categoriaRel    Categoria?      @relation(fields: [categoriaId], references: [id])
+  grupo           Grupo?          @relation(fields: [grupoId], references: [id])
+  user            User?           @relation(fields: [userId], references: [id])
+  detalles        GastoDetalle[]  // Relación con detalles del gasto
 }
 
 model Categoria {
@@ -136,6 +137,7 @@ model GastoRecurrente {
   ultimoPago   DateTime?
   categoria    Categoria? @relation(fields: [categoriaId], references: [id])
   user         User       @relation(fields: [userId], references: [id])
+  tareas       Tarea[]    // Relación con Tareas
 }
 
 model Financiacion {
@@ -155,144 +157,40 @@ model Financiacion {
   user             User      @relation(fields: [userId], references: [id])
 }
 
-model Presupuesto {
-  id          Int        @id @default(autoincrement())
+model Plan {
+  id              String              @id @default(cuid())
+  nombre          String
+  descripcion     String?
+  esPago          Boolean             @default(false)
+  precioMensual   Float?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @default(now()) @updatedAt
+  funcionalidades FuncionalidadPlan[]
+  usuarios        User[]
+}
+
+model Funcionalidad {
+  id          String              @id @default(cuid())
   nombre      String
-  monto       Float
-  categoriaId Int?
-  mes         Int // 1-12 para representar el mes
-  año         Int
-  userId      String
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  categoria   Categoria? @relation(fields: [categoriaId], references: [id])
-  user        User       @relation(fields: [userId], references: [id])
-  
-  @@unique([categoriaId, mes, año, userId])
+  descripcion String?
+  slug        String              @unique
+  icono       String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @default(now()) @updatedAt
+  planes      FuncionalidadPlan[]
 }
 
-model Servicio {
-  id              Int       @id @default(autoincrement())
-  nombre          String
-  descripcion     String?
-  monto           Float
-  medioPago       String
-  tarjeta         String?
-  fechaCobro      DateTime?
-  fechaVencimiento DateTime?
-  userId          String
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  promociones     Promocion[]
-}
+model FuncionalidadPlan {
+  id              String        @id @default(cuid())
+  planId          String
+  funcionalidadId String
+  activo          Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @default(now()) @updatedAt
+  funcionalidad   Funcionalidad @relation(fields: [funcionalidadId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  plan            Plan          @relation(fields: [planId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-model Promocion {
-  id                Int                    @id @default(autoincrement())
-  titulo            String
-  descripcion       String
-  urlOrigen         String?
-  descuento         Float?
-  porcentajeAhorro  Float?
-  fechaVencimiento  DateTime?
-  fechaCreacion     DateTime               @default(now())
-  fechaActualizacion DateTime              @updatedAt
-  servicioId        Int?
-  estado            String                 @default("active") // active, expired, used
-  servicio          Servicio?              @relation(fields: [servicioId], references: [id], onDelete: SetNull)
-  alternativas      ServicioAlternativo[]
-}
-
-model ServicioAlternativo {
-  id              Int       @id @default(autoincrement())
-  nombre          String
-  descripcion     String?
-  monto           Float
-  urlOrigen       String?
-  promocionId     Int
-  promocion       Promocion @relation(fields: [promocionId], references: [id], onDelete: Cascade)
-  fechaCreacion   DateTime  @default(now())
-  fechaActualizacion DateTime @updatedAt
-}
-
-// Modelo para tipos de inversión
-model TipoInversion {
-  id            String      @id @default(cuid())
-  nombre        String
-  descripcion   String?
-  icono         String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  userId        String?     // Si es null, es un tipo predefinido del sistema
-  inversiones   Inversion[]
-  user          User?       @relation(fields: [userId], references: [id])
-
-  @@unique([nombre, userId])
-}
-
-// Modelo para inversiones
-model Inversion {
-  id                String                @id @default(cuid())
-  nombre            String
-  descripcion       String?
-  montoInicial      Float
-  montoActual       Float
-  rendimientoTotal  Float                 @default(0)
-  rendimientoAnual  Float?                // Porcentaje estimado anual 
-  fechaInicio       DateTime              @default(now())
-  fechaVencimiento  DateTime?             // Para inversiones con plazo fijo
-  estado            String                @default("activa") // activa, cerrada, vencida
-  tipoId            String
-  userId            String
-  plataforma        String?               // Banco, broker, exchange, etc.
-  notas             String?
-  createdAt         DateTime              @default(now())
-  updatedAt         DateTime              @updatedAt
-  tipo              TipoInversion         @relation(fields: [tipoId], references: [id])
-  user              User                  @relation(fields: [userId], references: [id])
-  transacciones     TransaccionInversion[]
-  cotizaciones      CotizacionInversion[]
-}
-
-// Modelo para transacciones de inversión (depósitos, retiros, dividendos, etc.)
-model TransaccionInversion {
-  id            String    @id @default(cuid())
-  inversionId   String
-  tipo          String    // deposito, retiro, dividendo, interes, comision
-  monto         Float
-  fecha         DateTime  @default(now())
-  descripcion   String?
-  comprobante   String?   // URL o referencia a un comprobante
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  inversion     Inversion @relation(fields: [inversionId], references: [id], onDelete: Cascade)
-}
-
-// Modelo para cotizaciones históricas de inversiones
-model CotizacionInversion {
-  id            String    @id @default(cuid())
-  inversionId   String
-  valor         Float     // Valor/precio unitario o total
-  fecha         DateTime  @default(now())
-  fuente        String?   // De dónde se obtuvo la cotización 
-  createdAt     DateTime  @default(now())
-  inversion     Inversion @relation(fields: [inversionId], references: [id], onDelete: Cascade)
-  
-  @@unique([inversionId, fecha]) // Solo una cotización por fecha para cada inversión
-}
-
-// Modelo para detalles de un gasto (ej. productos en un ticket)
-model GastoDetalle {
-  id            Int      @id @default(autoincrement())
-  gastoId       Int      // Relación con el gasto principal
-  descripcion   String   // Descripción del producto/servicio
-  cantidad      Float    @default(1)
-  precioUnitario Float?  // Precio por unidad si está disponible
-  subtotal      Float    // Monto total de este ítem
-  seguimiento   Boolean  @default(false) // Indicador para seguimiento de precios
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  gasto         Gasto    @relation(fields: [gastoId], references: [id], onDelete: Cascade)
+  @@unique([planId, funcionalidadId])
 }
 
 // Modelo para préstamos obtenidos de entidades financieras
@@ -329,6 +227,7 @@ model Prestamo {
   updatedAt             DateTime  @updatedAt
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   pagos                 PagoPrestamo[] // Relación con los pagos realizados
+  tareas                Tarea[]   // Relación con Tareas
 }
 
 // Modelo para registrar los pagos realizados a préstamos
@@ -353,38 +252,180 @@ model PagoPrestamo {
   prestamo          Prestamo  @relation(fields: [prestamoId], references: [id], onDelete: Cascade)
 }
 
-model Plan {
-  id            String                @id @default(cuid())
-  nombre        String
-  descripcion   String?
-  esPago        Boolean               @default(false)
-  precioMensual Float?
-  createdAt     DateTime              @default(now())
-  updatedAt     DateTime              @updatedAt
-  usuarios      User[]
-  funcionalidades FuncionalidadPlan[]
+// Modelo para presupuestos mensuales por categoría
+model Presupuesto {
+  id          String     @id @default(cuid())
+  nombre      String     // Nombre descriptivo del presupuesto
+  monto       Float      // Monto presupuestado
+  mes         Int        // Mes del presupuesto (1-12)
+  año         Int        // Año del presupuesto
+  categoriaId Int        // Categoría asociada
+  userId      String     // Usuario propietario del presupuesto
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  categoria   Categoria  @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tareas      Tarea[]    // Relación con Tareas
+
+  @@unique([userId, categoriaId, mes, año])
 }
 
-model Funcionalidad {
-  id          String              @id @default(cuid())
-  nombre      String
-  descripcion String?
-  slug        String              @unique // Identificador único para la funcionalidad
-  icono       String?             // Nombre del icono de Lucide
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  planes      FuncionalidadPlan[]
+// Modelo para servicios contratados (suscripciones, servicios mensuales, etc.)
+model Servicio {
+  id                 Int         @id @default(autoincrement())
+  nombre             String      // Nombre del servicio
+  descripcion        String?     // Descripción del servicio
+  monto              Float       // Monto del servicio
+  medioPago          String      // Medio de pago (efectivo, tarjeta, débito automático, etc.)
+  tarjeta            String?     // Tarjeta utilizada si aplica
+  fechaCobro         DateTime?   // Fecha de cobro
+  fechaVencimiento   DateTime?   // Fecha de vencimiento
+  userId             String      // Usuario propietario del servicio
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  user               User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  promociones        Promocion[] // Relación con promociones
 }
 
-model FuncionalidadPlan {
-  id              String        @id @default(cuid())
-  planId          String
-  funcionalidadId String
-  activo          Boolean       @default(true)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  plan            Plan          @relation(fields: [planId], references: [id], onDelete: Cascade)
-  funcionalidad   Funcionalidad @relation(fields: [funcionalidadId], references: [id], onDelete: Cascade)
+// Modelo para promociones y ofertas de servicios
+model Promocion {
+  id                 Int                    @id @default(autoincrement())
+  titulo             String                 // Título de la promoción
+  descripcion        String                 // Descripción de la promoción
+  urlOrigen          String?                // URL de origen de la promoción
+  descuento          Float?                 // Descuento en monto fijo
+  porcentajeAhorro   Float?                 // Porcentaje de ahorro
+  fechaVencimiento   DateTime?              // Fecha de vencimiento de la promoción
+  fechaCreacion      DateTime               @default(now())
+  fechaActualizacion DateTime               @updatedAt
+  servicioId         Int?                   // Servicio asociado (opcional)
+  estado             String                 @default("active") // active, expired, used
+  servicio           Servicio?              @relation(fields: [servicioId], references: [id], onDelete: SetNull)
+  alternativas       ServicioAlternativo[]  // Servicios alternativos asociados
+}
 
-  @@unique([planId, funcionalidadId])
+// Modelo para servicios alternativos (para comparación)
+model ServicioAlternativo {
+  id                 Int        @id @default(autoincrement())
+  nombre             String     // Nombre del servicio alternativo
+  descripcion        String?    // Descripción del servicio
+  monto              Float      // Monto del servicio alternativo
+  urlOrigen          String?    // URL de origen
+  promocionId        Int        // Promoción asociada
+  fechaCreacion      DateTime   @default(now())
+  fechaActualizacion DateTime   @updatedAt
+  promocion          Promocion  @relation(fields: [promocionId], references: [id], onDelete: Cascade)
+}
+
+// Modelo para tipos de inversión
+model TipoInversion {
+  id          String      @id @default(cuid())
+  nombre      String      // Nombre del tipo de inversión
+  descripcion String?     // Descripción del tipo
+  icono       String?     // Icono para representación visual
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  userId      String?     // Usuario propietario (null para tipos predefinidos)
+  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  inversiones Inversion[] // Inversiones de este tipo
+
+  @@unique([nombre, userId])
+}
+
+// Modelo para inversiones financieras
+model Inversion {
+  id                 String                  @id @default(cuid())
+  nombre             String                  // Nombre de la inversión
+  descripcion        String?                 // Descripción de la inversión
+  montoInicial       Float                   // Monto inicial invertido
+  montoActual        Float                   // Monto actual de la inversión
+  rendimientoTotal   Float                   @default(0) // Rendimiento total acumulado
+  rendimientoAnual   Float?                  // Rendimiento anual estimado
+  fechaInicio        DateTime                @default(now()) // Fecha de inicio de la inversión
+  fechaVencimiento   DateTime?               // Fecha de vencimiento (si aplica)
+  estado             String                  @default("activa") // activa, cerrada, vencida
+  tipoId             String                  // Tipo de inversión
+  userId             String                  // Usuario propietario
+  plataforma         String?                 // Plataforma donde se realiza la inversión
+  notas              String?                 // Notas adicionales
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  tipo               TipoInversion           @relation(fields: [tipoId], references: [id], onDelete: Restrict)
+  user               User                    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  transacciones      TransaccionInversion[]  // Transacciones de la inversión
+  cotizaciones       CotizacionInversion[]   // Cotizaciones históricas
+  tareas             Tarea[]                 // Relación con Tareas
+}
+
+// Modelo para transacciones de inversión
+model TransaccionInversion {
+  id           String    @id @default(cuid())
+  inversionId  String    // Inversión asociada
+  tipo         String    // deposito, retiro, dividendo, interes, comision
+  monto        Float     // Monto de la transacción
+  fecha        DateTime  @default(now()) // Fecha de la transacción
+  descripcion  String?   // Descripción de la transacción
+  comprobante  String?   // Comprobante o referencia
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  inversion    Inversion @relation(fields: [inversionId], references: [id], onDelete: Cascade)
+}
+
+// Modelo para cotizaciones históricas de inversiones
+model CotizacionInversion {
+  id          String    @id @default(cuid())
+  inversionId String    // Inversión asociada
+  valor       Float     // Valor/precio de la inversión
+  fecha       DateTime  @default(now()) // Fecha de la cotización
+  fuente      String?   // Fuente de la cotización
+  createdAt   DateTime  @default(now())
+  inversion   Inversion @relation(fields: [inversionId], references: [id], onDelete: Cascade)
+
+  @@unique([inversionId, fecha])
+}
+
+// Modelo para detalles de gastos (productos en un ticket)
+model GastoDetalle {
+  id             Int      @id @default(autoincrement())
+  gastoId        Int      // Gasto principal asociado
+  descripcion    String   // Descripción del producto/servicio
+  cantidad       Float    @default(1) // Cantidad del producto
+  precioUnitario Float?   // Precio unitario (opcional)
+  subtotal       Float    // Subtotal del producto
+  seguimiento    Boolean  @default(false) // Si se hace seguimiento de precio
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  gasto          Gasto    @relation(fields: [gastoId], references: [id], onDelete: Cascade)
+}
+
+// Modelo para tareas y recordatorios
+model Tarea {
+  id                 String            @id @default(cuid())
+  titulo             String            // Título de la tarea
+  descripcion        String?           // Descripción detallada
+  fechaVencimiento   DateTime?         // Fecha de vencimiento (opcional)
+  prioridad          String            @default("media") // alta, media, baja
+  estado             String            @default("pendiente") // pendiente, completada, cancelada
+  esFinanciera       Boolean           @default(false) // Si es una tarea financiera
+  categoria          String?           // Categoría de la tarea (finanzas, personal, hogar, etc.)
+  recordatorio       DateTime?         // Fecha/hora de recordatorio
+  completadaEn       DateTime?         // Fecha de completado
+  
+  // Relaciones opcionales (solo para tareas financieras)
+  prestamoId         String?
+  gastoRecurrenteId  Int?
+  inversionId        String?
+  presupuestoId      String?
+  
+  // Campos generales
+  userId             String
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  
+  // Relaciones
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prestamo           Prestamo?         @relation(fields: [prestamoId], references: [id], onDelete: Cascade)
+  gastoRecurrente    GastoRecurrente?  @relation(fields: [gastoRecurrenteId], references: [id], onDelete: Cascade)
+  inversion          Inversion?        @relation(fields: [inversionId], references: [id], onDelete: Cascade)
+  presupuesto        Presupuesto?      @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
 }

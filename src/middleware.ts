@@ -16,7 +16,8 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/_next') || 
     request.nextUrl.pathname.startsWith('/api/auth') ||
     request.nextUrl.pathname.startsWith('/api/twilio') ||
-    request.nextUrl.pathname === '/favicon.ico'
+    request.nextUrl.pathname === '/favicon.ico' ||
+    request.nextUrl.pathname === '/.well-known/appspecific/com.chrome.devtools.json'
   ) {
     return NextResponse.next()
   }

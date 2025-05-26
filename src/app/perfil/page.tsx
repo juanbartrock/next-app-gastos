@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, Save, User, Mail, LogOut, Phone, Package, Crown } from "lucide-react";
+import { ChevronLeft, Loader2, Save, User, Mail, LogOut, Phone, Package, Crown } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -35,6 +35,7 @@ export default function ProfilePage() {
   const [planUsuario, setPlanUsuario] = useState<Plan | null>(null);
   const [loadingPlan, setLoadingPlan] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -313,16 +314,32 @@ export default function ProfilePage() {
                 <Button 
                   variant="destructive" 
                   className="w-full"
+                  disabled={signingOut}
                   onClick={async () => {
-                    await signOut({ 
-                      callbackUrl: '/login',
-                      redirect: true
-                    });
-                    router.push('/login');
+                    setSigningOut(true);
+                    try {
+                      await signOut({ 
+                        callbackUrl: '/login',
+                        redirect: true
+                      });
+                      router.push('/login');
+                    } catch (error) {
+                      console.error('Error al cerrar sesión:', error);
+                      setSigningOut(false);
+                    }
                   }}
                 >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Cerrar sesión
+                  {signingOut ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Cerrando sesión...
+                    </>
+                  ) : (
+                    <>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Cerrar sesión
+                    </>
+                  )}
                 </Button>
               </div>
             </CardFooter>

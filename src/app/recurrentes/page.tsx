@@ -12,7 +12,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { CalendarIcon, Edit, Pencil, Repeat, Trash2, ArrowLeft } from "lucide-react"
+import { CalendarIcon, Edit, Pencil, Repeat, Trash2, ArrowLeft, Loader2 } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -108,6 +108,12 @@ export default function RecurrentesPage() {
   const [categoriaId, setCategoriaId] = useState<number | undefined>(undefined)
   const [proximaFecha, setProximaFecha] = useState<Date | undefined>(undefined)
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<string | undefined>(undefined)
+  
+  // Estados de loading
+  const [submitting, setSubmitting] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [deletingServicioId, setDeletingServicioId] = useState<number | null>(null)
+  const [submittingServicio, setSubmittingServicio] = useState(false)
 
   // Dialog para editar gastos
   useEffect(() => {
@@ -167,28 +173,37 @@ export default function RecurrentesPage() {
       return
     }
     
-    const nuevoServicio = {
-      nombre: servicioNombre,
-      descripcion: servicioDescripcion,
-      monto: parseFloat(servicioMonto),
-      medioPago: servicioMedioPago,
-      tarjeta: servicioTarjeta,
-      fechaCobro: servicioFechaCobro
-    }
-    
-    let exito = false
-    
-    if (servicioActual) {
-      // Editar servicio existente
-      exito = await editarServicio(servicioActual.id, nuevoServicio)
-    } else {
-      // Crear nuevo servicio
-      exito = await agregarServicio(nuevoServicio)
-    }
-    
-    if (exito) {
-      resetServicioForm()
-      setIsServicioFormOpen(false)
+    setSubmittingServicio(true)
+    try {
+      const nuevoServicio = {
+        nombre: servicioNombre,
+        descripcion: servicioDescripcion,
+        monto: parseFloat(servicioMonto),
+        medioPago: servicioMedioPago,
+        tarjeta: servicioTarjeta,
+        fechaCobro: servicioFechaCobro
+      }
+      
+      let exito = false
+      
+      if (servicioActual) {
+        // Editar servicio existente
+        exito = await editarServicio(servicioActual.id, nuevoServicio)
+      } else {
+        // Crear nuevo servicio
+        exito = await agregarServicio(nuevoServicio)
+      }
+      
+      if (exito) {
+        resetServicioForm()
+        setServicioActual(null)
+        setIsServicioFormOpen(false)
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Error al procesar el servicio')
+    } finally {
+      setSubmittingServicio(false)
     }
   }
 
@@ -355,6 +370,11 @@ export default function RecurrentesPage() {
 
   // Eliminar un servicio
   const eliminarServicio = async (id: number) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este servicio?')) {
+      return
+    }
+    
+    setDeletingServicioId(id)
     try {
       const response = await fetch(`/api/servicios/${id}`, {
         method: 'DELETE',
@@ -373,7 +393,6 @@ export default function RecurrentesPage() {
       }
     } catch (error) {
       console.error('Error:', error)
-      toast.error('Error al eliminar el servicio')
       
       // Simular eliminación mientras no exista la API
       const servicioEliminado = servicios.find(s => s.id === id)
@@ -383,6 +402,8 @@ export default function RecurrentesPage() {
       
       setServicios(servicios.filter(s => s.id !== id))
       toast.success('Servicio eliminado con éxito (simulado)')
+    } finally {
+      setDeletingServicioId(null)
     }
   }
 
@@ -431,6 +452,7 @@ export default function RecurrentesPage() {
       return
     }
     
+    setSubmitting(true)
     try {
       const gastoData = {
         concepto,
@@ -475,6 +497,8 @@ export default function RecurrentesPage() {
     } catch (error) {
       console.error('Error:', error)
       toast.error('Error al guardar el gasto recurrente')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -484,6 +508,7 @@ export default function RecurrentesPage() {
       return
     }
     
+    setDeletingId(id)
     try {
       const response = await fetch(`/api/recurrentes/${id}`, {
         method: 'DELETE'
@@ -498,6 +523,8 @@ export default function RecurrentesPage() {
     } catch (error) {
       console.error('Error:', error)
       toast.error('Error al eliminar el gasto')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -628,6 +655,7 @@ export default function RecurrentesPage() {
                                         setServicioActual(servicio)
                                         setIsServicioFormOpen(true)
                                       }}
+                                      disabled={deletingServicioId === servicio.id || submittingServicio}
                                     >
                                       <Pencil className="h-4 w-4" />
                                     </Button>
@@ -635,8 +663,13 @@ export default function RecurrentesPage() {
                                       variant="ghost" 
                                       size="icon"
                                       onClick={() => eliminarServicio(servicio.id)}
+                                      disabled={deletingServicioId === servicio.id || submittingServicio}
                                     >
-                                      <Trash2 className="h-4 w-4" />
+                                      {deletingServicioId === servicio.id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Trash2 className="h-4 w-4" />
+                                      )}
                                     </Button>
                                   </div>
                                 </TableCell>
@@ -863,8 +896,15 @@ export default function RecurrentesPage() {
                 >
                   Cancelar
                 </Button>
-                <Button type="submit">
-                  {editingGasto ? 'Actualizar' : 'Guardar'}
+                <Button type="submit" disabled={submitting}>
+                  {submitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {editingGasto ? 'Actualizando...' : 'Guardando...'}
+                    </>
+                  ) : (
+                    editingGasto ? 'Actualizar' : 'Guardar'
+                  )}
                 </Button>
               </div>
             </form>
@@ -1007,8 +1047,15 @@ export default function RecurrentesPage() {
                 <Button type="button" variant="outline" onClick={() => setIsServicioFormOpen(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit">
-                  {servicioActual ? "Guardar Cambios" : "Crear Servicio"}
+                <Button type="submit" disabled={submittingServicio}>
+                  {submittingServicio ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {servicioActual ? "Guardando..." : "Creando..."}
+                    </>
+                  ) : (
+                    servicioActual ? "Guardar Cambios" : "Crear Servicio"
+                  )}
                 </Button>
               </div>
             </form>

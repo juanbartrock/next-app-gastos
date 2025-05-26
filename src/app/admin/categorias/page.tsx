@@ -30,6 +30,8 @@ export default function AdminCategorias() {
   
   // Estado para indicar si estamos creando o editando
   const [isCreating, setIsCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   
   const router = useRouter();
   
@@ -80,14 +82,15 @@ export default function AdminCategorias() {
   
   // Función para guardar los cambios (crear o actualizar)
   const handleSave = async () => {
+    // Validar que la descripción no esté vacía
+    if (!formData.descripcion.trim()) {
+      toast.error('La descripción es obligatoria');
+      return;
+    }
+    
+    setSaving(true);
     try {
       let res;
-      
-      // Validar que la descripción no esté vacía
-      if (!formData.descripcion.trim()) {
-        toast.error('La descripción es obligatoria');
-        return;
-      }
       
       if (isCreating) {
         // Crear nueva categoría
@@ -125,6 +128,8 @@ export default function AdminCategorias() {
     } catch (err) {
       toast.error('Error al guardar la categoría');
       console.error(err);
+    } finally {
+      setSaving(false);
     }
   };
   
@@ -134,6 +139,7 @@ export default function AdminCategorias() {
       return;
     }
     
+    setDeletingId(id);
     try {
       const res = await fetch(`/api/categorias?id=${id}`, {
         method: 'DELETE',
@@ -150,6 +156,8 @@ export default function AdminCategorias() {
     } catch (err) {
       toast.error('Error al eliminar la categoría');
       console.error(err);
+    } finally {
+      setDeletingId(null);
     }
   };
   
@@ -282,9 +290,17 @@ export default function AdminCategorias() {
             </button>
             <button
               onClick={handleSave}
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+              disabled={saving}
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
             >
-              Guardar
+              {saving ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Guardando...
+                </>
+              ) : (
+                'Guardar'
+              )}
             </button>
           </div>
         </div>
@@ -351,9 +367,17 @@ export default function AdminCategorias() {
                     </button>
                     <button
                       onClick={() => handleDelete(categoria.id)}
-                      className="text-red-600 hover:text-red-900"
+                      disabled={deletingId === categoria.id}
+                      className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                     >
-                      Eliminar
+                      {deletingId === categoria.id ? (
+                        <>
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600 mr-1"></div>
+                          Eliminando...
+                        </>
+                      ) : (
+                        'Eliminar'
+                      )}
                     </button>
                   </td>
                 </tr>

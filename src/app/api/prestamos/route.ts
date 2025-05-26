@@ -106,8 +106,10 @@ export async function POST(request: Request) {
 
     // Calcular cuota mensual usando fórmula de amortización francesa
     const tasaMensual = tasaInteres / 100 / 12
-    const cuotaMensual = montoAprobado * (tasaMensual * Math.pow(1 + tasaMensual, plazoMeses)) / 
-                        (Math.pow(1 + tasaMensual, plazoMeses) - 1)
+    const cuotaBase = montoAprobado * (tasaMensual * Math.pow(1 + tasaMensual, plazoMeses)) / 
+                     (Math.pow(1 + tasaMensual, plazoMeses) - 1)
+    // Agregar 21% de IVA a la cuota
+    const cuotaMensual = cuotaBase * 1.21
 
     // Calcular fecha de vencimiento
     const fechaVencimiento = new Date(fechaPrimeraCuota)

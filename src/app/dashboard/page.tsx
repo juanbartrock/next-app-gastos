@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart, Bell, ChevronLeft, ChevronRight, CreditCard, DollarSign, Edit2, LogOut, Moon, Settings, Sun, User, Bot, ChevronUp, ChevronDown } from "lucide-react"
+import { BarChart, Bell, ChevronLeft, ChevronRight, CreditCard, DollarSign, Edit2, Loader2, LogOut, Moon, Settings, Sun, User, Bot, ChevronUp, ChevronDown } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { cn } from "@/lib/utils"
@@ -22,6 +22,8 @@ import {
 import { ExpenseForm } from "@/components/ExpenseForm"
 import { RecurringPaymentAlert } from "@/components/RecurringPaymentAlert"
 import { FinancialDataWidget } from "@/components/FinancialDataWidget"
+import { TareasWidget } from "@/components/TareasWidget"
+import { DollarIndicator } from "@/components/DollarIndicator"
 import { CurrencySelector } from "@/components/CurrencySelector"
 import { useCurrency } from "@/contexts/CurrencyContext"
 
@@ -61,6 +63,7 @@ export default function BankingDashboard() {
   const [editingTransaction, setEditingTransaction] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [balanceIndex, setBalanceIndex] = useState(0)
+  const [signingOut, setSigningOut] = useState(false)
 
   // Reemplazar la función formatMoney con la del contexto de moneda
   const { formatMoney } = useCurrency();
@@ -240,29 +243,36 @@ export default function BankingDashboard() {
       <header className="bg-transparent border-b">
         <div className="max-w-screen-2xl mx-auto px-6">
           <div className="flex items-center justify-between py-3 md:py-4">
-            <div className="flex items-center p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 min-w-[280px] w-1/3">
-              <div className="flex flex-col flex-1 text-center">
-                <div className="text-xs uppercase font-medium text-gray-500 dark:text-gray-400 tracking-wider">
-                  {balanceTypes[balanceIndex].label}
+            {/* Sección izquierda: Saldo y Cotizaciones */}
+            <div className="flex items-center gap-4">
+              {/* Widget de Saldo */}
+              <div className="flex items-center p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 min-w-[280px]">
+                <div className="flex flex-col flex-1 text-center">
+                  <div className="text-xs uppercase font-medium text-gray-500 dark:text-gray-400 tracking-wider">
+                    {balanceTypes[balanceIndex].label}
+                  </div>
+                  <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-1">
+                    {balanceTypes[balanceIndex].amount}
+                  </div>
                 </div>
-                <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-1">
-                  {balanceTypes[balanceIndex].amount}
+                <div className="flex flex-col border-l pl-4 border-gray-200 dark:border-gray-700 py-1">
+                  <button 
+                    onClick={() => navigateBalanceType("prev")}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors mb-2"
+                  >
+                    <ChevronUp className="h-5 w-5" />
+                  </button>
+                  <button 
+                    onClick={() => navigateBalanceType("next")}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  >
+                    <ChevronDown className="h-5 w-5" />
+                  </button>
                 </div>
               </div>
-              <div className="flex flex-col border-l pl-4 border-gray-200 dark:border-gray-700 py-1">
-                <button 
-                  onClick={() => navigateBalanceType("prev")}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors mb-2"
-                >
-                  <ChevronUp className="h-5 w-5" />
-                </button>
-                <button 
-                  onClick={() => navigateBalanceType("next")}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                >
-                  <ChevronDown className="h-5 w-5" />
-                </button>
-              </div>
+              
+              {/* Widget de Cotizaciones */}
+              <DollarIndicator />
             </div>
 
             <div className="flex items-center gap-4">
@@ -301,15 +311,33 @@ export default function BankingDashboard() {
                     Configuración
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={async () => {
-                    await signOut({ 
-                      callbackUrl: '/login',
-                      redirect: true
-                    });
-                    router.push('/login');
-                  }}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Cerrar sesión
+                  <DropdownMenuItem 
+                    disabled={signingOut}
+                    onClick={async () => {
+                      setSigningOut(true);
+                      try {
+                        await signOut({ 
+                          callbackUrl: '/login',
+                          redirect: true
+                        });
+                        router.push('/login');
+                      } catch (error) {
+                        console.error('Error al cerrar sesión:', error);
+                        setSigningOut(false);
+                      }
+                    }}
+                  >
+                    {signingOut ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Cerrando sesión...
+                      </>
+                    ) : (
+                      <>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Cerrar sesión
+                      </>
+                    )}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -321,10 +349,7 @@ export default function BankingDashboard() {
       <main className="flex-1">
         <div className="max-w-screen-2xl mx-auto px-6 py-4 md:py-6">
           <div className="grid gap-6">
-            {/* Widget Financiero */}
-            <FinancialDataWidget />
-
-            {/* Balance Cards */}
+            {/* Balance Cards - Situación mensual */}
             <Card className="overflow-hidden">
               <CardHeader className="px-6 py-5">
                 <CardTitle>Situación mensual</CardTitle>
@@ -378,6 +403,15 @@ export default function BankingDashboard() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Sección: Gráfico de Gastos y Widget de Tareas */}
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Widget Financiero */}
+              <FinancialDataWidget />
+              
+              {/* Widget de Tareas */}
+              <TareasWidget />
+            </div>
 
             {/* Month Navigation */}
             <div className="flex items-center justify-between">

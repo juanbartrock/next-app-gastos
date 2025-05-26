@@ -1,0 +1,215 @@
+# Cursor Rules para Aplicación de Gestión de Gastos
+
+## Información del Proyecto
+- **Aplicación**: Sistema de gestión de gastos personales y grupales
+- **Stack**: Next.js 15, React 18, TypeScript, Prisma, PostgreSQL (Neon), NextAuth.js
+- **UI**: TailwindCSS, Shadcn/ui, Lucide React
+- **Base de datos**: PostgreSQL unificada (desarrollo y producción con Neon)
+
+## Estructura del Proyecto
+```
+src/
+├── app/                    # App Router de Next.js
+│   ├── api/               # API Routes
+│   ├── admin/             # Panel de administración
+│   ├── dashboard/         # Dashboard principal
+│   ├── transacciones/     # Gestión de transacciones
+│   ├── grupos/            # Gastos grupales
+│   ├── prestamos/         # Gestión de préstamos
+│   ├── inversiones/       # Gestión de inversiones
+│   └── ...
+├── components/            # Componentes reutilizables
+│   └── ui/               # Componentes UI de Shadcn
+├── lib/                  # Utilidades y configuraciones
+├── contexts/             # Contextos de React
+├── providers/            # Proveedores de la aplicación
+└── scraping/             # Sistema de scraping para promociones
+```
+
+## Reglas de Desarrollo
+
+### 1. Arquitectura y Patrones
+- Usar App Router de Next.js 15 exclusivamente
+- Implementar Server Components por defecto, Client Components solo cuando sea necesario
+- Seguir el patrón de separación de responsabilidades: UI, lógica de negocio, acceso a datos
+- Usar TypeScript estricto con tipos explícitos
+- Implementar error boundaries y manejo de errores robusto
+
+### 2. Base de Datos y Prisma
+- **IMPORTANTE**: La aplicación usa PostgreSQL/Neon tanto en desarrollo como producción
+- Usar `npx prisma db push` para cambios de schema (NO usar migraciones automáticas)
+- Siempre usar `prisma.$transaction()` para operaciones que requieren atomicidad
+- Validar datos antes de enviar a la base de datos
+- Usar tipos generados por Prisma para type safety
+
+### 3. Autenticación y Autorización
+- Usar NextAuth.js v4 para autenticación
+- Implementar middleware para proteger rutas
+- Validar sesiones en API routes usando `getServerSession()`
+- Manejar roles de usuario (admin, usuario regular)
+- Proteger rutas sensibles del panel de administración
+
+### 4. API Routes
+- Usar métodos HTTP apropiados (GET, POST, PUT, DELETE)
+- Implementar validación de entrada con Zod
+- Manejar errores de forma consistente con códigos HTTP apropiados
+- Usar `NextRequest` y `NextResponse` para tipado
+- Implementar rate limiting para endpoints sensibles
+
+### 5. Componentes UI
+- Usar componentes de Shadcn/ui como base
+- Implementar componentes accesibles (ARIA labels, keyboard navigation)
+- Usar TailwindCSS para estilos, evitar CSS custom
+- Implementar loading states y skeleton loaders
+- Usar Lucide React para iconos
+
+### 6. Gestión de Estado
+- Usar React Context para estado global (Currency, Sidebar)
+- Implementar custom hooks para lógica reutilizable
+- Usar `useState` y `useEffect` apropiadamente
+- Evitar prop drilling excesivo
+
+### 7. Formularios y Validación
+- Usar React Hook Form para formularios complejos
+- Implementar validación con Zod
+- Manejar estados de loading y error en formularios
+- Usar componentes controlados para inputs críticos
+
+### 8. Funcionalidades Específicas
+
+#### Transacciones y Gastos
+- Validar montos y fechas antes de guardar
+- Implementar categorización automática
+- Manejar diferentes tipos de movimiento (efectivo, digital, ahorro, tarjeta)
+- Soporte para gastos grupales y individuales
+
+#### Préstamos
+- Calcular cuotas usando amortización francesa
+- Registrar pagos automáticamente como gastos
+- Manejar estados del préstamo (activo, pagado, vencido)
+- Validar fechas de pago y vencimiento
+
+#### Inversiones
+- Registrar transacciones de inversión (depósitos, retiros, dividendos)
+- Calcular rendimientos automáticamente
+- Manejar cotizaciones históricas
+- Soporte para diferentes tipos de inversión
+
+#### Sistema de Scraping
+- Implementar scrapers robustos con manejo de errores
+- Usar Puppeteer para sitios que requieren JavaScript
+- Implementar rate limiting y respeto por robots.txt
+- Guardar promociones con fechas de vencimiento
+
+### 9. Performance y Optimización
+- Usar `loading.tsx` y `error.tsx` en rutas
+- Implementar lazy loading para componentes pesados
+- Optimizar consultas a la base de datos (incluir relaciones necesarias)
+- Usar `Suspense` para componentes que cargan datos
+
+### 10. Seguridad
+- Validar todas las entradas del usuario
+- Sanitizar datos antes de mostrar en UI
+- Usar HTTPS en producción
+- Implementar CSRF protection
+- No exponer información sensible en el cliente
+
+### 11. Manejo de Errores
+- Implementar try-catch en todas las operaciones async
+- Usar toast notifications para feedback al usuario
+- Loggear errores apropiadamente
+- Implementar fallbacks para componentes que fallan
+
+### 12. Internacionalización
+- Usar formato de moneda argentino (ARS) por defecto
+- Implementar fechas en español con date-fns
+- Usar formato de números apropiado para Argentina
+
+### 13. Testing y Calidad
+- Escribir tests para funciones críticas
+- Usar ESLint y Prettier para consistencia de código
+- Implementar type checking estricto
+- Documentar funciones complejas
+
+### 14. Deployment y Configuración
+- Usar variables de entorno para configuración
+- Implementar scripts PowerShell para desarrollo local
+- Configurar Vercel para deployment automático
+- Usar Neon para base de datos en producción
+
+## Variables de Entorno Requeridas
+```bash
+DATABASE_URL=postgresql://...
+NEXTAUTH_SECRET=...
+NEXTAUTH_URL=...
+OPENAI_API_KEY=... (opcional, para asesor financiero)
+```
+
+## Comandos de Desarrollo
+```bash
+npm run dev:full        # Iniciar con variables de entorno
+npm run studio          # Prisma Studio con variables
+npx prisma db push      # Sincronizar schema
+npx prisma generate     # Generar cliente
+```
+
+## Patrones de Código Específicos
+
+### API Route Pattern
+```typescript
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+    
+    // Lógica del endpoint
+    
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error('Error:', error)
+    return NextResponse.json({ error: 'Error interno' }, { status: 500 })
+  }
+}
+```
+
+### Component Pattern
+```typescript
+interface ComponentProps {
+  // Props tipadas
+}
+
+export function Component({ prop }: ComponentProps) {
+  const [loading, setLoading] = useState(false)
+  
+  // Lógica del componente
+  
+  if (loading) return <Skeleton />
+  
+  return (
+    <div className="space-y-4">
+      {/* JSX */}
+    </div>
+  )
+}
+```
+
+### Database Query Pattern
+```typescript
+const result = await prisma.gasto.findMany({
+  where: { userId: session.user.id },
+  include: {
+    categoria: true,
+    user: true
+  },
+  orderBy: { fecha: 'desc' }
+})
+```
+
+## Notas Importantes
+- **NO usar datos simulados o ficticios**
+- **NO implementar reseteo automático de base de datos**
+- **Siempre validar permisos de usuario antes de operaciones**
+- **Usar PostgreSQL/Neon exclusivamente (no SQLite)**
+- **Mantener consistencia en el formato de fechas y monedas** 

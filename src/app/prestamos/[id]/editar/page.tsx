@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useRouter, useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,14 +16,19 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, Calculator, Building2 } from "lucide-react"
+import { ArrowLeft, Calculator, Building2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { PageLayout } from "@/components/PageLayout"
+import { format } from "date-fns"
 
-export default function NuevoPrestamoPage() {
+export default function EditarPrestamoPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [loading, setLoading] = useState(false)
+  const params = useParams()
+  const prestamoId = params.id as string
+  
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     entidadFinanciera: '',
     tipoCredito: '',
@@ -51,11 +56,68 @@ export default function NuevoPrestamoPage() {
     return null
   }
 
-  if (status === "loading") {
+  useEffect(() => {
+    if (status === "authenticated") {
+      cargarPrestamo()
+    }
+  }, [status, prestamoId])
+
+  const cargarPrestamo = async () => {
+    try {
+      const response = await fetch(`/api/prestamos/${prestamoId}`)
+      if (response.ok) {
+        const prestamo = await response.json()
+        
+        // Convertir fechas al formato requerido por los inputs
+        const fechaDesembolso = prestamo.fechaDesembolso 
+          ? format(new Date(prestamo.fechaDesembolso), 'yyyy-MM-dd') 
+          : ''
+        const fechaPrimeraCuota = prestamo.fechaPrimeraCuota 
+          ? format(new Date(prestamo.fechaPrimeraCuota), 'yyyy-MM-dd') 
+          : ''
+
+        setFormData({
+          entidadFinanciera: prestamo.entidadFinanciera || '',
+          tipoCredito: prestamo.tipoCredito || '',
+          montoSolicitado: prestamo.montoSolicitado?.toString() || '',
+          montoAprobado: prestamo.montoAprobado?.toString() || '',
+          montoDesembolsado: prestamo.montoDesembolsado?.toString() || '',
+          tasaInteres: prestamo.tasaInteres?.toString() || '',
+          plazoMeses: prestamo.plazoMeses?.toString() || '',
+          fechaDesembolso,
+          fechaPrimeraCuota,
+          diaPago: prestamo.diaPago?.toString() || '',
+          proposito: prestamo.proposito || '',
+          garantia: prestamo.garantia || '',
+          seguroVida: prestamo.seguroVida || false,
+          seguroDesempleo: prestamo.seguroDesempleo || false,
+          comisiones: prestamo.comisiones?.toString() || '',
+          gastosNotariales: prestamo.gastosNotariales?.toString() || '',
+          numeroCredito: prestamo.numeroCredito || '',
+          observaciones: prestamo.observaciones || ''
+        })
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Error al cargar préstamo')
+        router.push('/prestamos')
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Error al cargar préstamo')
+      router.push('/prestamos')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (status === "loading" || loading) {
     return (
       <PageLayout>
         <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Cargando préstamo...</p>
+          </div>
         </div>
       </PageLayout>
     )
@@ -100,7 +162,7 @@ export default function NuevoPrestamoPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
+    setSubmitting(true)
 
     try {
       // Validaciones básicas
@@ -111,36 +173,53 @@ export default function NuevoPrestamoPage() {
         return
       }
 
-      const response = await fetch('/api/prestamos', {
-        method: 'POST',
+      // Calcular nueva cuota con IVA
+      const tasaMensual = parseFloat(formData.tasaInteres) / 100 / 12
+      const cuotaBase = parseFloat(formData.montoAprobado) * 
+                       (tasaMensual * Math.pow(1 + tasaMensual, parseInt(formData.plazoMeses))) / 
+                       (Math.pow(1 + tasaMensual, parseInt(formData.plazoMeses)) - 1)
+      const cuotaMensual = cuotaBase * 1.21 // Agregar 21% de IVA
+
+      const response = await fetch(`/api/prestamos/${prestamoId}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...formData,
+          entidadFinanciera: formData.entidadFinanciera,
+          tipoCredito: formData.tipoCredito,
           montoSolicitado: parseFloat(formData.montoSolicitado) || parseFloat(formData.montoAprobado),
           montoAprobado: parseFloat(formData.montoAprobado),
           montoDesembolsado: parseFloat(formData.montoDesembolsado) || parseFloat(formData.montoAprobado),
           tasaInteres: parseFloat(formData.tasaInteres),
           plazoMeses: parseInt(formData.plazoMeses),
+          cuotaMensual: Math.round(cuotaMensual * 100) / 100,
+          fechaDesembolso: formData.fechaDesembolso,
+          fechaPrimeraCuota: formData.fechaPrimeraCuota,
           diaPago: formData.diaPago ? parseInt(formData.diaPago) : null,
+          proposito: formData.proposito,
+          garantia: formData.garantia,
+          seguroVida: formData.seguroVida,
+          seguroDesempleo: formData.seguroDesempleo,
           comisiones: parseFloat(formData.comisiones) || 0,
           gastosNotariales: parseFloat(formData.gastosNotariales) || 0,
+          numeroCredito: formData.numeroCredito,
+          observaciones: formData.observaciones
         }),
       })
 
       if (response.ok) {
-        toast.success('Préstamo registrado exitosamente')
+        toast.success('Préstamo actualizado exitosamente')
         router.push('/prestamos')
       } else {
         const error = await response.json()
-        toast.error(error.error || 'Error al registrar préstamo')
+        toast.error(error.error || 'Error al actualizar préstamo')
       }
     } catch (error) {
       console.error('Error:', error)
-      toast.error('Error al registrar préstamo')
+      toast.error('Error al actualizar préstamo')
     } finally {
-      setLoading(false)
+      setSubmitting(false)
     }
   }
 
@@ -180,10 +259,10 @@ export default function NuevoPrestamoPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Registrar Nuevo Préstamo
+              Editar Préstamo
             </h1>
             <p className="text-muted-foreground">
-              Ingresa los datos de tu préstamo o crédito bancario
+              Modifica los datos de tu préstamo o crédito bancario
             </p>
           </div>
         </div>
@@ -325,7 +404,7 @@ export default function NuevoPrestamoPage() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <Label>Cuota Mensual Estimada</Label>
+                  <Label>Cuota Mensual Recalculada</Label>
                   <div className="p-3 bg-muted rounded-md space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Sin IVA:</span>
@@ -342,6 +421,9 @@ export default function NuevoPrestamoPage() {
                       </div>
                     </div>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    La cuota se actualizará al guardar los cambios
+                  </p>
                 </div>
 
                 <div>
@@ -491,8 +573,15 @@ export default function NuevoPrestamoPage() {
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Registrando...' : 'Registrar Préstamo'}
+            <Button type="submit" disabled={submitting}>
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Actualizando...
+                </>
+              ) : (
+                'Actualizar Préstamo'
+              )}
             </Button>
           </div>
         </form>

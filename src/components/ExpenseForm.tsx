@@ -19,7 +19,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { ArrowDown, ArrowUp, CalendarIcon, CreditCard, Plus, Users } from "lucide-react"
+import { ArrowDown, ArrowUp, CalendarIcon, CreditCard, Plus, Users, Loader2 } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { toast } from "sonner"
 import { useCurrency } from "@/contexts/CurrencyContext"
@@ -48,6 +48,7 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
   const [movementType, setMovementType] = useState<"efectivo" | "digital" | "ahorro" | "tarjeta">("efectivo")
   const [error, setError] = useState<string>("")
   const [success, setSuccess] = useState<boolean>(false)
+  const [loading, setLoading] = useState<boolean>(false)
   const [grupos, setGrupos] = useState<Grupo[]>([])
   const [selectedGrupoId, setSelectedGrupoId] = useState<string>("personal")
   const [loadingGrupos, setLoadingGrupos] = useState(false)
@@ -123,6 +124,7 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
     event.preventDefault()
     setError("")
     setSuccess(false)
+    setLoading(true)
     
     const form = event.currentTarget
     const formData = new FormData(form)
@@ -134,6 +136,7 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
 
     if (!concepto || !monto || !categoriaId) {
       setError("Por favor, completa todos los campos")
+      setLoading(false)
       return
     }
 
@@ -141,6 +144,7 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
     if (movementType === "tarjeta") {
       if (!cantidadCuotas || parseInt(cantidadCuotas) < 1) {
         setError("Por favor, ingresa una cantidad válida de cuotas")
+        setLoading(false)
         return
       }
     }
@@ -242,6 +246,8 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
     } catch (error) {
       console.error('Error:', error)
       setError("Error al crear el registro. Por favor, intenta de nuevo.")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -498,8 +504,15 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
           </div>
         </div>
 
-        <Button type="submit" className="w-full">
-          Guardar
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Guardando...
+            </>
+          ) : (
+            "Guardar"
+          )}
         </Button>
       </form>
     </div>
