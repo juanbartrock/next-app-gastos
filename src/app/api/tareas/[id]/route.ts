@@ -6,7 +6,7 @@ import prisma from '@/lib/prisma';
 // GET /api/tareas/[id] - Obtener una tarea específica
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -15,9 +15,11 @@ export async function GET(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
+    const { id } = await params;
+
     const tarea = await prisma.tarea.findFirst({
       where: {
-        id: params.id,
+        id: id,
         userId: session.user.id,
       },
       include: {
@@ -78,7 +80,7 @@ export async function GET(
 // PUT /api/tareas/[id] - Actualizar una tarea
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -87,12 +89,13 @@ export async function PUT(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
+    const { id } = await params;
     const data = await req.json();
 
     // Verificar que la tarea existe y pertenece al usuario
     const tareaExistente = await prisma.tarea.findFirst({
       where: {
-        id: params.id,
+        id: id,
         userId: session.user.id,
       }
     });
@@ -152,7 +155,7 @@ export async function PUT(
 
     const tareaActualizada = await prisma.tarea.update({
       where: {
-        id: params.id,
+        id: id,
       },
       data: updateData,
       include: {
