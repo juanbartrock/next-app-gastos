@@ -193,11 +193,11 @@ export function generateProductUrl(productName: string, store: StoreInfo): strin
 }
 
 /**
- * Simula un precio realista para un producto teniendo en cuenta su tienda
+ * TODO: Eliminar esta función cuando se implemente scraping real
+ * Esta función era para simular precios durante desarrollo
  */
 export function simulatePrice(basePrice: number, store: StoreInfo): number {
-  const multiplier = store.priceMultiplier || 1;
-  // Añadir algo de variación aleatoria (±10%)
-  const randomFactor = 0.9 + (Math.random() * 0.2);
-  return basePrice * multiplier * randomFactor;
+  // Esta función debe eliminarse cuando se implemente scraping real
+  console.warn('simulatePrice() debe ser reemplazada por scraping real');
+  return 0;
 } 

@@ -6,11 +6,11 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 export type CurrencyType = 'ARS' | 'USD';
 export type ExchangeRateType = 'oficial' | 'blue' | 'cripto';
 
-// Definir tasas de cambio estáticas (hasta que implementemos la API)
+// Tasas de cambio que se obtendrán de APIs reales
 const EXCHANGE_RATES = {
-  oficial: 900,
-  blue: 1050,
-  cripto: 1000
+  oficial: 0,
+  blue: 0,
+  cripto: 0
 };
 
 interface CurrencyContextType {
@@ -43,12 +43,12 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
 
       try {
         setIsLoading(true);
-        // Aquí implementaríamos la lógica para obtener el tipo de cambio desde una API
-        // Por ahora, usamos valores estáticos definidos en EXCHANGE_RATES
-        setExchangeRate(EXCHANGE_RATES[exchangeRateType]);
+        // TODO: Implementar llamada a API real para obtener tipos de cambio
+        // Por ahora, establecer en 0 para indicar que no hay datos
+        setExchangeRate(0);
       } catch (error) {
         console.error('Error al obtener el tipo de cambio:', error);
-        setExchangeRate(EXCHANGE_RATES.oficial); // Valor por defecto en caso de error
+        setExchangeRate(0);
       } finally {
         setIsLoading(false);
       }

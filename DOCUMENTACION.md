@@ -3,6 +3,8 @@
 ## Descripción General
 Esta aplicación está diseñada para ayudar a los usuarios a gestionar sus gastos personales y grupales. Permite el registro de transacciones financieras, la categorización de gastos, la formación de grupos para gastos compartidos y ofrece visualizaciones para análisis financiero. Además, incluye gestión de presupuestos, servicios contratados, promociones, inversiones y recomendaciones de ahorro.
 
+**Nota importante**: Se han eliminado todos los datos simulados, ficticios y de prueba del proyecto. La aplicación ahora trabaja únicamente con datos reales proporcionados por el usuario o APIs externas.
+
 ## Tecnologías Utilizadas
 
 ### Backend

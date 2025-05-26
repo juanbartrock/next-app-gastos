@@ -5,11 +5,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "npx prisma generate && next build",
-    "postbuild": "node prisma/migrations.cjs || true",
     "start": "next start",
-    "lint": "next lint",
-    "seed": "node seed-db.js",
-    "db:reset": "npx prisma db push --force-reset && npm run seed"
+    "lint": "next lint"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.8.0",

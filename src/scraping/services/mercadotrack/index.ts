@@ -27,45 +27,12 @@ class MercadoTrackService implements PriceSearchService {
    */
   async search(query: string, options?: PriceSearchOptions): Promise<PriceSearchResult[]> {
     try {
-      // En un entorno real, aquí implementaríamos el scraping del sitio
-      // Por ahora, simulamos una respuesta para demostración
-      
+      // TODO: Implementar scraping real de Mercado Libre
       // URL de búsqueda (para referencia)
       const searchUrl = `${this.serviceUrl}/search?q=${encodeURIComponent(query)}`;
       
-      // Simulamos una pequeña demora para simular la petición
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Generamos resultados simulados basados en la consulta
-      const results: PriceSearchResult[] = [
-        {
-          productName: query,
-          price: Math.floor(Math.random() * 9500) + 950,
-          store: "Mercado Libre - Vendedor Premium",
-          url: `https://articulo.mercadolibre.com.ar/123`,
-          imageUrl: "https://via.placeholder.com/150",
-          availability: true,
-          timestamp: new Date()
-        },
-        {
-          productName: query,
-          price: Math.floor(Math.random() * 9000) + 900,
-          store: "Mercado Libre - Tienda Oficial",
-          url: `https://articulo.mercadolibre.com.ar/456`,
-          imageUrl: "https://via.placeholder.com/150",
-          availability: true,
-          timestamp: new Date()
-        },
-        {
-          productName: query,
-          price: Math.floor(Math.random() * 8500) + 850,
-          store: "Mercado Libre",
-          url: `https://articulo.mercadolibre.com.ar/789`,
-          imageUrl: "https://via.placeholder.com/150",
-          availability: true,
-          timestamp: new Date()
-        }
-      ];
+      // Por ahora, retornar array vacío hasta implementar scraping real
+      const results: PriceSearchResult[] = [];
       
       // Aplicamos filtros según las opciones
       let filteredResults = [...results];

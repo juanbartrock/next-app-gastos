@@ -27,54 +27,12 @@ class PreciosClarosService implements PriceSearchService {
    */
   async search(query: string, options?: PriceSearchOptions): Promise<PriceSearchResult[]> {
     try {
-      // En un entorno real, aquí implementaríamos el scraping del sitio o uso de API
-      // Por ahora, simulamos una respuesta para demostración
-      
+      // TODO: Implementar scraping real del sitio Precios Claros
       // URL de búsqueda (para referencia)
       const searchUrl = `${this.serviceUrl}/#!/buscar-productos/${encodeURIComponent(query)}`;
       
-      // Simulamos una pequeña demora para simular la petición
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      
-      // Generamos resultados simulados basados en la consulta
-      const results: PriceSearchResult[] = [
-        {
-          productName: query,
-          price: Math.floor(Math.random() * 8500) + 850,
-          store: "Carrefour",
-          url: `${this.serviceUrl}/producto/123`,
-          imageUrl: "https://via.placeholder.com/150",
-          availability: true,
-          timestamp: new Date()
-        },
-        {
-          productName: query,
-          price: Math.floor(Math.random() * 8200) + 820,
-          store: "Coto",
-          url: `${this.serviceUrl}/producto/456`,
-          imageUrl: "https://via.placeholder.com/150",
-          availability: true,
-          timestamp: new Date()
-        },
-        {
-          productName: query,
-          price: Math.floor(Math.random() * 7800) + 780,
-          store: "Día",
-          url: `${this.serviceUrl}/producto/789`,
-          imageUrl: "https://via.placeholder.com/150",
-          availability: true,
-          timestamp: new Date()
-        },
-        {
-          productName: query,
-          price: Math.floor(Math.random() * 8800) + 880,
-          store: "Disco",
-          url: `${this.serviceUrl}/producto/101`,
-          imageUrl: "https://via.placeholder.com/150",
-          availability: true,
-          timestamp: new Date()
-        }
-      ];
+      // Por ahora, retornar array vacío hasta implementar scraping real
+      const results: PriceSearchResult[] = [];
       
       // Aplicamos filtros según las opciones
       let filteredResults = [...results];

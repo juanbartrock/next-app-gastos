@@ -78,20 +78,10 @@ export function FinancialDataWidget() {
     try {
       setExpensesLoading(true)
       
-      // En lugar de intentar obtener datos de una API que no existe,
-      // usaremos datos de ejemplo directamente
-      setTimeout(() => {
-        setExpensesData([
-          { name: 'Vivienda', value: 1200 },
-          { name: 'Alimentación', value: 800 },
-          { name: 'Transporte', value: 400 },
-          { name: 'Servicios', value: 300 },
-          { name: 'Entretenimiento', value: 200 },
-          { name: 'Salud', value: 150 },
-          { name: 'Otros', value: 250 }
-        ]);
-        setExpensesLoading(false);
-      }, 800); // Simulamos una pequeña demora para mostrar el estado de carga
+      // TODO: Implementar llamada a API real para obtener gastos por categoría
+      // Por ahora, no mostrar datos simulados
+      setExpensesData([]);
+      setExpensesLoading(false);
       
       /* Comentamos el código que causa el error 405
       const response = await fetch('/api/financial-advisor')
@@ -121,14 +111,8 @@ export function FinancialDataWidget() {
       */
     } catch (error) {
       console.error('Error al cargar datos de gastos:', error)
-      // Usar datos de ejemplo en caso de error
-      setExpensesData([
-        { name: 'Vivienda', value: 1200 },
-        { name: 'Alimentación', value: 800 },
-        { name: 'Transporte', value: 400 },
-        { name: 'Servicios', value: 300 },
-        { name: 'Otros', value: 250 }
-      ])
+      // No usar datos simulados en caso de error
+      setExpensesData([])
       setExpensesLoading(false)
     }
   }
@@ -258,6 +242,13 @@ export function FinancialDataWidget() {
               <div className="flex items-center justify-center h-48">
                 <Skeleton className="h-40 w-40 rounded-full" />
               </div>
+            ) : expensesData.length === 0 ? (
+              <div className="flex items-center justify-center h-48 text-muted-foreground">
+                <div className="text-center">
+                  <p className="text-sm">No hay datos de gastos disponibles</p>
+                  <p className="text-xs mt-1">Registra algunos gastos para ver la distribución</p>
+                </div>
+              </div>
             ) : (
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
@@ -283,7 +274,7 @@ export function FinancialDataWidget() {
               </div>
             )}
             <div className="mt-2 text-xs text-center text-muted-foreground">
-              Principales categorías de gastos
+              {expensesData.length === 0 ? "Sin datos de gastos registrados" : "Principales categorías de gastos"}
             </div>
           </div>
           

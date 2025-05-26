@@ -315,31 +315,7 @@ class RatoneandoService implements PriceSearchService {
               console.log('[Ratoneando Browser] Productos encontrados tras estrategia final:', results.length);
             }
             
-            // Si no se encontró nada, y estamos buscando "serenito", crear entradas de ejemplo para depuración
-            if (results.length === 0 && queryText.toLowerCase().includes('serenito')) {
-              console.log('[Ratoneando Browser] Creando ejemplos para depuración');
-              
-              // Entradas para depuración
-              results.push({
-                productName: 'Serenito de vainilla 120g (EJEMPLO)',
-                price: 1200,
-                store: 'Ratoneando (Ejemplo)',
-                url: window.location.href,
-                imageUrl: '',
-                availability: true,
-                timestamp: new Date()
-              });
-              
-              results.push({
-                productName: 'Serenito de chocolate 120g (EJEMPLO)',
-                price: 1300,
-                store: 'Ratoneando (Ejemplo)',
-                url: window.location.href,
-                imageUrl: '',
-                availability: true,
-                timestamp: new Date()
-              });
-            }
+            // No crear datos simulados - solo retornar resultados reales
             
             return results;
           }, query);
@@ -376,40 +352,7 @@ class RatoneandoService implements PriceSearchService {
               timestamp: Date;
             }> = [];
             
-            // Si encontramos precios pero no productos, crear productos simulados
-            if (priceMatches.length > 0) {
-              // Usar un nombre genérico para los productos
-              const priceMatch = priceMatches[0] || '$0';
-              const priceStr = priceMatch.replace(/\$/, '').replace(/\./g, '').replace(',', '.');
-              const price = parseFloat(priceStr);
-              
-              results.push({
-                productName: 'Serenito (Genérico)',
-                price: isNaN(price) ? 0 : price,
-                store: 'Ratoneando',
-                url: window.location.href,
-                imageUrl: '',
-                availability: true,
-                timestamp: new Date()
-              });
-              
-              // Si hay más precios, incluir más variantes
-              if (priceMatches.length > 1) {
-                const priceMatch2 = priceMatches[1] || '$0';
-                const priceStr2 = priceMatch2.replace(/\$/, '').replace(/\./g, '').replace(',', '.');
-                const price2 = parseFloat(priceStr2);
-                
-                results.push({
-                  productName: 'Serenito Pack x3 (Genérico)',
-                  price: isNaN(price2) ? 0 : price2,
-                  store: 'Ratoneando',
-                  url: window.location.href,
-                  imageUrl: '',
-                  availability: true,
-                  timestamp: new Date()
-                });
-              }
-            }
+            // No crear productos simulados - solo usar datos reales extraídos
             
             console.log('[Ratoneando Browser] Productos generados en estrategia alternativa:', results.length);
             return results;

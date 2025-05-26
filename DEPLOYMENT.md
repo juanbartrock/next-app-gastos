@@ -37,7 +37,7 @@ Variables opcionales:
 
 ## Proceso de Migración de Base de Datos
 
-La aplicación está configurada para manejar las migraciones automáticamente durante el despliegue mediante el script `postbuild` que ejecuta `prisma/migrations.cjs`.
+⚠️ **IMPORTANTE**: Las migraciones automáticas han sido DESHABILITADAS para proteger los datos en producción. Ver `MIGRACIONES.md` para instrucciones de migración manual segura.
 
 Durante el primer despliegue:
 1. La aplicación verificará la conexión a la base de datos

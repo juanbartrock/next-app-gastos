@@ -65,7 +65,7 @@ async function fetchDollarData() {
     };
   } catch (error) {
     console.error('Error al obtener cotización del dólar:', error);
-    // Retornar datos de ejemplo en caso de error
+    // Retornar datos vacíos en caso de error
     return {
       oficial: { compra: 0, venta: 0, variacion: 0 },
       blue: { compra: 0, venta: 0, variacion: 0 }
@@ -76,21 +76,13 @@ async function fetchDollarData() {
 // Función para obtener índices financieros
 async function fetchFinancialIndices() {
   try {
-    // En una implementación real, aquí harías una llamada a una API financiera
-    // Para este ejemplo, usaremos datos simulados
-    
-    // Simular una llamada API con un pequeño delay
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    // Datos de ejemplo (en producción, estos vendrían de una API real)
+    // TODO: Implementar llamada a API real para obtener índices financieros
+    // Por ahora, retornar datos vacíos
     return {
-      inflacionMensual: 4.2,
-      inflacionAnual: 52.3,
-      merval: {
-        valor: 985324.45,
-        variacion: 2.3 // porcentaje
-      },
-      riesgoPais: 1432
+      inflacionMensual: 0,
+      inflacionAnual: 0,
+      merval: { valor: 0, variacion: 0 },
+      riesgoPais: 0
     };
   } catch (error) {
     console.error('Error al obtener índices financieros:', error);
