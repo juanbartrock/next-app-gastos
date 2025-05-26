@@ -43,6 +43,7 @@ Esta aplicación está diseñada para ayudar a los usuarios a gestionar sus gast
 - `/recurrentes`: Gestión de gastos recurrentes
 - `/financiacion`: Gestión de financiaciones con tarjeta
 - `/inversiones`: Gestión de inversiones y seguimiento de rendimientos
+- `/prestamos`: Gestión de préstamos y créditos bancarios
 - `/voz`: Reconocimiento de voz para registro de gastos
 - `/presupuestos`: Gestión de presupuestos mensuales
 - `/perfil`: Gestión del perfil de usuario y planes
@@ -171,6 +172,25 @@ Registra valores históricos de una inversión.
 - Fecha y fuente de la cotización
 - Relación con la inversión principal
 
+### Préstamo (Prestamo)
+Gestiona préstamos obtenidos de entidades financieras.
+- Información de la entidad financiera y tipo de crédito
+- Montos (solicitado, aprobado, desembolsado, saldo actual)
+- Tasa de interés y plazo en meses
+- Cuota mensual y seguimiento de pagos
+- Fechas de desembolso, primera cuota y vencimiento
+- Estado del préstamo (activo, pagado, vencido, refinanciado)
+- Propósito, garantías y seguros asociados
+- Relación con usuario y pagos realizados
+
+### Pago de Préstamo (PagoPrestamo)
+Registra los pagos realizados a préstamos.
+- Número de cuota y montos pagados (capital, interés, seguros)
+- Fechas de pago y vencimiento
+- Control de mora y métodos de pago
+- Comprobantes y observaciones
+- Relación con el préstamo principal
+
 ### Plan
 Gestiona los planes de suscripción disponibles.
 - Nombre, descripción
@@ -236,6 +256,16 @@ Relación entre funcionalidades y planes.
 - Seguimiento de rendimientos y valor actual
 - Historial de cotizaciones
 - Comparativas de rendimiento entre inversiones
+
+### Gestión de Préstamos
+- Registro y seguimiento de préstamos bancarios y créditos
+- Información completa de entidades financieras y tipos de crédito
+- Cálculo automático de cuotas mensuales con amortización francesa
+- Seguimiento de pagos realizados y saldos pendientes
+- Control de fechas de vencimiento y alertas de próximos pagos
+- Gestión de garantías, seguros y comisiones
+- Registro automático de pagos como gastos en el sistema
+- Estados de préstamo (activo, pagado, vencido, refinanciado)
 
 ### Reconocimiento de Voz
 - Carga de archivos de audio

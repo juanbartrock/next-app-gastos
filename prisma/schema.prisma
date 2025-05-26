@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -53,6 +53,7 @@ model User {
   sessions          Session[]
   inversiones       Inversion[]       // Relación con Inversiones
   tiposInversion    TipoInversion[]   // Relación con tipos de inversión personalizados
+  prestamos         Prestamo[]        // Relación con Préstamos
   plan              Plan?             @relation(fields: [planId], references: [id])
 }
 
@@ -292,6 +293,64 @@ model GastoDetalle {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   gasto         Gasto    @relation(fields: [gastoId], references: [id], onDelete: Cascade)
+}
+
+// Modelo para préstamos obtenidos de entidades financieras
+model Prestamo {
+  id                    String    @id @default(cuid())
+  entidadFinanciera     String    // Banco, cooperativa, financiera, etc.
+  tipoCredito           String    // personal, hipotecario, vehicular, comercial, etc.
+  montoSolicitado       Float     // Monto original del préstamo
+  montoAprobado         Float     // Monto aprobado (puede ser diferente al solicitado)
+  montoDesembolsado     Float     // Monto efectivamente recibido
+  saldoActual           Float     // Saldo pendiente de pago
+  tasaInteres           Float     // Tasa de interés anual (%)
+  plazoMeses            Int       // Plazo total en meses
+  cuotaMensual          Float     // Valor de la cuota mensual
+  cuotasPagadas         Int       @default(0) // Número de cuotas pagadas
+  cuotasPendientes      Int       // Número de cuotas pendientes
+  fechaDesembolso       DateTime  // Fecha en que se recibió el dinero
+  fechaPrimeraCuota     DateTime  // Fecha de la primera cuota
+  fechaProximaCuota     DateTime? // Fecha de la próxima cuota a pagar
+  fechaVencimiento      DateTime  // Fecha de vencimiento del préstamo
+  diaPago               Int?      // Día del mes para el pago (1-31)
+  estado                String    @default("activo") // activo, pagado, vencido, refinanciado
+  proposito             String?   // Para qué se solicitó el préstamo
+  garantia              String?   // Tipo de garantía (hipotecaria, prendaria, fiador, etc.)
+  seguroVida            Boolean   @default(false) // Si incluye seguro de vida
+  seguroDesempleo       Boolean   @default(false) // Si incluye seguro de desempleo
+  comisiones            Float?    @default(0) // Comisiones adicionales
+  gastosNotariales      Float?    @default(0) // Gastos notariales y legales
+  numeroCredito         String?   // Número de crédito asignado por la entidad
+  observaciones         String?   // Observaciones adicionales
+  documentos            String?   // URLs o referencias a documentos relacionados
+  userId                String    // Usuario propietario del préstamo
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pagos                 PagoPrestamo[] // Relación con los pagos realizados
+}
+
+// Modelo para registrar los pagos realizados a préstamos
+model PagoPrestamo {
+  id                String    @id @default(cuid())
+  prestamoId        String    // Relación con el préstamo
+  numeroCuota       Int       // Número de cuota pagada
+  montoPagado       Float     // Monto efectivamente pagado
+  montoCapital      Float     // Porción que va a capital
+  montoInteres      Float     // Porción que va a intereses
+  montoSeguro       Float?    @default(0) // Porción de seguros si aplica
+  montoComision     Float?    @default(0) // Comisiones adicionales
+  fechaPago         DateTime  // Fecha en que se realizó el pago
+  fechaVencimiento  DateTime  // Fecha de vencimiento de esta cuota
+  diasMora          Int?      @default(0) // Días de mora si aplica
+  interesMora       Float?    @default(0) // Intereses por mora
+  metodoPago        String?   // Efectivo, transferencia, débito automático, etc.
+  comprobante       String?   // Número de comprobante o referencia
+  observaciones     String?   // Observaciones del pago
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  prestamo          Prestamo  @relation(fields: [prestamoId], references: [id], onDelete: Cascade)
 }
 
 model Plan {

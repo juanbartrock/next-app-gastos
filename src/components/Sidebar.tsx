@@ -14,7 +14,8 @@ import {
   TrendingUp,
   Tag,
   Wallet,
-  DollarSign
+  DollarSign,
+  Building2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSidebar } from "@/contexts/SidebarContext"
@@ -116,6 +117,16 @@ export function Sidebar() {
         >
           <CreditCard className="w-5 h-5" />
           {isOpen && <span className="ml-3">Financiación</span>}
+        </Button>
+        
+        <Button 
+          variant={isActive("/prestamos") ? "secondary" : "ghost"}
+          className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400 mb-1"
+          style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+          onClick={() => handleNavigation('/prestamos')}
+        >
+          <Building2 className="w-5 h-5 text-blue-500" />
+          {isOpen && <span className="ml-3">Préstamos</span>}
         </Button>
         
         <Button 
