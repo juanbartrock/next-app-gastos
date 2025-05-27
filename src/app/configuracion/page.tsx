@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, Save, LightbulbIcon, Bell } from "lucide-react";
+import { ChevronLeft, Save, LightbulbIcon, Bell, Settings, Shield } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { CategoriasManager } from "@/components/admin/CategoriasManager";
 
 export default function ConfiguracionPage() {
   const { data: session, status } = useSession();
@@ -26,15 +27,41 @@ export default function ConfiguracionPage() {
   });
   
   const [loading, setLoading] = useState(false);
+  const [userIsAdmin, setUserIsAdmin] = useState(false);
+  const [loadingAdmin, setLoadingAdmin] = useState(true);
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
     }
     
+    // Verificar si el usuario es admin
+    const checkAdminStatus = async () => {
+      try {
+        setLoadingAdmin(true);
+        const response = await fetch('/api/user/is-admin');
+        
+        if (response.ok) {
+          const data = await response.json();
+          setUserIsAdmin(data.isAdmin);
+        } else {
+          setUserIsAdmin(false);
+        }
+      } catch (error) {
+        console.error('Error verificando admin:', error);
+        setUserIsAdmin(false);
+      } finally {
+        setLoadingAdmin(false);
+      }
+    };
+
+    if (session?.user?.id) {
+      checkAdminStatus();
+    }
+    
     // Aquí se cargarían las preferencias del usuario desde la API
     // Por ahora usamos valores por defecto
-  }, [status, router]);
+  }, [status, router, session?.user?.id]);
 
   const handleSwitchChange = (name: string) => {
     setFormData(prev => ({
@@ -231,8 +258,38 @@ export default function ConfiguracionPage() {
               </TabsContent>
               
               <TabsContent value="general">
-                <div className="py-4 text-center text-muted-foreground">
-                  <p>La configuración general estará disponible próximamente.</p>
+                <div className="space-y-6">
+                  {loadingAdmin ? (
+                    <div className="py-8 text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                      <p className="text-muted-foreground">Verificando permisos...</p>
+                    </div>
+                  ) : userIsAdmin ? (
+                    <>
+                      <div className="flex items-center gap-2 mb-4">
+                        <Shield className="h-5 w-5 text-amber-500" />
+                        <span className="text-lg font-semibold">Panel de Administración</span>
+                        <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
+                          Solo Administradores
+                        </span>
+                      </div>
+                      <CategoriasManager />
+                    </>
+                  ) : (
+                    <div className="py-8 text-center">
+                      <Settings className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-medium mb-2">Configuración General</h3>
+                      <p className="text-muted-foreground mb-4">
+                        Las opciones de configuración general estarán disponibles próximamente.
+                      </p>
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <p className="text-sm text-blue-700">
+                          💡 <strong>¿Eres administrador?</strong> Si deberías tener acceso a funciones administrativas, 
+                          contacta al administrador del sistema para que verifique tus permisos.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </TabsContent>
             </Tabs>

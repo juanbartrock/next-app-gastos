@@ -11,6 +11,7 @@ import { ChevronLeft, Loader2, Save, User, Mail, LogOut, Phone, Package, Crown }
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 
 // Tipo para el plan del usuario
 type Plan = {
@@ -153,8 +154,9 @@ export default function ProfilePage() {
         </div>
         
         <Tabs defaultValue="personal" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="personal">Datos Personales</TabsTrigger>
+            <TabsTrigger value="security">Seguridad</TabsTrigger>
             <TabsTrigger value="plan">Mi Plan</TabsTrigger>
           </TabsList>
           
@@ -241,6 +243,10 @@ export default function ProfilePage() {
                 </form>
               </CardContent>
             </Card>
+          </TabsContent>
+          
+          <TabsContent value="security">
+            <ChangePasswordForm />
           </TabsContent>
           
           <TabsContent value="plan">

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { options } from '@/app/api/auth/[...nextauth]/options'
+import { isAdmin } from '@/lib/auth-utils'
 
 // GET - Obtener todas las categorías
 export async function GET() {
@@ -34,15 +35,24 @@ export async function GET() {
   }
 }
 
-// POST - Crear una nueva categoría
+// POST - Crear una nueva categoría (solo admins)
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(options)
     
-    if (!session?.user?.email) {
+    if (!session?.user?.id) {
       return NextResponse.json(
         { error: "No autenticado" },
         { status: 401 }
+      )
+    }
+    
+    // Verificar que el usuario sea administrador
+    const esAdmin = await isAdmin(session.user.id)
+    if (!esAdmin) {
+      return NextResponse.json(
+        { error: "Acceso denegado. Solo administradores pueden crear categorías" },
+        { status: 403 }
       )
     }
     
@@ -78,15 +88,24 @@ export async function POST(request: Request) {
   }
 }
 
-// PUT - Actualizar una categoría existente
+// PUT - Actualizar una categoría existente (solo admins)
 export async function PUT(request: Request) {
   try {
     const session = await getServerSession(options)
     
-    if (!session?.user?.email) {
+    if (!session?.user?.id) {
       return NextResponse.json(
         { error: "No autenticado" },
         { status: 401 }
+      )
+    }
+    
+    // Verificar que el usuario sea administrador
+    const esAdmin = await isAdmin(session.user.id)
+    if (!esAdmin) {
+      return NextResponse.json(
+        { error: "Acceso denegado. Solo administradores pueden actualizar categorías" },
+        { status: 403 }
       )
     }
     
@@ -134,15 +153,24 @@ export async function PUT(request: Request) {
   }
 }
 
-// DELETE - Eliminar una categoría (marca como inactiva)
+// DELETE - Eliminar una categoría (marca como inactiva, solo admins)
 export async function DELETE(request: Request) {
   try {
     const session = await getServerSession(options)
     
-    if (!session?.user?.email) {
+    if (!session?.user?.id) {
       return NextResponse.json(
         { error: "No autenticado" },
         { status: 401 }
+      )
+    }
+    
+    // Verificar que el usuario sea administrador
+    const esAdmin = await isAdmin(session.user.id)
+    if (!esAdmin) {
+      return NextResponse.json(
+        { error: "Acceso denegado. Solo administradores pueden eliminar categorías" },
+        { status: 403 }
       )
     }
     
