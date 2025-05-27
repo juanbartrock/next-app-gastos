@@ -1,9 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
-import { Calendar } from "@/components/ui/calendar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,11 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
 import { ArrowDown, ArrowUp, CalendarIcon, CreditCard, Plus, Users, Loader2 } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { toast } from "sonner"
@@ -41,9 +33,41 @@ interface Categoria {
   status: boolean;
 }
 
+// FUNCIONES HELPER PARA FECHAS (DD/MM/YYYY) - Se pueden mover a un archivo utils/date.ts si se usan en múltiples sitios
+const parseDDMMYYYY = (dateStr: string): Date | undefined => {
+  if (!dateStr) return undefined;
+  const parts = dateStr.split('/');
+  if (parts.length === 3) {
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const year = parseInt(parts[2], 10);
+    if (!isNaN(day) && !isNaN(month) && !isNaN(year) && year > 1000 && year < 3000 && day > 0 && day <= 31 && month >= 0 && month < 12) {
+      const date = new Date(year, month, day);
+      if (date.getFullYear() === year && date.getMonth() === month && date.getDate() === day) {
+        return date;
+      }
+    }
+  }
+  return undefined;
+};
+
+const formatDateToDDMMYYYY = (date: Date | undefined): string => {
+  if (!date) return "";
+  try {
+    const d = new Date(date);
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  } catch (error) {
+    return "";
+  }
+};
+
 export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
   const [amount, setAmount] = useState("")
-  const [date, setDate] = useState<Date>()
+  const [date, setDate] = useState<Date | undefined>(new Date())
+  const [dateStr, setDateStr] = useState<string>(formatDateToDDMMYYYY(new Date()))
   const [transactionType, setTransactionType] = useState<"income" | "expense">("expense")
   const [movementType, setMovementType] = useState<"efectivo" | "digital" | "ahorro" | "tarjeta">("efectivo")
   const [error, setError] = useState<string>("")
@@ -58,6 +82,7 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
   // Estados para financiación con tarjeta
   const [cantidadCuotas, setCantidadCuotas] = useState<string>("1")
   const [fechaPrimerPago, setFechaPrimerPago] = useState<Date | undefined>(undefined)
+  const [fechaPrimerPagoStr, setFechaPrimerPagoStr] = useState<string>("")
   const [diaPago, setDiaPago] = useState<string>("")
 
   // Estado para controlar la visibilidad de opciones avanzadas
@@ -149,6 +174,20 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
       }
     }
 
+    const parsedFechaPrimerPago = parseDDMMYYYY(fechaPrimerPagoStr);
+    if (movementType === "tarjeta" && fechaPrimerPagoStr && !parsedFechaPrimerPago) {
+      setError("Formato de Fecha del Primer Pago inválido. Usar DD/MM/YYYY");
+      setLoading(false);
+      return;
+    }
+
+    const parsedDate = parseDDMMYYYY(dateStr);
+    if (!parsedDate) { // La fecha principal es obligatoria
+        setError("Formato de Fecha de transacción inválido. Usar DD/MM/YYYY");
+        setLoading(false);
+        return;
+    }
+
     try {
       // Crear el gasto
       const response = await fetch('/api/gastos', {
@@ -163,7 +202,7 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
           categoriaId: parseInt(categoriaId),
           tipoTransaccion: transactionType,
           tipoMovimiento: movementType,
-          fecha: date || new Date(),
+          fecha: parsedDate,
           grupoId: selectedGrupoId === "personal" ? null : selectedGrupoId
         }),
       })
@@ -184,7 +223,7 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
           gastoId: data.id,
           cantidadCuotas: parseInt(cantidadCuotas),
           montoCuota,
-          fechaPrimerPago: fechaPrimerPago ? new Date(fechaPrimerPago).toISOString() : null,
+          fechaPrimerPago: parsedFechaPrimerPago,
           diaPago: diaPago ? parseInt(diaPago) : null
         })
         
@@ -198,7 +237,7 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
               gastoId: data.id,
               cantidadCuotas: parseInt(cantidadCuotas),
               montoCuota,
-              fechaPrimerPago: fechaPrimerPago ? new Date(fechaPrimerPago).toISOString() : null,
+              fechaPrimerPago: parsedFechaPrimerPago,
               diaPago: diaPago ? parseInt(diaPago) : null
             }),
           })
@@ -228,12 +267,15 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
       // Resetear formulario
       form.reset()
       setAmount("")
-      setDate(undefined)
+      const today = new Date()
+      setDate(today)
+      setDateStr(formatDateToDDMMYYYY(today))
       setTransactionType("expense")
       setMovementType("efectivo")
       setSelectedGrupoId("personal")
       setCantidadCuotas("1")
       setFechaPrimerPago(undefined)
+      setFechaPrimerPagoStr("")
       setDiaPago("")
       setSuccess(true)
       
@@ -388,31 +430,14 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="fechaPrimerPago">Fecha del Primer Pago</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {fechaPrimerPago ? (
-                      format(fechaPrimerPago, 'PPP', { locale: es })
-                    ) : (
-                      <span>Seleccionar fecha</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={fechaPrimerPago}
-                    onSelect={setFechaPrimerPago}
-                    initialFocus
-                    locale={es}
-                  />
-                </PopoverContent>
-              </Popover>
+              <Label htmlFor="fechaPrimerPago">Fecha del Primer Pago (DD/MM/YYYY)</Label>
+              <Input
+                type="text"
+                id="fechaPrimerPago"
+                value={fechaPrimerPagoStr}
+                onChange={(e) => setFechaPrimerPagoStr(e.target.value)}
+                placeholder="DD/MM/YYYY"
+              />
             </div>
             
             <div className="space-y-2">
@@ -455,31 +480,18 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
         {/* Contenido visible siempre */}
         <div className={`space-y-4 ${showAdvancedOptions ? "" : "hidden"}`}>
           <div className="space-y-2">
-            <Label htmlFor="date">Fecha</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start text-left font-normal"
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? (
-                    format(date, 'PPP', { locale: es })
-                  ) : (
-                    <span>Seleccionar fecha</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  initialFocus
-                  locale={es}
-                />
-              </PopoverContent>
-            </Popover>
+            <Label htmlFor="date">Fecha (DD/MM/YYYY)</Label>
+            <Input
+              type="text"
+              id="date"
+              value={dateStr}
+              onChange={(e) => {
+                setDateStr(e.target.value)
+                const parsedDate = parseDDMMYYYY(e.target.value)
+                setDate(parsedDate)
+              }}
+              placeholder="DD/MM/YYYY"
+            />
           </div>
 
           <div className="space-y-2">

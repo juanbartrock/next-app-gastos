@@ -89,7 +89,9 @@ export async function POST(request: Request) {
       comentario, 
       estado, 
       categoriaId,
-      proximaFecha 
+      proximaFecha,
+      esServicio,
+      medioPago
     } = await request.json()
     
     // Verificar datos obligatorios
@@ -114,21 +116,60 @@ export async function POST(request: Request) {
       }
     }
     
-    // Crear el gasto recurrente
-    const gastoRecurrente = await prisma.gastoRecurrente.create({
-      data: {
-        concepto,
-        periodicidad,
-        monto: Number(monto),
-        comentario,
-        estado: estado || 'pendiente',
-        proximaFecha: proximaFecha ? new Date(proximaFecha) : null,
-        userId: usuario.id,
-        ...(categoriaId && { categoriaId: Number(categoriaId) })
+    // Usar transacción para crear gasto recurrente y servicio si corresponde
+    const resultado = await prisma.$transaction(async (tx) => {
+      // Crear el gasto recurrente
+      const gastoRecurrente = await tx.gastoRecurrente.create({
+        data: {
+          concepto,
+          periodicidad,
+          monto: Number(monto),
+          comentario,
+          estado: estado || 'pendiente',
+          proximaFecha: proximaFecha ? new Date(proximaFecha) : null,
+          userId: usuario.id,
+          esServicio: esServicio || false,
+          ...(categoriaId && { categoriaId: Number(categoriaId) })
+        }
+      })
+      
+      // Si se marca como servicio, crear el servicio asociado
+      if (esServicio) {
+        // Verificar si ya existe un servicio con el mismo nombre
+        const servicioExistente = await tx.servicio.findFirst({
+          where: {
+            userId: usuario.id,
+            nombre: concepto,
+            generaRecurrente: true
+          }
+        })
+        
+        if (!servicioExistente) {
+          // Crear el servicio
+          const servicio = await tx.servicio.create({
+            data: {
+              nombre: concepto,
+              descripcion: `Servicio generado automáticamente desde gasto recurrente: ${concepto}`,
+              monto: Number(monto),
+              medioPago: medioPago || "efectivo",
+              fechaCobro: proximaFecha ? new Date(proximaFecha) : null,
+              generaRecurrente: true,
+              userId: usuario.id
+            }
+          })
+          
+          // Actualizar el gasto recurrente con la relación al servicio
+          await tx.gastoRecurrente.update({
+            where: { id: gastoRecurrente.id },
+            data: { servicioId: servicio.id }
+          })
+        }
       }
+      
+      return gastoRecurrente
     })
     
-    return NextResponse.json(gastoRecurrente)
+    return NextResponse.json(resultado)
   } catch (error) {
     console.error('Error al crear gasto recurrente:', error)
     return NextResponse.json(

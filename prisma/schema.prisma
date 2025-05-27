@@ -136,8 +136,11 @@ model GastoRecurrente {
   categoriaId  Int?
   proximaFecha DateTime?
   ultimoPago   DateTime?
+  esServicio   Boolean    @default(false) // Marca si este gasto recurrente es también un servicio
+  servicioId   Int?       @unique // Relación opcional con Servicio (único para relación 1:1)
   categoria    Categoria? @relation(fields: [categoriaId], references: [id])
   user         User       @relation(fields: [userId], references: [id])
+  servicio     Servicio?  @relation(fields: [servicioId], references: [id])
   tareas       Tarea[]    // Relación con Tareas
 }
 
@@ -273,19 +276,21 @@ model Presupuesto {
 
 // Modelo para servicios contratados (suscripciones, servicios mensuales, etc.)
 model Servicio {
-  id                 Int         @id @default(autoincrement())
-  nombre             String      // Nombre del servicio
-  descripcion        String?     // Descripción del servicio
-  monto              Float       // Monto del servicio
-  medioPago          String      // Medio de pago (efectivo, tarjeta, débito automático, etc.)
-  tarjeta            String?     // Tarjeta utilizada si aplica
-  fechaCobro         DateTime?   // Fecha de cobro
-  fechaVencimiento   DateTime?   // Fecha de vencimiento
-  userId             String      // Usuario propietario del servicio
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
-  user               User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  promociones        Promocion[] // Relación con promociones
+  id                  Int               @id @default(autoincrement())
+  nombre              String            // Nombre del servicio
+  descripcion         String?           // Descripción del servicio
+  monto               Float             // Monto del servicio
+  medioPago           String            // Medio de pago (efectivo, tarjeta, débito automático, etc.)
+  tarjeta             String?           // Tarjeta utilizada si aplica
+  fechaCobro          DateTime?         // Fecha de cobro
+  fechaVencimiento    DateTime?         // Fecha de vencimiento
+  generaRecurrente    Boolean           @default(false) // Marca si este servicio genera un gasto recurrente
+  userId              String            // Usuario propietario del servicio
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gastoRecurrente     GastoRecurrente?  // Relación inversa (sin campos, Prisma la maneja automáticamente)
+  promociones         Promocion[]       // Relación con promociones
 }
 
 // Modelo para promociones y ofertas de servicios

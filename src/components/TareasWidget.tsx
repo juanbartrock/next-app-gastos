@@ -238,8 +238,9 @@ export function TareasWidget({ className }: TareasWidgetProps) {
               return (
                 <div
                   key={tarea.id}
-                  className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                  className="grid grid-cols-[auto_1fr_auto_auto] items-start gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
                 >
+                  {/* Checkbox */}
                   <Checkbox
                     checked={false}
                     disabled={completandoTarea === tarea.id}
@@ -247,48 +248,52 @@ export function TareasWidget({ className }: TareasWidgetProps) {
                     className="mt-0.5"
                   />
                   
+                  {/* Contenido de la tarea */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm leading-none mb-1 truncate">
-                          {tarea.titulo}
-                        </p>
-                        {tarea.descripcion && (
-                          <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                            {tarea.descripcion}
-                          </p>
-                        )}
-                        {contexto && (
-                          <p className="text-xs text-blue-600 bg-blue-50 dark:bg-blue-950 px-2 py-1 rounded-md inline-block mb-2">
-                            {contexto}
-                          </p>
-                        )}
-                      </div>
-                      
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <Badge 
-                          variant={getPrioridadColor(tarea.prioridad)}
-                          className="text-xs"
-                        >
-                          <Flag className="h-3 w-3 mr-1" />
-                          {tarea.prioridad}
-                        </Badge>
-                        
-                        {fechaInfo && (
-                          <div className={cn(
-                            "flex items-center gap-1 text-xs",
-                            fechaInfo.color
-                          )}>
-                            {IconoFecha && <IconoFecha className="h-3 w-3" />}
-                            {fechaInfo.texto}
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    <p className="font-medium text-sm leading-none mb-1 truncate">
+                      {tarea.titulo}
+                    </p>
+                    {tarea.descripcion && (
+                      <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                        {tarea.descripcion}
+                      </p>
+                    )}
+                    {contexto && (
+                      <p className="text-xs text-blue-600 bg-blue-50 dark:bg-blue-950 px-2 py-1 rounded-md inline-block">
+                        {contexto}
+                      </p>
+                    )}
                   </div>
                   
+                  {/* Fecha de vencimiento */}
+                  <div className="flex items-center justify-end min-w-0">
+                    {fechaInfo && (
+                      <div className={cn(
+                        "flex items-center gap-1 text-xs whitespace-nowrap",
+                        fechaInfo.color
+                      )}>
+                        {IconoFecha && <IconoFecha className="h-3 w-3" />}
+                        {fechaInfo.texto}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Prioridad */}
+                  <div className="flex items-center justify-end">
+                    <Badge 
+                      variant={getPrioridadColor(tarea.prioridad)}
+                      className="text-xs"
+                    >
+                      <Flag className="h-3 w-3 mr-1" />
+                      {tarea.prioridad}
+                    </Badge>
+                  </div>
+                  
+                  {/* Loading spinner */}
                   {completandoTarea === tarea.id && (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mt-0.5" />
+                    <div className="col-span-4 flex justify-center">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
                   )}
                 </div>
               )

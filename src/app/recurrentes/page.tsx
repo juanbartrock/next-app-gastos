@@ -8,10 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
 import { CalendarIcon, Edit, Pencil, Repeat, Trash2, ArrowLeft, Loader2 } from "lucide-react"
 import {
   Table,
@@ -25,6 +21,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -65,6 +62,38 @@ type Categoria = {
   id: number
   descripcion: string
 }
+
+// FUNCIONES HELPER PARA FECHAS (DD/MM/YYYY)
+const parseDDMMYYYY = (dateStr: string): Date | undefined => {
+  if (!dateStr) return undefined;
+  const parts = dateStr.split('/');
+  if (parts.length === 3) {
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // Meses en JS son 0-indexed
+    const year = parseInt(parts[2], 10);
+    if (!isNaN(day) && !isNaN(month) && !isNaN(year) && year > 1000 && year < 3000 && day > 0 && day <= 31 && month >= 0 && month < 12) {
+      const date = new Date(year, month, day);
+      // Verificar si la fecha creada es válida (ej. 31/02/2023 no es válido)
+      if (date.getFullYear() === year && date.getMonth() === month && date.getDate() === day) {
+        return date;
+      }
+    }
+  }
+  return undefined; // Formato inválido o fecha no válida
+};
+
+const formatDateToDDMMYYYY = (date: Date | undefined): string => {
+  if (!date) return "";
+  try {
+    const d = new Date(date); // Asegurarse que es un objeto Date
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = (d.getMonth() + 1).toString().padStart(2, '0'); // Meses en JS son 0-indexed
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  } catch (error) {
+    return ""; // En caso de fecha inválida
+  }
+};
 
 // Componente de carga
 function LoadingScreen() {
@@ -107,6 +136,7 @@ export default function RecurrentesPage() {
   const [estado, setEstado] = useState("pendiente")
   const [categoriaId, setCategoriaId] = useState<number | undefined>(undefined)
   const [proximaFecha, setProximaFecha] = useState<Date | undefined>(undefined)
+  const [proximaFechaStr, setProximaFechaStr] = useState<string>("")
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<string | undefined>(undefined)
   
   // Estados de loading
@@ -126,8 +156,15 @@ export default function RecurrentesPage() {
       setCategoriaSeleccionada(editingGasto.categoriaId?.toString() || "")
       
       if (editingGasto.proximaFecha) {
-        setProximaFecha(new Date(editingGasto.proximaFecha))
+        const fecha = new Date(editingGasto.proximaFecha)
+        setProximaFecha(fecha)
+        setProximaFechaStr(formatDateToDDMMYYYY(fecha))
+      } else {
+        setProximaFecha(undefined)
+        setProximaFechaStr("")
       }
+    } else {
+      resetForm()
     }
   }, [editingGasto])
 
@@ -138,6 +175,7 @@ export default function RecurrentesPage() {
   const [servicioMedioPago, setServicioMedioPago] = useState("Tarjeta de crédito")
   const [servicioTarjeta, setServicioTarjeta] = useState("")
   const [servicioFechaCobro, setServicioFechaCobro] = useState<Date | undefined>(undefined)
+  const [servicioFechaCobroStr, setServicioFechaCobroStr] = useState<string>("")
 
   // Resetear formulario de servicio
   const resetServicioForm = () => {
@@ -147,6 +185,8 @@ export default function RecurrentesPage() {
     setServicioMedioPago("Tarjeta de crédito")
     setServicioTarjeta("")
     setServicioFechaCobro(undefined)
+    setServicioFechaCobroStr("")
+    setServicioActual(null)
   }
 
   // Cargar datos en el formulario cuando se edita un servicio
@@ -159,7 +199,12 @@ export default function RecurrentesPage() {
       setServicioTarjeta(servicioActual.tarjeta || "")
       
       if (servicioActual.fechaCobro) {
-        setServicioFechaCobro(new Date(servicioActual.fechaCobro))
+        const fecha = new Date(servicioActual.fechaCobro)
+        setServicioFechaCobro(fecha)
+        setServicioFechaCobroStr(formatDateToDDMMYYYY(fecha))
+      } else {
+        setServicioFechaCobro(undefined)
+        setServicioFechaCobroStr("")
       }
     }
   }, [servicioActual])
@@ -175,13 +220,19 @@ export default function RecurrentesPage() {
     
     setSubmittingServicio(true)
     try {
+      const parsedDate = parseDDMMYYYY(servicioFechaCobroStr)
+      if (servicioFechaCobroStr && !parsedDate) {
+        toast.error("Formato de Fecha de Cobro inválido. Usar DD/MM/YYYY")
+        setSubmittingServicio(false)
+        return
+      }
       const nuevoServicio = {
         nombre: servicioNombre,
         descripcion: servicioDescripcion,
         monto: parseFloat(servicioMonto),
         medioPago: servicioMedioPago,
         tarjeta: servicioTarjeta,
-        fechaCobro: servicioFechaCobro
+        fechaCobro: parsedDate
       }
       
       let exito = false
@@ -196,7 +247,6 @@ export default function RecurrentesPage() {
       
       if (exito) {
         resetServicioForm()
-        setServicioActual(null)
         setIsServicioFormOpen(false)
       }
     } catch (error) {
@@ -416,21 +466,6 @@ export default function RecurrentesPage() {
     }
   }, [status, router])
 
-  // Efecto para reiniciar formulario cuando se cambia el gasto en edición
-  useEffect(() => {
-    if (editingGasto) {
-      setConcepto(editingGasto.concepto)
-      setPeriodicidad(editingGasto.periodicidad)
-      setMonto(editingGasto.monto.toString())
-      setComentario(editingGasto.comentario || "")
-      setEstado(editingGasto.estado)
-      setCategoriaId(editingGasto.categoriaId)
-      setProximaFecha(editingGasto.proximaFecha ? new Date(editingGasto.proximaFecha) : undefined)
-    } else {
-      resetForm()
-    }
-  }, [editingGasto])
-
   // Resetear formulario
   const resetForm = () => {
     setConcepto("")
@@ -439,7 +474,9 @@ export default function RecurrentesPage() {
     setComentario("")
     setEstado("pendiente")
     setCategoriaId(undefined)
+    setCategoriaSeleccionada(undefined)
     setProximaFecha(undefined)
+    setProximaFechaStr("")
     setEditingGasto(null)
   }
 
@@ -454,6 +491,12 @@ export default function RecurrentesPage() {
     
     setSubmitting(true)
     try {
+      const parsedDate = parseDDMMYYYY(proximaFechaStr)
+      if (proximaFechaStr && !parsedDate) {
+        toast.error("Formato de Próxima Fecha inválido. Usar DD/MM/YYYY")
+        setSubmitting(false)
+        return
+      }
       const gastoData = {
         concepto,
         periodicidad,
@@ -461,7 +504,7 @@ export default function RecurrentesPage() {
         comentario,
         estado,
         categoriaId,
-        proximaFecha
+        proximaFecha: parsedDate
       }
       
       let response
@@ -547,7 +590,7 @@ export default function RecurrentesPage() {
   // Función para formatear fechas
   const formatFecha = (fecha?: Date) => {
     if (!fecha) return "No definida"
-    return format(new Date(fecha), 'dd/MM/yyyy', { locale: es })
+    return formatDateToDDMMYYYY(new Date(fecha))
   }
 
   // Obtener estado con estilo
@@ -642,9 +685,7 @@ export default function RecurrentesPage() {
                                   {servicio.tarjeta && <span className="text-xs text-gray-500 ml-1">({servicio.tarjeta})</span>}
                                 </TableCell>
                                 <TableCell>
-                                  {servicio.fechaCobro 
-                                    ? format(new Date(servicio.fechaCobro), 'dd/MM/yyyy')
-                                    : 'No especificada'}
+                                  {servicio.fechaCobro ? formatDateToDDMMYYYY(new Date(servicio.fechaCobro)) : 'No especificada'}
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-2">
@@ -754,6 +795,9 @@ export default function RecurrentesPage() {
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>{editingGasto ? "Editar Gasto Recurrente" : "Nuevo Gasto Recurrente"}</DialogTitle>
+              <DialogDescription>
+                {editingGasto ? "Modifica los datos del gasto recurrente" : "Completa la información para registrar un nuevo gasto recurrente"}
+              </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -850,31 +894,14 @@ export default function RecurrentesPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="proximaFecha">Próxima Fecha</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {proximaFecha ? (
-                          format(proximaFecha, 'PPP', { locale: es })
-                        ) : (
-                          <span>Seleccionar fecha</span>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={proximaFecha}
-                        onSelect={setProximaFecha}
-                        initialFocus
-                        locale={es}
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <Label htmlFor="proximaFecha">Próxima Fecha (DD/MM/YYYY)</Label>
+                  <Input
+                    type="text"
+                    id="proximaFecha"
+                    value={proximaFechaStr}
+                    onChange={(e) => setProximaFechaStr(e.target.value)}
+                    placeholder="DD/MM/YYYY"
+                  />
                 </div>
               </div>
               
@@ -916,6 +943,9 @@ export default function RecurrentesPage() {
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>{servicioActual ? "Editar Servicio" : "Nuevo Servicio"}</DialogTitle>
+              <DialogDescription>
+                {servicioActual ? "Modifica los datos del servicio contratado" : "Registra un nuevo servicio contratado"}
+              </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleServicioSubmit} className="space-y-4">
               <div>
@@ -1016,31 +1046,14 @@ export default function RecurrentesPage() {
               )}
               
               <div>
-                <Label htmlFor="fechaCobro">Fecha de Cobro</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-left font-normal"
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {servicioFechaCobro ? (
-                        format(servicioFechaCobro, 'PPP', { locale: es })
-                      ) : (
-                        <span>Seleccionar fecha</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={servicioFechaCobro}
-                      onSelect={setServicioFechaCobro}
-                      initialFocus
-                      locale={es}
-                    />
-                  </PopoverContent>
-                </Popover>
+                <Label htmlFor="fechaCobro">Fecha de Cobro (DD/MM/YYYY)</Label>
+                <Input
+                  type="text"
+                  id="fechaCobro"
+                  value={servicioFechaCobroStr}
+                  onChange={(e) => setServicioFechaCobroStr(e.target.value)}
+                  placeholder="DD/MM/YYYY"
+                />
               </div>
               
               <div className="flex justify-end gap-2 pt-4">

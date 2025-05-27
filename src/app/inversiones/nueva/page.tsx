@@ -11,15 +11,42 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Calendar } from "@/components/ui/calendar"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { useCurrency } from "@/contexts/CurrencyContext"
 import { toast } from "sonner"
+
+// FUNCIONES HELPER PARA FECHAS (DD/MM/YYYY)
+const parseDDMMYYYY = (dateStr: string): Date | undefined => {
+  if (!dateStr) return undefined;
+  const parts = dateStr.split('/');
+  if (parts.length === 3) {
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const year = parseInt(parts[2], 10);
+    if (!isNaN(day) && !isNaN(month) && !isNaN(year) && year > 1000 && year < 3000 && day > 0 && day <= 31 && month >= 0 && month < 12) {
+      const date = new Date(year, month, day);
+      if (date.getFullYear() === year && date.getMonth() === month && date.getDate() === day) {
+        return date;
+      }
+    }
+  }
+  return undefined;
+};
+
+const formatDateToDDMMYYYY = (date: Date | undefined): string => {
+  if (!date) return "";
+  try {
+    const d = new Date(date);
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  } catch (error) {
+    return "";
+  }
+};
 
 // Esquema de validación del formulario
 const formSchema = z.object({
@@ -31,8 +58,12 @@ const formSchema = z.object({
     message: "El monto debe ser positivo."
   }),
   rendimientoAnual: z.coerce.number().optional(),
-  fechaInicio: z.date(),
-  fechaVencimiento: z.date().optional(),
+  fechaInicio: z.string().refine((val) => !!parseDDMMYYYY(val), {
+    message: "Fecha de inicio inválida (DD/MM/YYYY)",
+  }),
+  fechaVencimiento: z.string().optional().refine((val) => !val || !!parseDDMMYYYY(val), {
+    message: "Fecha de vencimiento inválida (DD/MM/YYYY)",
+  }),
   tipoId: z.string({
     required_error: "Selecciona un tipo de inversión."
   }),
@@ -86,8 +117,8 @@ export default function NuevaInversionPage() {
       descripcion: "",
       montoInicial: undefined,
       rendimientoAnual: undefined,
-      fechaInicio: new Date(),
-      fechaVencimiento: undefined,
+      fechaInicio: formatDateToDDMMYYYY(new Date()),
+      fechaVencimiento: "",
       tipoId: "",
       plataforma: "",
       notas: ""
@@ -98,15 +129,34 @@ export default function NuevaInversionPage() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true)
     try {
-      console.log("Enviando datos de inversión:", values)
+      const parsedFechaInicio = parseDDMMYYYY(values.fechaInicio)
+      const parsedFechaVencimiento = values.fechaVencimiento ? parseDDMMYYYY(values.fechaVencimiento) : undefined
+
+      // No es estrictamente necesario validar aquí de nuevo si Zod lo hace, pero es una doble verificación.
+      if (!parsedFechaInicio) {
+        toast.error("Formato de Fecha de Inicio inválido.")
+        setIsLoading(false)
+        return
+      }
+      if (values.fechaVencimiento && !parsedFechaVencimiento) {
+        toast.error("Formato de Fecha de Vencimiento inválido.")
+        setIsLoading(false)
+        return
+      }
+
+      const datosParaAPI = {
+        ...values,
+        fechaInicio: parsedFechaInicio,
+        fechaVencimiento: parsedFechaVencimiento,
+      }
+      console.log("Enviando datos de inversión:", datosParaAPI)
       
-      // Enviar datos a la API
       const response = await fetch('/api/inversiones', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify(datosParaAPI),
       })
 
       if (!response.ok) {
@@ -257,22 +307,6 @@ export default function NuevaInversionPage() {
                     <FormItem>
                       <FormLabel>
                         Rendimiento anual estimado (%)
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-4 w-4 ml-1 inline-flex">
-                              <Info className="h-3 w-3" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-80">
-                            <p className="text-sm">
-                              Ingresa el rendimiento anual esperado como porcentaje. 
-                              Esto ayudará a calcular proyecciones y comparar con el rendimiento real.
-                            </p>
-                          </PopoverContent>
-                        </Popover>
                       </FormLabel>
                       <FormControl>
                         <Input 
@@ -298,38 +332,14 @@ export default function NuevaInversionPage() {
                   name="fechaInicio"
                   render={({ field }: { field: any }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Fecha de inicio</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP", { locale: es })
-                              ) : (
-                                <span>Seleccionar fecha</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) =>
-                              date > new Date()
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <FormLabel>Fecha de inicio (DD/MM/YYYY)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="text" 
+                          placeholder="DD/MM/YYYY" 
+                          {...field} 
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -341,38 +351,14 @@ export default function NuevaInversionPage() {
                   name="fechaVencimiento"
                   render={({ field }: { field: any }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Fecha de vencimiento (opcional)</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP", { locale: es })
-                              ) : (
-                                <span>Seleccionar fecha</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value || undefined}
-                            onSelect={field.onChange}
-                            disabled={(date) =>
-                              date < new Date() || (form.getValues().fechaInicio && date < form.getValues().fechaInicio)
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <FormLabel>Fecha de vencimiento (opcional, DD/MM/YYYY)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="text" 
+                          placeholder="DD/MM/YYYY" 
+                          {...field} 
+                        />
+                      </FormControl>
                       <FormDescription>
                         Para inversiones a plazo fijo o con fecha de finalización
                       </FormDescription>
