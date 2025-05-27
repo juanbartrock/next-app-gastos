@@ -1,39 +1,78 @@
-# Documentación: Aplicación de Gestión de Gastos
+# 📋 Documentación Técnica: Sistema de Gestión de Gastos
 
-## Descripción General
-Esta aplicación está diseñada para ayudar a los usuarios a gestionar sus gastos personales y grupales. Permite el registro de transacciones financieras, la categorización de gastos, la formación de grupos para gastos compartidos y ofrece visualizaciones para análisis financiero. Además, incluye gestión de presupuestos, servicios contratados, promociones, inversiones y recomendaciones de ahorro.
+## 🎯 Descripción General
+Sistema integral de gestión financiera personal y grupal desarrollado con tecnologías modernas. Permite el control completo de finanzas personales incluyendo transacciones, inversiones, préstamos, presupuestos y análisis inteligente con IA.
 
-**Nota importante**: Se han eliminado todos los datos simulados, ficticios y de prueba del proyecto. La aplicación ahora trabaja únicamente con datos reales proporcionados por el usuario o APIs externas.
+**✅ Características destacadas**:
+- Datos reales únicamente (sin simulaciones)
+- Arquitectura escalable y moderna
+- Integración con APIs externas
+- Análisis financiero inteligente
+- Multi-dispositivo y responsive
 
-## Tecnologías Utilizadas
+## 🛠️ Stack Tecnológico
 
 ### Backend
-- **Next.js**: Framework React con renderizado del lado del servidor (SSR) y generación de sitios estáticos (SSG).
-- **Prisma**: ORM (Object-Relational Mapping) para manejar la base de datos.
-- **PostgreSQL**: Base de datos relacional utilizada en producción.
-- **NextAuth.js**: Solución de autenticación para Next.js.
+- **Next.js 15** - Framework React con App Router y Server Components
+- **TypeScript** - Tipado estático para mayor robustez y mantenibilidad
+- **Prisma 6.8** - ORM moderno con type safety para PostgreSQL
+- **NextAuth.js 4.24** - Autenticación segura y flexible
+- **PostgreSQL/Neon** - Base de datos relacional en la nube
+- **Zod** - Validación de esquemas y tipos
 
 ### Frontend
-- **React**: Biblioteca para construir interfaces de usuario.
-- **TailwindCSS**: Framework CSS utilitario para el diseño.
-- **Shadcn/ui**: Componentes UI reutilizables.
-- **Recharts**: Biblioteca para visualización de datos.
-- **React Day Picker**: Para selección de fechas.
-- **Sonner**: Biblioteca para notificaciones toast.
+- **React 18** - Biblioteca de interfaces de usuario con Concurrent Features
+- **TailwindCSS 4** - Framework CSS utilitario de última generación
+- **Shadcn/ui** - Sistema de componentes accesibles y modernos
+- **Recharts 2.15** - Visualización de datos interactiva y responsive
+- **React Hook Form** - Gestión eficiente de formularios
+- **Lucide React** - Iconografía consistente y optimizada
 
-## Estructura del Proyecto
+### Integraciones y APIs
+- **OpenAI API** - Asistente financiero inteligente con GPT
+- **Twilio** - Notificaciones SMS y WhatsApp
+- **Puppeteer** - Web scraping automatizado para promociones
+- **Cheerio** - Parsing y manipulación de HTML
+- **Axios** - Cliente HTTP para APIs externas
 
-### Directorios Principales
-- `/src/app`: Contiene las rutas y páginas de la aplicación.
-- `/src/components`: Componentes reutilizables.
-- `/src/lib`: Funciones y utilidades.
-- `/src/contexts`: Contextos de React para gestión de estado.
-- `/src/providers`: Proveedores para la aplicación.
-- `/src/scraping`: Herramientas para scraping de información financiera.
-- `/prisma`: Configuración y esquema de la base de datos.
-- `/public`: Archivos estáticos.
-- `/scripts`: Scripts de utilidades y generación de datos.
-- `/GeneracionDatosPrueba`: Scripts para generar datos de prueba.
+## 📁 Arquitectura del Proyecto
+
+### 🏗️ Estructura de Directorios
+```
+next-app-gastos/
+├── src/
+│   ├── app/                    # App Router de Next.js 15
+│   │   ├── api/               # API Routes (Server-side)
+│   │   ├── dashboard/         # Dashboard principal
+│   │   ├── transacciones/     # Gestión de transacciones
+│   │   ├── grupos/            # Gastos grupales
+│   │   ├── prestamos/         # Gestión de préstamos
+│   │   ├── inversiones/       # Portfolio de inversiones
+│   │   ├── admin/             # Panel de administración
+│   │   ├── financial-advisor/ # Asistente financiero IA
+│   │   └── ...               # Otras rutas
+│   ├── components/            # Componentes reutilizables
+│   │   └── ui/               # Componentes UI de Shadcn
+│   ├── lib/                  # Utilidades y configuraciones
+│   ├── contexts/             # Contextos de React
+│   ├── providers/            # Proveedores de la aplicación
+│   └── scraping/             # Sistema de web scraping
+├── prisma/                   # Configuración de base de datos
+│   ├── schema.prisma         # Esquema de la base de datos
+│   └── migrations/           # Migraciones de BD
+├── public/                   # Archivos estáticos
+├── scripts/                  # Scripts de utilidades
+└── docs/                     # Documentación del proyecto
+```
+
+### 🎯 Patrones de Arquitectura
+- **App Router**: Utilización completa del nuevo sistema de rutas de Next.js 15
+- **Server Components**: Renderizado del lado del servidor por defecto
+- **Client Components**: Solo cuando se requiere interactividad
+- **API Routes**: Endpoints RESTful con validación de tipos
+- **Middleware**: Protección de rutas y autenticación
+- **Contexts**: Gestión de estado global (Currency, Sidebar)
+- **Custom Hooks**: Lógica reutilizable encapsulada
 
 ### Rutas Principales
 - `/`: Página principal (dashboard)

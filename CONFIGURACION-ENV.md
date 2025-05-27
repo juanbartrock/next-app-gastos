@@ -1,20 +1,37 @@
-# Configuración de Variables de Entorno
+# 🔧 Configuración de Variables de Entorno
 
-## Archivos de Configuración
+## 📋 Guía de Configuración
 
-### Para desarrollo local:
+### 🚀 Configuración Rápida para Desarrollo
 
 1. **Copia el archivo de ejemplo:**
    ```bash
    copy start-dev.ps1.example start-dev.ps1
    ```
 
-2. **Edita `start-dev.ps1` con tus valores reales:**
-   - `DATABASE_URL`: Tu URL de conexión a PostgreSQL/Neon
-   - `NEXTAUTH_SECRET`: Un secreto aleatorio para NextAuth.js
-   - `NEXTAUTH_URL`: URL de tu aplicación (http://localhost:3000 para desarrollo)
-   - `OPENAI_API_KEY`: Tu clave API de OpenAI (opcional)
-   - `TWILIO_*`: Configuración de Twilio para SMS (opcional)
+2. **Configura las variables esenciales:**
+   - `DATABASE_URL`: Conexión a PostgreSQL/Neon (REQUERIDO)
+   - `NEXTAUTH_SECRET`: Secreto para autenticación (REQUERIDO)
+   - `NEXTAUTH_URL`: URL de la aplicación (REQUERIDO)
+   - `OPENAI_API_KEY`: Clave para asistente IA (OPCIONAL)
+   - `TWILIO_*`: Configuración para notificaciones SMS (OPCIONAL)
+
+### 🎯 Variables por Funcionalidad
+
+#### 🔐 Autenticación (NextAuth.js)
+- **NEXTAUTH_SECRET**: Secreto para firmar tokens JWT
+- **NEXTAUTH_URL**: URL base de la aplicación
+
+#### 🗄️ Base de Datos (PostgreSQL/Neon)
+- **DATABASE_URL**: String de conexión completo con SSL
+
+#### 🤖 Inteligencia Artificial (OpenAI)
+- **OPENAI_API_KEY**: Para el asistente financiero inteligente
+
+#### 📱 Notificaciones (Twilio)
+- **TWILIO_ACCOUNT_SID**: ID de cuenta de Twilio
+- **TWILIO_AUTH_TOKEN**: Token de autenticación
+- **TWILIO_PHONE_NUMBER**: Número de teléfono verificado
 
 ### Variables de Entorno Requeridas:
 

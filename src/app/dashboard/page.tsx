@@ -351,10 +351,10 @@ export default function BankingDashboard() {
           <div className="grid gap-6">
             {/* Balance Cards - Situación mensual */}
             <Card className="overflow-hidden">
-              <CardHeader className="px-6 py-5">
+              <CardHeader className="px-6 py-3">
                 <CardTitle>Situación mensual</CardTitle>
               </CardHeader>
-              <CardContent className="px-6 pb-6">
+              <CardContent className="px-6 pb-4">
                 <div className="grid gap-4 md:grid-cols-3">
                   <Card className="hover:shadow-md transition-shadow">
                     <CardHeader className="flex flex-row items-center justify-between p-4">
