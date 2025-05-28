@@ -3,8 +3,10 @@ import { Inter, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 import { NextAuthProvider } from "@/providers/NextAuthProvider";
 import { ToastProvider } from "@/providers/ToastProvider";
+import { ThemeProvider } from "@/providers/ThemeProvider";
 import { SidebarProvider } from "@/contexts/SidebarContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
+import { VisibilityProvider } from "@/contexts/VisibilityContext";
 import { SidebarStateManager } from "@/components/SidebarStateManager";
 
 const inter = Inter({
@@ -28,19 +30,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html lang="es" className="dark">
       <body
         className={`${inter.variable} ${robotoMono.variable} antialiased`}
       >
         <NextAuthProvider>
-          <ToastProvider>
-            <SidebarProvider>
-              <CurrencyProvider>
-                <SidebarStateManager />
-                {children}
-              </CurrencyProvider>
-            </SidebarProvider>
-          </ToastProvider>
+          <ThemeProvider>
+            <ToastProvider>
+              <SidebarProvider>
+                <CurrencyProvider>
+                  <VisibilityProvider>
+                    <SidebarStateManager />
+                    {children}
+                  </VisibilityProvider>
+                </CurrencyProvider>
+              </SidebarProvider>
+            </ToastProvider>
+          </ThemeProvider>
         </NextAuthProvider>
       </body>
     </html>

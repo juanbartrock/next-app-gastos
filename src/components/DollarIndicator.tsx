@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { RefreshCw } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useVisibility } from "@/contexts/VisibilityContext"
 
 interface DollarData {
   oficial: {
@@ -27,6 +28,7 @@ export function DollarIndicator() {
   const [data, setData] = useState<FinancialData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { valuesVisible } = useVisibility()
 
   const fetchDollarData = async () => {
     try {
@@ -64,6 +66,11 @@ export function DollarIndicator() {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(value)
+  }
+
+  // Función para mostrar valores ocultos
+  const displayValue = (value: string) => {
+    return valuesVisible ? value : "•••"
   }
 
   if (loading) {
@@ -107,11 +114,11 @@ export function DollarIndicator() {
             <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Oficial</div>
             <div className="flex items-center gap-1">
               <span className="text-sm font-bold text-green-600 dark:text-green-400">
-                ${formatNumber(data.dollar.oficial.compra)}
+                ${displayValue(formatNumber(data.dollar.oficial.compra))}
               </span>
               <span className="text-xs text-muted-foreground">|</span>
               <span className="text-sm font-bold text-red-600 dark:text-red-400">
-                ${formatNumber(data.dollar.oficial.venta)}
+                ${displayValue(formatNumber(data.dollar.oficial.venta))}
               </span>
             </div>
           </div>
@@ -124,11 +131,11 @@ export function DollarIndicator() {
             <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Blue</div>
             <div className="flex items-center gap-1">
               <span className="text-sm font-bold text-green-600 dark:text-green-400">
-                ${formatNumber(data.dollar.blue.compra)}
+                ${displayValue(formatNumber(data.dollar.blue.compra))}
               </span>
               <span className="text-xs text-muted-foreground">|</span>
               <span className="text-sm font-bold text-red-600 dark:text-red-400">
-                ${formatNumber(data.dollar.blue.venta)}
+                ${displayValue(formatNumber(data.dollar.blue.venta))}
               </span>
             </div>
           </div>

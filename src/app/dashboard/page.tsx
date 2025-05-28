@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart, Bell, ChevronLeft, ChevronRight, CreditCard, DollarSign, Edit2, Loader2, LogOut, Moon, Settings, Sun, User, Bot, ChevronUp, ChevronDown } from "lucide-react"
+import { BarChart, Bell, ChevronLeft, ChevronRight, CreditCard, DollarSign, Edit2, Loader2, LogOut, Moon, Settings, Sun, User, Bot, ChevronUp, ChevronDown, Eye, EyeOff } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { useSidebar } from "@/contexts/SidebarContext"
+import { useTheme } from "@/providers/ThemeProvider"
+import { useVisibility } from "@/contexts/VisibilityContext"
 import { Switch } from "@/components/ui/switch"
 import { 
   DropdownMenu, 
@@ -50,13 +52,14 @@ function LoadingScreen() {
 }
 
 export default function BankingDashboard() {
-  // Hooks de autenticación
+  // Hooks de autenticación y contextos
   const router = useRouter()
   const { data: session, status } = useSession()
   const { isOpen } = useSidebar()
+  const { theme, toggleTheme } = useTheme()
+  const { valuesVisible, toggleVisibility } = useVisibility()
   
   // Estados de la interfaz de usuario
-  const [darkMode, setDarkMode] = useState(false)
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
   const [transactions, setTransactions] = useState<any[]>([])
@@ -100,15 +103,6 @@ export default function BankingDashboard() {
       fetchTransactions();
     }
   }, [status]);
-
-  // Efecto para el modo oscuro
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-  }, [darkMode])
 
   // Navegación por meses
   const navigateBalance = (direction: "prev" | "next") => {
@@ -230,6 +224,11 @@ export default function BankingDashboard() {
     }
   })()
   
+  // Función para mostrar valores ocultos
+  const displayValue = (value: string) => {
+    return valuesVisible ? value : "••••••"
+  }
+  
   // Definir tipos de balance para navegación
   const balanceTypes = [
     { label: "Saldo total", amount: formatMoney(isNaN(balanceData.total) ? 0 : balanceData.total) },
@@ -252,7 +251,7 @@ export default function BankingDashboard() {
                     {balanceTypes[balanceIndex].label}
                   </div>
                   <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-1">
-                    {balanceTypes[balanceIndex].amount}
+                    {displayValue(balanceTypes[balanceIndex].amount)}
                   </div>
                 </div>
                 <div className="flex flex-col border-l pl-4 border-gray-200 dark:border-gray-700 py-1">
@@ -279,12 +278,27 @@ export default function BankingDashboard() {
               {/* Selector de moneda */}
               <CurrencySelector />
               
+              {/* Botón de visibilidad de valores */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleVisibility}
+                className="rounded-full"
+                title={valuesVisible ? "Ocultar valores" : "Mostrar valores"}
+              >
+                {valuesVisible ? (
+                  <Eye className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                ) : (
+                  <EyeOff className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                )}
+              </Button>
+              
               {/* Alternador de tema */}
               <div className="flex items-center">
                 <Sun className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 <Switch
-                  checked={darkMode}
-                  onCheckedChange={setDarkMode}
+                  checked={theme === 'dark'}
+                  onCheckedChange={toggleTheme}
                   className="mx-2"
                 />
                 <Moon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
@@ -382,7 +396,7 @@ export default function BankingDashboard() {
                       <div>
                         <CardTitle className="text-sm text-muted-foreground">Ingresos</CardTitle>
                         <CardDescription className="text-2xl font-bold text-green-600 dark:text-green-400">
-                          {formatMoney(balanceData.income)}
+                          {displayValue(formatMoney(balanceData.income))}
                         </CardDescription>
                       </div>
                       <div className="bg-green-100 dark:bg-green-900 p-2 rounded-full">
@@ -396,7 +410,7 @@ export default function BankingDashboard() {
                       <div>
                         <CardTitle className="text-sm text-muted-foreground">Gastos</CardTitle>
                         <CardDescription className="text-2xl font-bold text-red-600 dark:text-red-400">
-                          {formatMoney(balanceData.expenses)}
+                          {displayValue(formatMoney(balanceData.expenses))}
                         </CardDescription>
                       </div>
                       <div className="bg-red-100 dark:bg-red-900 p-2 rounded-full">
@@ -413,7 +427,7 @@ export default function BankingDashboard() {
                           "text-2xl font-bold",
                           balanceData.balance >= 0 ? "text-blue-600 dark:text-blue-400" : "text-red-600 dark:text-red-400"
                         )}>
-                          {formatMoney(balanceData.balance)}
+                          {displayValue(formatMoney(balanceData.balance))}
                         </CardDescription>
                       </div>
                       <div className="bg-blue-100 dark:bg-blue-900 p-2 rounded-full">
@@ -501,7 +515,7 @@ export default function BankingDashboard() {
                                   "font-medium",
                                   transaction.tipoTransaccion === 'ingreso' ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
                                 )}>
-                                  {transaction.tipoTransaccion === 'ingreso' ? '+' : '-'}{formatMoney(transaction.monto)}
+                                  {transaction.tipoTransaccion === 'ingreso' ? '+' : '-'}{displayValue(formatMoney(transaction.monto))}
                                 </span>
                                 <Button 
                                   variant="ghost" 
