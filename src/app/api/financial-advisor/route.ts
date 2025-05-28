@@ -7,173 +7,21 @@ import OpenAI from "openai"
 // Configuración para evitar pre-rendering de la API
 export const dynamic = 'force-dynamic'
 
-// Inicializar cliente de OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-})
+// Verificar si OpenAI está configurado
+const isOpenAIConfigured = !!process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim() !== ""
+
+// Inicializar cliente de OpenAI solo si está configurado
+let openai: OpenAI | null = null
+if (isOpenAIConfigured) {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+  })
+}
 
 // Tipo de mensajes
 interface Message {
   role: "user" | "assistant"
   content: string
-}
-
-// Interfaces para datos contextuales
-interface InversionContextData {
-  id: string;
-  nombre: string;
-  tipo: string;
-  montoInicial: number;
-  montoActual: number;
-  rendimientoTotal: number;
-  rendimientoAnual: number;
-  fechaInicio: string;
-  fechaVencimiento: string | null;
-  plataforma: string;
-}
-
-interface UsuarioContextData {
-  gastosRecurrentes: {
-    concepto: string;
-    monto: number;
-    periodicidad: string;
-    categoria: string;
-  }[];
-  servicios: {
-    nombre: string;
-    monto: number;
-    medioPago: string;
-  }[];
-  balanceFinanciero: {
-    ingresos: number;
-    gastos: number;
-    balance: number;
-    gastosRecurrentes: number;
-    servicios: number;
-  };
-  gastosPorCategoria: {
-    categoria: string;
-    monto: number;
-  }[];
-  tendencias: {
-    mayorGasto: string;
-    montoMayorGasto: number;
-  };
-}
-
-// Función para obtener datos personalizados del usuario
-async function obtenerDatosUsuario(userId: string): Promise<UsuarioContextData | null> {
-  try {
-    console.log("Obteniendo datos personalizados para el usuario:", userId);
-
-    // Obtener fecha de inicio y fin del mes actual
-    const now = new Date();
-    const primerDiaMes = new Date(now.getFullYear(), now.getMonth(), 1);
-    const ultimoDiaMes = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    
-    console.log(`Filtrando por mes actual: ${primerDiaMes.toISOString()} - ${ultimoDiaMes.toISOString()}`);
-
-    // Obtener gastos recurrentes
-    const gastosRecurrentes = await prisma.gastoRecurrente.findMany({
-      where: { userId },
-      include: { categoria: true },
-      orderBy: { monto: 'desc' }
-    });
-
-    console.log(`Gastos recurrentes encontrados: ${gastosRecurrentes.length}`);
-
-    // Obtener servicios contratados
-    const servicios = await prisma.servicio.findMany({
-      where: { userId },
-      orderBy: { monto: 'desc' }
-    });
-
-    console.log(`Servicios encontrados: ${servicios.length}`);
-
-    // Obtener gastos recientes de este mes
-    const gastos = await prisma.gasto.findMany({
-      where: { 
-        userId,
-        tipoTransaccion: 'expense',
-        fecha: { 
-          gte: primerDiaMes,
-          lte: ultimoDiaMes
-        }
-      },
-      include: { 
-        categoriaRel: true 
-      },
-      orderBy: { fecha: 'desc' }
-    });
-
-    console.log(`Gastos de este mes encontrados: ${gastos.length}`);
-
-    // Obtener ingresos recientes de este mes
-    const ingresos = await prisma.gasto.findMany({
-      where: { 
-        userId,
-        tipoTransaccion: 'income',
-        fecha: { 
-          gte: primerDiaMes,
-          lte: ultimoDiaMes
-        }
-      },
-      orderBy: { fecha: 'desc' }
-    });
-
-    console.log(`Ingresos de este mes encontrados: ${ingresos.length}`);
-
-    // Calcular totales
-    const totalGastos = gastos.reduce((acc, gasto) => acc + Number(gasto.monto), 0);
-    const totalIngresos = ingresos.reduce((acc, ingreso) => acc + Number(ingreso.monto), 0);
-    const totalGastosRecurrentes = gastosRecurrentes.reduce((acc, gasto) => acc + Number(gasto.monto), 0);
-    const totalServicios = servicios.reduce((acc, servicio) => acc + Number(servicio.monto), 0);
-
-    console.log(`Totales calculados - Gastos: ${totalGastos}, Ingresos: ${totalIngresos}, Recurrentes: ${totalGastosRecurrentes}, Servicios: ${totalServicios}`);
-
-    // Agrupar gastos por categoría
-    const gastosPorCategoria: Record<string, number> = {};
-    gastos.forEach(gasto => {
-      const categoria = gasto.categoriaRel?.descripcion || gasto.categoria || 'Sin categoría';
-      gastosPorCategoria[categoria] = (gastosPorCategoria[categoria] || 0) + Number(gasto.monto);
-    });
-
-    // Ordenar categorías por monto total (de mayor a menor)
-    const categoriasOrdenadas = Object.entries(gastosPorCategoria)
-      .sort((a, b) => b[1] - a[1])
-      .map(([categoria, monto]) => ({ categoria, monto }));
-
-    console.log(`Categorías de gastos ordenadas: ${JSON.stringify(categoriasOrdenadas.slice(0, 3))}`);
-
-    return {
-      gastosRecurrentes: gastosRecurrentes.map(g => ({
-        concepto: g.concepto,
-        monto: Number(g.monto),
-        periodicidad: g.periodicidad,
-        categoria: g.categoria?.descripcion || 'Sin categoría'
-      })),
-      servicios: servicios.map(s => ({
-        nombre: s.nombre,
-        monto: Number(s.monto),
-        medioPago: s.medioPago
-      })),
-      balanceFinanciero: {
-        ingresos: totalIngresos,
-        gastos: totalGastos,
-        balance: totalIngresos - totalGastos,
-        gastosRecurrentes: totalGastosRecurrentes,
-        servicios: totalServicios
-      },
-      gastosPorCategoria: categoriasOrdenadas,
-      tendencias: {
-        mayorGasto: categoriasOrdenadas[0]?.categoria || 'Sin datos',
-        montoMayorGasto: categoriasOrdenadas[0]?.monto || 0
-      }
-    };
-  } catch (error) {
-    console.error('Error al obtener datos del usuario:', error);
-    return null;
-  }
 }
 
 export async function POST(req: NextRequest) {
@@ -198,9 +46,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "El último mensaje debe ser del usuario" }, { status: 400 })
     }
 
-    let contextData: InversionContextData | UsuarioContextData | null = null;
-    let response = ""
-    
     // Obtener usuario de la base de datos
     const usuario = await prisma.user.findUnique({
       where: { email: session.user.email || "" }
@@ -210,468 +55,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
     }
 
-    // Si hay un ID de inversión, obtener los datos para contextualizar las respuestas
-    if (inversionId && context === "inversion") {
-      try {
-        // Obtener datos reales de la inversión desde la base de datos
-        const inversion = await prisma.inversion.findUnique({
-          where: { 
-            id: inversionId,
-            userId: usuario.id 
-          },
-          include: { 
-            tipo: true,
-            transacciones: true, 
-            cotizaciones: {
-              orderBy: { fecha: 'desc' },
-              take: 1
-            }
-          }
-        })
-        
-        if (inversion) {
-          const inversionData: InversionContextData = {
-            id: inversion.id,
-            nombre: inversion.nombre,
-            tipo: inversion.tipo?.nombre || "Inversión",
-            montoInicial: Number(inversion.montoInicial),
-            montoActual: inversion.cotizaciones[0] ? Number(inversion.cotizaciones[0].valor) : Number(inversion.montoInicial),
-            rendimientoTotal: inversion.cotizaciones[0] ? Number(inversion.cotizaciones[0].valor) - Number(inversion.montoInicial) : 0,
-            rendimientoAnual: inversion.rendimientoAnual || 0,
-            fechaInicio: inversion.fechaInicio.toISOString().split('T')[0],
-            fechaVencimiento: inversion.fechaVencimiento ? inversion.fechaVencimiento.toISOString().split('T')[0] : null,
-            plataforma: inversion.plataforma || "No especificada"
-          };
-          contextData = inversionData;
-        }
-      } catch (error) {
-        console.error("Error al obtener datos de inversión:", error)
-      }
-    } 
-    // Para otros contextos (dashboard, recurrentes, etc.), obtener datos generales del usuario
-    else if (context === "dashboard" || context === "general" || context === "recurrentes") {
-      contextData = await obtenerDatosUsuario(usuario.id)
-    }
-
-    // Obtener la consulta del usuario
-    let messageContent = lastMessage.content.toLowerCase()
+    // Obtener TODOS los datos financieros del usuario para el contexto RAG
+    const contextData = await obtenerContextoCompleto(usuario.id, inversionId, context)
     
-    // Si es una solicitud de resumen desde el componente FinancialSummary, marcarla específicamente
-    if (isResumenRequest) {
-      console.log("Solicitud de resumen financiero detectada desde FinancialSummary");
-      messageContent = "Por favor, genera un RESUMEN COMPLETO y DETALLADO de mi situación financiera actual, basado exclusivamente en mis datos reales. Incluye todos los datos relevantes sobre mi balance, gastos por categoría, gastos recurrentes y servicios. Muestra los números reales.";
-    }
-
-    // Generar una respuesta basada en el contexto y la consulta
-    if (context === "inversion" && contextData) {
-      const inversionData = contextData as InversionContextData;
-      
-      // Respuestas específicas para inversiones
-      if (messageContent.includes("rendimiento") || messageContent.includes("ganancia") || messageContent.includes("rentabilidad")) {
-        response = `Tu inversión "${inversionData.nombre}" tiene un rendimiento total de ${inversionData.rendimientoTotal} pesos, lo que representa un ${((inversionData.rendimientoTotal / inversionData.montoInicial) * 100).toFixed(2)}% sobre tu inversión inicial. El rendimiento anual estimado es de ${inversionData.rendimientoAnual}%.`
-      } else if (messageContent.includes("comparar") || messageContent.includes("alternativa") || messageContent.includes("mejor opción")) {
-        response = `Basándome en tu inversión actual "${inversionData.nombre}" con un rendimiento anual de ${inversionData.rendimientoAnual}%, podría sugerirte algunas alternativas:\n\n1. **Bonos soberanos indexados**: Podrían ofrecer rendimientos similares con garantía del estado.\n2. **Fondos Comunes de Inversión**: Algunos FCI tienen rendimientos superiores al ${inversionData.rendimientoAnual}% anual con riesgo moderado.\n3. **Obligaciones Negociables corporativas**: Algunas ON ofrecen tasas entre 10-15% con riesgo empresarial.\n\nRecuerda diversificar tu cartera para minimizar riesgos.`
-      } else if (messageContent.includes("riesgo") || messageContent.includes("seguro") || messageContent.includes("seguridad")) {
-        response = `Tu inversión en "${inversionData.nombre}" se considera de riesgo bajo a moderado. Los plazos fijos UVA están respaldados por el banco y cuentan con la garantía de depósitos hasta cierto monto. Si buscas diversificar el riesgo, podrías considerar distribuir tu capital entre distintos tipos de instrumentos y entidades financieras.`
-      } else if (messageContent.includes("vencimiento") || messageContent.includes("renovar") || messageContent.includes("plazo")) {
-        response = `Tu inversión vence el ${inversionData.fechaVencimiento || 'fecha no especificada'}. Al aproximarse esta fecha, tendrás que decidir si renovar en las mismas condiciones, buscar mejores tasas, o redireccionar esos fondos. Te recomendaría evaluar las tasas de interés vigentes una semana antes del vencimiento para tomar la mejor decisión.`
-      } else {
-        // Respuesta genérica sobre la inversión
-        response = `Sobre tu inversión "${inversionData.nombre}" (${inversionData.tipo}) por un monto inicial de ${inversionData.montoInicial} pesos, puedo decirte que:\n\n- El valor actual es de ${inversionData.montoActual} pesos\n- Has generado un rendimiento de ${inversionData.rendimientoTotal} pesos (${((inversionData.rendimientoTotal / inversionData.montoInicial) * 100).toFixed(2)}%)\n- Comenzaste esta inversión el ${inversionData.fechaInicio}\n\n¿Hay algo específico que quieras saber sobre esta inversión o necesitas recomendaciones para optimizarla?`
-      }
-    } 
-    // Si tenemos datos contextuales del usuario y es una consulta de dashboard/general
-    else if ((context === "dashboard" || context === "general" || context === "recurrentes") && contextData) {
-      // Usar OpenAI para generar respuestas personalizadas basadas en los datos del usuario
-      try {
-        // Convertir los datos del usuario a un formato que OpenAI pueda entender
-        const usuarioData = contextData as UsuarioContextData;
-        
-        // Preparar datos para el prompt
-        const datosGastosPorCategoria = usuarioData.gastosPorCategoria
-          .map(cat => `${cat.categoria}: $${cat.monto.toFixed(2)}`)
-          .join("\n");
-        
-        const datosServicios = usuarioData.servicios
-          .map(s => `${s.nombre}: $${s.monto.toFixed(2)} (${s.medioPago})`)
-          .join("\n");
-        
-        const datosGastosRecurrentes = usuarioData.gastosRecurrentes
-          .map(g => `${g.concepto}: $${g.monto.toFixed(2)} (${g.periodicidad})`)
-          .join("\n");
-        
-        const datosBalance = `
-        Ingresos: $${usuarioData.balanceFinanciero.ingresos.toFixed(2)}
-        Gastos: $${usuarioData.balanceFinanciero.gastos.toFixed(2)}
-        Balance: $${usuarioData.balanceFinanciero.balance.toFixed(2)}
-        Total gastos recurrentes: $${usuarioData.balanceFinanciero.gastosRecurrentes.toFixed(2)}
-        Total servicios: $${usuarioData.balanceFinanciero.servicios.toFixed(2)}
-        `;
-        
-        const datosContextuales = `
-        === BALANCE FINANCIERO ===
-        ${datosBalance}
-        
-        === GASTOS POR CATEGORÍA (ordenados de mayor a menor) ===
-        ${datosGastosPorCategoria}
-        
-        === SERVICIOS CONTRATADOS ===
-        ${datosServicios}
-        
-        === GASTOS RECURRENTES ===
-        ${datosGastosRecurrentes}
-        `;
-        
-        const systemPrompt = `
-        Eres un asesor financiero personal de alto nivel. Tienes acceso a los siguientes datos financieros del usuario para el mes actual:
-        
-        ${datosContextuales}
-        
-        Tu tarea es proporcionar análisis detallados, consultas específicas y recomendaciones basadas EXCLUSIVAMENTE en estos datos reales.
-        Utiliza formato markdown para estructurar tus respuestas de manera clara y profesional.
-        Sé directo y específico, evitando frases genéricas cuando tengas datos concretos.
-        Si te preguntan sobre información que no tienes, indícalo claramente y sugiere qué datos podrían necesitar registrar.
-        Nunca inventes datos que no aparezcan en la información proporcionada arriba.
-        
-        Estructura tus respuestas de forma clara con encabezados, listas y/o tablas cuando sea apropiado.
-        Si la respuesta contiene números, formatea las cantidades monetarias adecuadamente.
-        `;
-
-        // Hacer la consulta a OpenAI
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4-turbo",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: messageContent }
-          ],
-          temperature: 0.5
-        });
-
-        response = completion.choices[0].message.content || 
-                   "Lo siento, no pude generar una respuesta. Por favor, intenta reformular tu pregunta.";
-      } catch (error) {
-        console.error("Error al generar respuesta con OpenAI:", error);
-        
-        // Seguir con la lógica actual como fallback en caso de error con OpenAI
-        const usuarioData = contextData as UsuarioContextData;
-        
-        if (messageContent.includes("resumen") && messageContent.includes("situación financiera")) {
-          // Crear un resumen estructurado con los datos del usuario
-          const { balanceFinanciero, gastosPorCategoria, gastosRecurrentes, servicios } = usuarioData;
-          
-          let resumen = "## Resumen General\n";
-          
-          // Balance
-          if (balanceFinanciero.ingresos > 0 || balanceFinanciero.gastos > 0) {
-            const situacion = balanceFinanciero.balance >= 0 ? "positivo" : "negativo";
-            resumen += `Tu balance mensual es ${situacion} con ${balanceFinanciero.ingresos.toFixed(2)} de ingresos y ${balanceFinanciero.gastos.toFixed(2)} de gastos, resultando en un balance de ${balanceFinanciero.balance.toFixed(2)}.\n\n`;
-          } else {
-            resumen += "No hay suficientes datos de ingresos y gastos para realizar un análisis completo.\n\n";
-          }
-          
-          // Gastos principales
-          resumen += "## Gastos Principales\n";
-          if (gastosPorCategoria.length > 0) {
-            resumen += "Tus principales categorías de gasto son:\n";
-            gastosPorCategoria.slice(0, 3).forEach(cat => {
-              resumen += `- **${cat.categoria}**: ${cat.monto.toFixed(2)}\n`;
-            });
-            resumen += "\n";
-          } else {
-            resumen += "No hay datos suficientes sobre tus gastos por categoría.\n\n";
-          }
-          
-          // Gastos recurrentes
-          resumen += "## Gastos Recurrentes y Servicios\n";
-          if (gastosRecurrentes.length > 0 || servicios.length > 0) {
-            resumen += `Tienes ${gastosRecurrentes.length} gastos recurrentes por un total de ${balanceFinanciero.gastosRecurrentes.toFixed(2)} y ${servicios.length} servicios contratados por ${balanceFinanciero.servicios.toFixed(2)}.\n\n`;
-            
-            // Mencionar los servicios más caros
-            if (servicios.length > 0) {
-              resumen += "Servicios destacados:\n";
-              servicios.slice(0, 3).forEach(s => {
-                resumen += `- **${s.nombre}**: ${s.monto.toFixed(2)}\n`;
-              });
-              resumen += "\n";
-            }
-          } else {
-            resumen += "No tienes gastos recurrentes o servicios registrados.\n\n";
-          }
-          
-          // Recomendaciones
-          resumen += "## Recomendaciones\n";
-          
-          // Recomendaciones basadas en los datos
-          if (balanceFinanciero.balance < 0) {
-            resumen += "- **Reduce gastos**: Tu balance es negativo. Considera reducir gastos en " + (gastosPorCategoria[0]?.categoria || "categorías no esenciales") + ".\n";
-          }
-          
-          if (servicios.length > 0) {
-            resumen += "- **Revisa tus servicios**: Considera evaluar alternativas más económicas para " + servicios[0].nombre + ".\n";
-          }
-          
-          if (balanceFinanciero.ingresos > 0 && balanceFinanciero.balance > 0) {
-            const ahorroRecomendado = (balanceFinanciero.balance * 0.7).toFixed(2);
-            resumen += `- **Ahorra e invierte**: Puedes destinar aproximadamente ${ahorroRecomendado} al ahorro o inversiones cada mes.\n`;
-          }
-          
-          // Consejos generales
-          resumen += "- **Presupuesto**: Establece límites para cada categoría de gasto.\n";
-          
-          response = resumen;
-        } 
-        // Para el contexto de gastos recurrentes específicamente
-        else if (context === "recurrentes" && messageContent.includes("analiza") && messageContent.includes("servicio")) {
-          // Análisis específico de servicios y gastos recurrentes
-          const { servicios, gastosRecurrentes, balanceFinanciero } = usuarioData;
-          
-          // resto del código original para análisis de servicios...
-          let analisis = "## Análisis de Servicios y Gastos Recurrentes\n\n";
-          
-          if (servicios.length > 0 || gastosRecurrentes.length > 0) {
-            analisis += `Actualmente, dedicas ${balanceFinanciero.servicios.toFixed(2)} en servicios y ${balanceFinanciero.gastosRecurrentes.toFixed(2)} en gastos recurrentes mensualmente, representando un ${((balanceFinanciero.servicios + balanceFinanciero.gastosRecurrentes) / balanceFinanciero.ingresos * 100).toFixed(0)}% de tus ingresos.\n\n`;
-            
-            // Ordener servicios de mayor a menor costo para destacar los más costosos
-            const serviciosOrdenados = [...servicios].sort((a, b) => b.monto - a.monto);
-            
-            if (serviciosOrdenados.length > 0) {
-              analisis += "### Servicios con potencial de optimización:\n";
-              
-              // Analizar todos los servicios para encontrar los excesivos
-              serviciosOrdenados.forEach(s => {
-                analisis += `- **${s.nombre}** (${s.monto.toFixed(2)}): `;
-                
-                // Detección especial para servicios excesivamente caros (más del 15% de los ingresos o más de $25,000)
-                const esCostoso = s.monto > 25000 || (balanceFinanciero.ingresos > 0 && s.monto > balanceFinanciero.ingresos * 0.15);
-                
-                // Sugerencias específicas por tipo de servicio
-                if (s.nombre.toLowerCase().includes("telefonía") || s.nombre.toLowerCase().includes("celular") || s.nombre.toLowerCase().includes("móvil") || s.nombre.toLowerCase().includes("movil")) {
-                  if (esCostoso) {
-                    analisis += "**DETECTADO COSTO EXCESIVO**: Este servicio tiene un costo anormalmente alto para telefonía móvil. Te recomiendo urgentemente comparar planes de otros proveedores como Personal, Claro o Movistar que ofrecen planes completos por menos de $15,000. También puedes llamar a tu proveedor actual para negociar o consultar si hay descuentos por pago anual.\n";
-                  } else {
-                    analisis += "Compara planes de diferentes proveedores o negocia con tu proveedor actual para obtener un mejor precio.\n";
-                  }
-                } else if (s.nombre.toLowerCase().includes("streaming") || s.nombre.toLowerCase().includes("netflix") || s.nombre.toLowerCase().includes("disney") || s.nombre.toLowerCase().includes("hbo")) {
-                  if (esCostoso) {
-                    analisis += "**DETECTADO COSTO EXCESIVO**: Este servicio de streaming tiene un costo anormalmente alto. Considera cambiar a planes básicos o compartir cuentas familiares para reducir el costo drásticamente.\n";
-                  } else {
-                    analisis += "Considera compartir la cuenta con familiares o amigos para dividir el costo. También puedes alternar entre servicios de streaming mensualmente.\n";
-                  }
-                } else if (s.nombre.toLowerCase().includes("internet")) {
-                  if (esCostoso) {
-                    analisis += "**DETECTADO COSTO EXCESIVO**: Tu servicio de internet tiene un costo muy elevado. Compara con otros proveedores como Fibertel, Telecentro o Movistar que ofrecen planes de alta velocidad por menos de $20,000.\n";
-                  } else {
-                    analisis += "Verifica si hay promociones disponibles con tu proveedor actual o compara con otros proveedores de la zona.\n";
-                  }
-                } else {
-                  if (esCostoso) {
-                    analisis += "**DETECTADO COSTO EXCESIVO**: Este servicio representa un gasto significativo. Considera evaluar alternativas más económicas o negociar una tarifa menor.\n";
-                  } else {
-                    analisis += "Evalúa si estás aprovechando todo el valor de este servicio o si existe una alternativa más económica.\n";
-                  }
-                }
-              });
-              analisis += "\n";
-            }
-            
-            // Resto del código original para gastos recurrentes...
-            if (gastosRecurrentes.length > 0) {
-              analisis += "### Recomendaciones para tus gastos recurrentes:\n";
-              
-              // Gastos de mayor valor
-              const topGastos = gastosRecurrentes.slice(0, 2);
-              topGastos.forEach(g => {
-                analisis += `- **${g.concepto}** (${g.monto.toFixed(2)} - ${g.periodicidad}): `;
-                
-                if (g.periodicidad === "mensual" && g.monto > balanceFinanciero.ingresos * 0.1) {
-                  analisis += "Este gasto representa una parte significativa de tus ingresos. Evalúa si puedes reducirlo o reemplazarlo.\n";
-                } else {
-                  analisis += "Reserva este monto con anticipación para evitar desbalances en tu presupuesto.\n";
-                }
-              });
-              
-              analisis += "\n";
-            }
-            
-            // Conclusiones
-            analisis += "### Estrategias de optimización:\n";
-            analisis += "- Cancela servicios que no usas regularmente\n";
-            analisis += "- Negocia mejores tarifas aprovechando promociones o descuentos\n";
-            analisis += "- Considera alternativas más económicas para servicios equivalentes\n";
-            analisis += "- Agrupa servicios similares con el mismo proveedor para obtener descuentos\n";
-          } else {
-            analisis += "No tienes servicios o gastos recurrentes registrados para analizar. Agregar esta información te permitirá recibir recomendaciones personalizadas para optimizar tus finanzas.";
-          }
-          
-          response = analisis;
-        }
-        // Consultas específicas sobre servicios caros o recomendaciones de ahorro
-        else if ((messageContent.includes("servicio") || messageContent.includes("servicios")) && 
-                 (messageContent.includes("caro") || messageContent.includes("costoso") || messageContent.includes("ahorro") || 
-                  messageContent.includes("optimizar") || messageContent.includes("telefonía") || messageContent.includes("móvil") || 
-                  messageContent.includes("reducir") || messageContent.includes("alternativa"))) {
-          
-          // Verificar si hay servicios
-          if (usuarioData.servicios && usuarioData.servicios.length > 0) {
-            // Ordenar servicios de mayor a menor costo
-            const serviciosOrdenados = [...usuarioData.servicios].sort((a, b) => b.monto - a.monto);
-            
-            let respuestaServicios = "## Análisis de tus Servicios Contratados\n\n";
-            
-            // Identificar servicios costosos (más del 15% de ingresos o más de $25,000)
-            const serviciosCostosos = serviciosOrdenados.filter(s => 
-              s.monto > 25000 || (usuarioData.balanceFinanciero.ingresos > 0 && s.monto > usuarioData.balanceFinanciero.ingresos * 0.15)
-            );
-            
-            if (serviciosCostosos.length > 0) {
-              respuestaServicios += "### Servicios con Costos Elevados Detectados:\n\n";
-              
-              serviciosCostosos.forEach(s => {
-                const porcentajeIngreso = usuarioData.balanceFinanciero.ingresos > 0 
-                  ? ((s.monto / usuarioData.balanceFinanciero.ingresos) * 100).toFixed(1) + "% de tus ingresos" 
-                  : "una porción significativa de tus gastos";
-                
-                respuestaServicios += `**${s.nombre}** (${s.monto.toFixed(2)}): Representa ${porcentajeIngreso}\n\n`;
-                
-                // Recomendaciones específicas según el tipo de servicio
-                if (s.nombre.toLowerCase().includes("telefonía") || s.nombre.toLowerCase().includes("celular") || s.nombre.toLowerCase().includes("móvil") || s.nombre.toLowerCase().includes("movil")) {
-                  respuestaServicios += "**Recomendación urgente**: Este servicio tiene un costo anormalmente alto para telefonía móvil. Considera:\n";
-                  respuestaServicios += "- Comparar planes de Claro, Personal o Movistar que ofrecen paquetes completos por $10,000-$15,000\n";
-                  respuestaServicios += "- Consultar promociones por portabilidad que suelen incluir descuentos por varios meses\n";
-                  respuestaServicios += "- Negociar con tu proveedor actual mencionando que estás considerando cambiarte\n";
-                  respuestaServicios += "- Revisar si realmente necesitas todos los servicios incluidos en tu plan actual\n\n";
-                } else if (s.nombre.toLowerCase().includes("internet")) {
-                  respuestaServicios += "**Recomendación**: Este servicio de internet tiene un costo elevado. Considera:\n";
-                  respuestaServicios += "- Comparar planes de Fibertel, Telecentro o Movistar Fibra\n";
-                  respuestaServicios += "- Consultar promociones por nueva contratación o por pago anual\n";
-                  respuestaServicios += "- Verificar si realmente necesitas la velocidad contratada\n\n";
-                } else if (s.nombre.toLowerCase().includes("streaming") || s.nombre.toLowerCase().includes("netflix") || s.nombre.toLowerCase().includes("disney") || s.nombre.toLowerCase().includes("hbo")) {
-                  respuestaServicios += "**Recomendación**: Este servicio de streaming tiene un costo elevado. Considera:\n";
-                  respuestaServicios += "- Cambiar a un plan básico de menor costo\n";
-                  respuestaServicios += "- Compartir la cuenta con familiares (planes familiares)\n";
-                  respuestaServicios += "- Alternar servicios mes a mes en lugar de mantener todos activos simultáneamente\n\n";
-                } else {
-                  respuestaServicios += "**Recomendación**: Este servicio tiene un costo significativo. Considera:\n";
-                  respuestaServicios += "- Buscar alternativas más económicas en el mercado\n";
-                  respuestaServicios += "- Negociar una mejor tarifa con tu proveedor actual\n";
-                  respuestaServicios += "- Evaluar si obtienes suficiente valor por el costo que pagas\n\n";
-                }
-              });
-              
-              respuestaServicios += "### Potencial ahorro mensual:\n";
-              const ahorroEstimado = serviciosCostosos.reduce((total, s) => {
-                // Estimar un ahorro del 40-60% en servicios con costos excesivos
-                return total + (s.monto * 0.5);
-              }, 0);
-              
-              respuestaServicios += `Si optimizas estos servicios costosos, podrías ahorrar aproximadamente ${ahorroEstimado.toFixed(2)} mensuales, lo que representa ${(ahorroEstimado * 12).toFixed(2)} anuales.\n\n`;
-              
-              respuestaServicios += "¿Te gustaría que te ayude a analizar opciones específicas para alguno de estos servicios?";
-            } else {
-              respuestaServicios += "He analizado tus servicios contratados y no detecté costos anormalmente elevados. Tus servicios actuales son:\n\n";
-              
-              serviciosOrdenados.slice(0, 3).forEach(s => {
-                respuestaServicios += `- **${s.nombre}**: ${s.monto.toFixed(2)}\n`;
-              });
-              
-              respuestaServicios += "\nAunque los costos no parecen excesivos, siempre es bueno revisar periódicamente tus servicios para asegurarte de que obtienes el mejor valor por tu dinero.";
-            }
-            
-            response = respuestaServicios;
-          } else {
-            response = "No tengo información sobre tus servicios contratados. Para ayudarte a identificar oportunidades de ahorro, por favor registra tus servicios en la sección correspondiente.";
-          }
-        }
-        // Consultas específicas sobre distribución de gastos por categoría
-        else if ((messageContent.includes("distribución") || messageContent.includes("distribuyen") || messageContent.includes("distribuyeron") || 
-                messageContent.includes("distribución") || messageContent.includes("categorías") || messageContent.includes("categorias")) && 
-                (messageContent.includes("gastos") || messageContent.includes("gasto") || messageContent.includes("dinero") || messageContent.includes("plata"))) {
-          // Verificar si hay datos de gastos por categoría
-          if (usuarioData.gastosPorCategoria && usuarioData.gastosPorCategoria.length > 0) {
-            const totalGastos = usuarioData.gastosPorCategoria.reduce((sum, cat) => sum + cat.monto, 0);
-            
-            // Construir una respuesta detallada con la distribución real
-            let distribucionResponse = "### Distribución de tus gastos por categoría\n\n";
-            
-            // Tabla de distribución
-            distribucionResponse += "| Categoría | Monto | % del Total |\n";
-            distribucionResponse += "|-----------|-------|------------|\n";
-            
-            usuarioData.gastosPorCategoria.forEach(cat => {
-              const porcentaje = totalGastos > 0 ? ((cat.monto / totalGastos) * 100).toFixed(1) : "0.0";
-              distribucionResponse += `| ${cat.categoria} | ${cat.monto.toFixed(2)} | ${porcentaje}% |\n`;
-            });
-            
-            distribucionResponse += "\n### Análisis de distribución\n\n";
-            
-            // Mencionar la categoría principal
-            if (usuarioData.gastosPorCategoria.length > 0) {
-              const categoriaPrincipal = usuarioData.gastosPorCategoria[0];
-              const porcentajePrincipal = totalGastos > 0 ? ((categoriaPrincipal.monto / totalGastos) * 100).toFixed(1) : "0.0";
-              
-              distribucionResponse += `Tu categoría de mayor gasto es **${categoriaPrincipal.categoria}** con ${categoriaPrincipal.monto.toFixed(2)}, representando el ${porcentajePrincipal}% de tus gastos totales.\n\n`;
-              
-              // Agregar algunas recomendaciones específicas
-              distribucionResponse += "### Recomendaciones basadas en tu distribución de gastos\n\n";
-              
-              if (parseFloat(porcentajePrincipal) > 40) {
-                distribucionResponse += `- Considera revisar tus gastos en **${categoriaPrincipal.categoria}** ya que representan una proporción muy alta de tus gastos totales.\n`;
-              }
-              
-              distribucionResponse += "- Una distribución equilibrada suele asignar no más del 30-35% a una sola categoría.\n";
-              distribucionResponse += "- Revisa periódicamente esta distribución para identificar oportunidades de ahorro.\n";
-            } else {
-              distribucionResponse += "No hay suficientes datos para realizar un análisis detallado de la distribución de tus gastos.\n";
-            }
-            
-            response = distribucionResponse;
-          } else {
-            response = "No tengo suficientes datos sobre tus gastos por categoría para mostrarte una distribución detallada. Para obtener un análisis más preciso, es importante que registres tus gastos regularmente y los asignes a categorías específicas.";
-          }
-        }
-        // Continuando con la lógica original para otras preguntas
-        else if (messageContent.includes("inversión") || messageContent.includes("invertir") || messageContent.includes("inversiones")) {
-          const saldoDisponible = usuarioData.balanceFinanciero.balance > 0 ? usuarioData.balanceFinanciero.balance : 0;
-          response = `Basándome en tu situación financiera actual, con un balance mensual de ${usuarioData.balanceFinanciero.balance.toFixed(2)}, podrías considerar invertir hasta ${(saldoDisponible * 0.7).toFixed(2)} mensualmente.\n\nLas opciones recomendadas según tu perfil incluyen:\n\n1. **Renta fija**: Plazos fijos tradicionales o UVA, bonos, obligaciones negociables (menor riesgo)\n2. **Renta variable**: Acciones locales o CEDEARs (mayor riesgo y potencial rendimiento)\n3. **Instrumentos indexados**: Ajustados por inflación o dólar, como bonos CER o dollar linked\n4. **Fondos Comunes de Inversión**: Diversificados según tu perfil de riesgo\n\n¿Te gustaría que profundice en alguna de estas alternativas?`;
-        } else if (messageContent.includes("ahorro") || messageContent.includes("ahorrar")) {
-          response = `Analizando tus finanzas, podrías ahorrar aproximadamente ${(usuarioData.balanceFinanciero.balance * 0.2).toFixed(2)} por mes siguiendo estas recomendaciones personalizadas:\n\n1. Reduce gastos en ${usuarioData.gastosPorCategoria[0]?.categoria || "tu categoría principal de gastos"}\n2. Crea un presupuesto mensual detallado con límites para cada categoría\n3. Automatiza tus ahorros mediante transferencias programadas\n4. Sigue la regla 50/30/20: 50% para necesidades, 30% para deseos y 20% para ahorros\n5. Considera reducir o renegociar el costo de tus servicios contratados\n\n¿Necesitas ayuda con alguno de estos puntos en particular?`;
-        } else if (messageContent.includes("deuda") || messageContent.includes("préstamo") || messageContent.includes("crédito")) {
-          response = "Para gestionar efectivamente tus deudas:\n\n1. Haz un inventario completo de todas tus deudas (montos, tasas, plazos)\n2. Prioriza pagar las deudas con tasas más altas primero\n3. Considera consolidar deudas si tienes múltiples préstamos\n4. Negocia mejores condiciones con tus acreedores\n5. Establece un plan de pagos realista\n6. Evita asumir nuevas deudas mientras reduces las existentes\n\n¿Hay algo específico sobre este tema que te gustaría consultar?";
-        } else if (messageContent.includes("presupuesto") || messageContent.includes("gastos")) {
-          const categoriasGasto = usuarioData.gastosPorCategoria.slice(0, 3).map(c => c.categoria).join(", ");
-          response = `Basándome en tus datos, tus principales categorías de gasto son: ${categoriasGasto}. Para crear un presupuesto efectivo:\n\n1. Documenta tus ingresos mensuales de ${usuarioData.balanceFinanciero.ingresos.toFixed(2)}\n2. Asigna límites a cada categoría, especialmente a ${usuarioData.gastosPorCategoria[0]?.categoria || "tu categoría principal"}\n3. Distingue entre gastos fijos (como tus ${usuarioData.gastosRecurrentes.length} gastos recurrentes) y variables\n4. Reserva ${(usuarioData.balanceFinanciero.ingresos * 0.2).toFixed(2)} mensualmente para ahorros\n5. Revisa y ajusta tu presupuesto mensualmente\n\n¿Necesitas ayuda con algún aspecto particular?`;
-        } else if (messageContent.includes("inflación") || messageContent.includes("proteger") || messageContent.includes("valor")) {
-          response = "Para proteger tu dinero frente a la inflación, considera:\n\n1. Instrumentos indexados: Plazos fijos UVA, bonos ajustados por CER\n2. Inversiones en moneda extranjera o atadas al dólar\n3. Activos reales como propiedades\n4. Acciones de empresas con capacidad de ajustar precios\n5. Diversificación en múltiples clases de activos\n\nLa clave está en que el rendimiento de tus inversiones supere la tasa de inflación para mantener el poder adquisitivo de tu dinero.";
-        } else {
-          // Respuesta genérica sobre finanzas personales
-          response = "Para mejorar tu situación financiera, te recomiendo enfocarte en estos pilares fundamentales:\n\n1. Crear un presupuesto claro y realista\n2. Establecer un fondo de emergencia (3-6 meses de gastos)\n3. Reducir y eliminar deudas, especialmente las de alto interés\n4. Ahorrar consistentemente (idealmente 20% de tus ingresos)\n5. Invertir para hacer crecer tu patrimonio y protegerlo de la inflación\n6. Protegerte con seguros adecuados\n\n¿Te gustaría que profundice en alguno de estos aspectos?";
-        }
-      }
-    } else {
-      // Si no hay datos de contexto, dar una respuesta genérica
-      if (messageContent.includes("inversión") || messageContent.includes("invertir") || messageContent.includes("inversiones")) {
-        response = "Para invertir de manera efectiva, es importante considerar tu perfil de riesgo, horizonte temporal y objetivos financieros. Las opciones más comunes en Argentina incluyen:\n\n1. **Renta fija**: Plazos fijos tradicionales o UVA, bonos, obligaciones negociables (menor riesgo)\n2. **Renta variable**: Acciones locales o CEDEARs (mayor riesgo y potencial rendimiento)\n3. **Instrumentos indexados**: Ajustados por inflación o dólar, como bonos CER o dollar linked\n4. **Fondos Comunes de Inversión**: Diversificados según tu perfil de riesgo\n\n¿Te gustaría que profundice en alguna de estas alternativas?";
-      } else if (messageContent.includes("ahorro") || messageContent.includes("ahorrar")) {
-        response = "Para mejorar tus hábitos de ahorro, te recomiendo:\n\n1. Define objetivos claros (corto, mediano y largo plazo)\n2. Crea un presupuesto mensual detallado\n3. Automatiza tus ahorros (transferencias automáticas)\n4. Sigue la regla 50/30/20: 50% para necesidades, 30% para deseos y 20% para ahorros\n5. Reduce gastos innecesarios identificando fugas de dinero\n6. Busca instrumentos que te protejan de la inflación\n\n¿Necesitas ayuda con alguno de estos puntos en particular?";
-      } else if (messageContent.includes("deuda") || messageContent.includes("préstamo") || messageContent.includes("crédito")) {
-        response = "Para gestionar efectivamente tus deudas:\n\n1. Haz un inventario completo de todas tus deudas (montos, tasas, plazos)\n2. Prioriza pagar las deudas con tasas más altas primero\n3. Considera consolidar deudas si tienes múltiples préstamos\n4. Negocia mejores condiciones con tus acreedores\n5. Establece un plan de pagos realista\n6. Evita asumir nuevas deudas mientras reduces las existentes\n\n¿Hay algo específico sobre este tema que te gustaría consultar?";
-      } else if (messageContent.includes("presupuesto") || messageContent.includes("gastos")) {
-        response = "Para crear y mantener un presupuesto efectivo:\n\n1. Documenta todos tus ingresos mensuales\n2. Registra y categoriza todos tus gastos\n3. Distingue entre gastos fijos, variables y discrecionales\n4. Establece límites realistas para cada categoría\n5. Revisa y ajusta tu presupuesto mensualmente\n6. Usa herramientas digitales o apps para facilitar el seguimiento\n\n¿Necesitas ayuda con algún aspecto particular de tu presupuesto?";
-      } else if (messageContent.includes("inflación") || messageContent.includes("proteger") || messageContent.includes("valor")) {
-        response = "Para proteger tu dinero frente a la inflación, considera:\n\n1. Instrumentos indexados: Plazos fijos UVA, bonos ajustados por CER\n2. Inversiones en moneda extranjera o atadas al dólar\n3. Activos reales como propiedades\n4. Acciones de empresas con capacidad de ajustar precios\n5. Diversificación en múltiples clases de activos\n\nLa clave está en que el rendimiento de tus inversiones supere la tasa de inflación para mantener el poder adquisitivo de tu dinero.";
-      } else {
-        // Respuesta genérica sobre finanzas personales
-        response = "Para mejorar tu situación financiera, te recomiendo enfocarte en estos pilares fundamentales:\n\n1. Crear un presupuesto claro y realista\n2. Establecer un fondo de emergencia (3-6 meses de gastos)\n3. Reducir y eliminar deudas, especialmente las de alto interés\n4. Ahorrar consistentemente (idealmente 20% de tus ingresos)\n5. Invertir para hacer crecer tu patrimonio y protegerlo de la inflación\n6. Protegerte con seguros adecuados\n\n¿Te gustaría que profundice en alguno de estos aspectos?";
-      }
-    }
+    // Generar respuesta usando el LLM con contexto completo
+    const response = await generarRespuestaInteligente(
+      messages, 
+      contextData, 
+      lastMessage.content,
+      isResumenRequest
+    )
 
     // Devolver la respuesta
     return NextResponse.json({ 
       response,
       debug: {
-        financialDataExists: contextData !== null, // Indica si hay datos financieros del usuario
-        contextType: context, // Tipo de contexto utilizado
-        isPersonalized: (context === "dashboard" || context === "general" || context === "recurrentes" || context === "inversion") && contextData !== null
+        financialDataExists: contextData !== null,
+        contextType: context,
+        isPersonalized: true,
+        openaiConfigured: isOpenAIConfigured
       }
     })
   } catch (error) {
@@ -681,4 +83,456 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+// Función para obtener contexto completo del usuario (RAG)
+async function obtenerContextoCompleto(userId: string, inversionId?: string, context?: string) {
+  try {
+    console.log("Obteniendo contexto completo para RAG del usuario:", userId);
+
+    // Obtener fechas relevantes
+    const now = new Date();
+    const primerDiaMes = new Date(now.getFullYear(), now.getMonth(), 1);
+    const ultimoDiaMes = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const hace3Meses = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+
+    // 1. Gastos recurrentes
+    const gastosRecurrentes = await prisma.gastoRecurrente.findMany({
+      where: { userId },
+      include: { categoria: true },
+      orderBy: { monto: 'desc' }
+    });
+
+    // 2. Servicios contratados
+    const servicios = await prisma.servicio.findMany({
+      where: { userId },
+      orderBy: { monto: 'desc' }
+    });
+
+    // 3. Préstamos activos
+    const prestamos = await prisma.prestamo.findMany({
+      where: { 
+        userId,
+        estado: { in: ['activo', 'vigente'] }
+      },
+      include: {
+        pagos: {
+          orderBy: { fechaVencimiento: 'desc' },
+          take: 3
+        }
+      }
+    });
+
+    // 4. Financiaciones activas
+    const financiaciones = await prisma.financiacion.findMany({
+      where: { 
+        userId,
+        cuotasRestantes: { gt: 0 }
+      },
+      include: {
+        gasto: true
+      }
+    });
+
+    // 5. Gastos recientes (últimos 3 meses)
+    const gastos = await prisma.gasto.findMany({
+      where: { 
+        userId,
+        fecha: { 
+          gte: hace3Meses,
+          lte: ultimoDiaMes
+        }
+      },
+      include: { 
+        categoriaRel: true 
+      },
+      orderBy: { fecha: 'desc' },
+      take: 100 // Limitar para no sobrecargar
+    });
+
+    // 6. Ingresos recientes
+    const ingresos = await prisma.gasto.findMany({
+      where: { 
+        userId,
+        tipoTransaccion: 'income',
+        fecha: { 
+          gte: hace3Meses,
+          lte: ultimoDiaMes
+        }
+      },
+      orderBy: { fecha: 'desc' }
+    });
+
+    // 7. Inversiones si es relevante
+    let inversiones = [];
+    if (context === "inversion" || inversionId) {
+      inversiones = await prisma.inversion.findMany({
+        where: inversionId ? { id: inversionId, userId } : { userId },
+        include: {
+          tipo: true,
+          cotizaciones: {
+            orderBy: { fecha: 'desc' },
+            take: 1
+          },
+          transacciones: {
+            orderBy: { fecha: 'desc' },
+            take: 5
+          }
+        }
+      });
+    }
+
+    // 8. Presupuestos activos
+    const presupuestos = await prisma.presupuesto.findMany({
+      where: { 
+        userId
+      },
+      include: {
+        categoria: true
+      }
+    });
+
+    // Calcular totales y métricas
+    const totalGastosRecurrentes = gastosRecurrentes.reduce((acc: number, g: any) => acc + Number(g.monto), 0);
+    const totalServicios = servicios.reduce((acc: number, s: any) => acc + Number(s.monto), 0);
+    const totalPrestamos = prestamos.reduce((acc: number, p: any) => acc + Number(p.cuotaMensual || 0), 0);
+    const totalFinanciaciones = financiaciones.reduce((acc: number, f: any) => acc + Number(f.montoCuota), 0);
+    
+    const gastosUltimoMes = gastos.filter((g: any) => g.fecha >= primerDiaMes && g.tipoTransaccion === 'expense');
+    const ingresosUltimoMes = ingresos.filter((i: any) => i.fecha >= primerDiaMes);
+    
+    const totalGastosVariables = gastosUltimoMes.reduce((acc: number, g: any) => acc + Number(g.monto), 0);
+    const totalIngresos = ingresosUltimoMes.reduce((acc: number, i: any) => acc + Number(i.monto), 0);
+
+    return {
+      // Datos básicos
+      gastosRecurrentes: gastosRecurrentes.map((g: any) => ({
+        concepto: g.concepto,
+        monto: Number(g.monto),
+        periodicidad: g.periodicidad,
+        categoria: g.categoria?.descripcion || 'Sin categoría'
+      })),
+      
+      servicios: servicios.map((s: any) => ({
+        nombre: s.nombre,
+        monto: Number(s.monto),
+        medioPago: s.medioPago,
+        descripcion: s.descripcion
+      })),
+
+      // Deudas y compromisos
+      prestamos: prestamos.map((p: any) => ({
+        concepto: p.concepto,
+        montoTotal: Number(p.montoTotal),
+        cuotaMensual: Number(p.cuotaMensual || 0),
+        cuotasPendientes: p.pagos?.length || 0,
+        proximasCuotas: p.pagos?.map((c: any) => ({
+          monto: Number(c.monto),
+          fechaVencimiento: c.fechaVencimiento.toISOString().split('T')[0]
+        })) || []
+      })),
+
+      financiaciones: financiaciones.map((f: any) => ({
+        concepto: f.gasto?.concepto || 'Financiación',
+        montoCuota: Number(f.montoCuota),
+        cuotasRestantes: f.cuotasRestantes,
+        montoTotal: Number(f.montoCuota) * f.cuotasRestantes
+      })),
+
+      // Métricas financieras
+      resumenFinanciero: {
+        totalGastosFijos: totalGastosRecurrentes + totalServicios,
+        totalCompromisosMensuales: totalPrestamos + totalFinanciaciones,
+        totalGastosVariables: totalGastosVariables,
+        totalIngresos: totalIngresos,
+        gastosFijosDetalle: {
+          recurrentes: totalGastosRecurrentes,
+          servicios: totalServicios,
+          prestamos: totalPrestamos,
+          financiaciones: totalFinanciaciones
+        }
+      },
+
+      // Datos históricos para análisis
+      gastosRecientes: gastosUltimoMes.slice(0, 20).map((g: any) => ({
+        concepto: g.concepto,
+        monto: Number(g.monto),
+        fecha: g.fecha.toISOString().split('T')[0],
+        categoria: g.categoriaRel?.descripcion || g.categoria || 'Sin categoría'
+      })),
+
+      // Inversiones si aplica
+      inversiones: inversiones.map((i: any) => ({
+        nombre: i.nombre,
+        tipo: i.tipo?.nombre || 'Inversión',
+        montoInicial: Number(i.montoInicial),
+        valorActual: i.cotizaciones[0] ? Number(i.cotizaciones[0].valor) : Number(i.montoInicial),
+        rendimiento: i.cotizaciones[0] ? Number(i.cotizaciones[0].valor) - Number(i.montoInicial) : 0
+      })),
+
+      // Presupuestos
+      presupuestos: presupuestos.map((p: any) => ({
+        categoria: p.categoria?.descripcion || 'General',
+        limite: Number(p.limite),
+        periodo: p.periodo
+      }))
+    };
+  } catch (error) {
+    console.error('Error al obtener contexto completo:', error);
+    return null;
+  }
+}
+
+// Función principal para generar respuesta inteligente usando LLM
+async function generarRespuestaInteligente(
+  messages: Message[], 
+  contextData: any, 
+  userQuery: string,
+  isResumenRequest: boolean = false
+): Promise<string> {
+  
+  console.log("=== DEBUG ASESOR FINANCIERO ===");
+  console.log("OpenAI configurado:", isOpenAIConfigured);
+  console.log("Contexto disponible:", contextData !== null);
+  console.log("Query del usuario:", userQuery);
+  
+  // Si no hay contexto, dar respuesta general
+  if (!contextData) {
+    console.log("Sin contexto - usando respuesta general");
+    return generarRespuestaGeneral(userQuery);
+  }
+
+  // Preparar el contexto para el LLM
+  const contextoFinanciero = prepararContextoParaLLM(contextData);
+  console.log("Contexto preparado:", contextoFinanciero.substring(0, 200) + "...");
+  
+  // Preparar el historial de conversación
+  const historialConversacion = messages.slice(-6).map(m => `${m.role}: ${m.content}`).join('\n');
+
+  const systemPrompt = `Eres un asesor financiero personal experto y conversacional. Tienes acceso a los datos financieros completos del usuario.
+
+DATOS FINANCIEROS DEL USUARIO:
+${contextoFinanciero}
+
+HISTORIAL DE CONVERSACIÓN RECIENTE:
+${historialConversacion}
+
+INSTRUCCIONES:
+1. Responde de manera conversacional y natural, como un asesor financiero humano
+2. Usa EXCLUSIVAMENTE los datos proporcionados arriba
+3. Si el usuario menciona cifras (como "7 millones de ingresos"), úsalas en tu análisis
+4. Sé específico con números y porcentajes basados en los datos reales
+5. Proporciona recomendaciones prácticas y accionables
+6. Usa formato markdown para estructurar tu respuesta
+7. Si no tienes información suficiente, dilo claramente y sugiere qué datos necesitas
+8. Mantén el contexto de la conversación anterior
+
+IMPORTANTE: No inventes datos. Solo usa la información proporcionada.`;
+
+  try {
+    // Intentar usar OpenAI si está configurado
+    if (isOpenAIConfigured && openai) {
+      console.log("Intentando usar OpenAI...");
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4-turbo",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userQuery }
+        ],
+        temperature: 0.7,
+        max_tokens: 1500
+      });
+
+      const response = completion.choices[0].message.content;
+      console.log("Respuesta de OpenAI recibida:", response ? "Sí" : "No");
+      return response || "Lo siento, no pude generar una respuesta. Por favor, intenta reformular tu pregunta.";
+    } else {
+      console.log("OpenAI no configurado - usando fallback contextual");
+      // Fallback a respuestas predefinidas pero inteligentes
+      return generarRespuestaContextual(userQuery, contextData, messages);
+    }
+  } catch (error) {
+    console.error("Error al generar respuesta con LLM:", error);
+    console.log("Usando fallback por error");
+    return generarRespuestaContextual(userQuery, contextData, messages);
+  }
+}
+
+// Función para preparar el contexto en formato legible para el LLM
+function prepararContextoParaLLM(contextData: any): string {
+  const { resumenFinanciero, gastosRecurrentes, servicios, prestamos, financiaciones, gastosRecientes, inversiones } = contextData;
+  
+  let contexto = `=== RESUMEN FINANCIERO ===\n`;
+  contexto += `• Total gastos fijos mensuales: $${resumenFinanciero.totalGastosFijos.toLocaleString('es-AR')}\n`;
+  contexto += `  - Gastos recurrentes: $${resumenFinanciero.gastosFijosDetalle.recurrentes.toLocaleString('es-AR')}\n`;
+  contexto += `  - Servicios: $${resumenFinanciero.gastosFijosDetalle.servicios.toLocaleString('es-AR')}\n`;
+  contexto += `• Total compromisos de deuda mensual: $${resumenFinanciero.totalCompromisosMensuales.toLocaleString('es-AR')}\n`;
+  contexto += `  - Préstamos: $${resumenFinanciero.gastosFijosDetalle.prestamos.toLocaleString('es-AR')}\n`;
+  contexto += `  - Financiaciones: $${resumenFinanciero.gastosFijosDetalle.financiaciones.toLocaleString('es-AR')}\n`;
+  contexto += `• Gastos variables último mes: $${resumenFinanciero.totalGastosVariables.toLocaleString('es-AR')}\n`;
+  contexto += `• Ingresos registrados último mes: $${resumenFinanciero.totalIngresos.toLocaleString('es-AR')}\n\n`;
+
+  if (gastosRecurrentes.length > 0) {
+    contexto += `=== GASTOS RECURRENTES (${gastosRecurrentes.length} conceptos) ===\n`;
+    gastosRecurrentes.slice(0, 10).forEach((g: any) => {
+      contexto += `• ${g.concepto}: $${g.monto.toLocaleString('es-AR')} (${g.periodicidad}) - ${g.categoria}\n`;
+    });
+    contexto += `\n`;
+  }
+
+  if (servicios.length > 0) {
+    contexto += `=== SERVICIOS CONTRATADOS (${servicios.length} servicios) ===\n`;
+    servicios.slice(0, 10).forEach((s: any) => {
+      contexto += `• ${s.nombre}: $${s.monto.toLocaleString('es-AR')} (${s.medioPago})\n`;
+    });
+    contexto += `\n`;
+  }
+
+  if (prestamos.length > 0) {
+    contexto += `=== PRÉSTAMOS ACTIVOS ===\n`;
+    prestamos.forEach((p: any) => {
+      contexto += `• ${p.concepto}: Cuota mensual $${p.cuotaMensual.toLocaleString('es-AR')}, ${p.cuotasPendientes} cuotas pendientes\n`;
+    });
+    contexto += `\n`;
+  }
+
+  if (financiaciones.length > 0) {
+    contexto += `=== FINANCIACIONES ACTIVAS ===\n`;
+    financiaciones.forEach((f: any) => {
+      contexto += `• ${f.concepto}: $${f.montoCuota.toLocaleString('es-AR')} x ${f.cuotasRestantes} cuotas restantes\n`;
+    });
+    contexto += `\n`;
+  }
+
+  return contexto;
+}
+
+// Función de fallback para respuestas contextuales sin LLM
+function generarRespuestaContextual(userQuery: string, contextData: any, messages: Message[]): string {
+  const { resumenFinanciero, gastosRecurrentes, servicios, prestamos, financiaciones } = contextData;
+  
+  console.log("=== GENERANDO RESPUESTA CONTEXTUAL ===");
+  console.log("Gastos recurrentes:", gastosRecurrentes?.length || 0);
+  console.log("Servicios:", servicios?.length || 0);
+  console.log("Préstamos:", prestamos?.length || 0);
+  console.log("Financiaciones:", financiaciones?.length || 0);
+  
+  // Detectar si menciona ingresos en la consulta actual o en el historial
+  const mencionaIngresos = /(\d+)\s*(millones?|mill?)/i.test(userQuery);
+  let ingresosEstimados = 0;
+  
+  if (mencionaIngresos) {
+    const match = userQuery.match(/(\d+)\s*(millones?|mill?)/i);
+    if (match) {
+      ingresosEstimados = parseInt(match[1]) * 1000000;
+      console.log("Ingresos detectados en consulta:", ingresosEstimados);
+    }
+  } else {
+    // Buscar en el historial de mensajes
+    for (const message of messages) {
+      if (message.role === "user") {
+        const matchHistorial = message.content.match(/(\d+)\s*(millones?|mill?)/i);
+        if (matchHistorial) {
+          ingresosEstimados = parseInt(matchHistorial[1]) * 1000000;
+          console.log("Ingresos detectados en historial:", ingresosEstimados);
+          break;
+        }
+      }
+    }
+  }
+
+  const totalCompromisos = resumenFinanciero.totalGastosFijos + resumenFinanciero.totalCompromisosMensuales;
+  console.log("Total compromisos calculado:", totalCompromisos);
+  
+  let respuesta = `## Análisis de tu Situación Financiera\n\n`;
+  
+  if (ingresosEstimados > 0) {
+    const porcentajeCompromisos = ((totalCompromisos / ingresosEstimados) * 100).toFixed(1);
+    const disponible = ingresosEstimados - totalCompromisos;
+    
+    respuesta += `Basándome en tus ingresos de **$${ingresosEstimados.toLocaleString('es-AR')}** mensuales y analizando tus datos:\n\n`;
+    
+    respuesta += `### 📊 Tu Situación Actual\n`;
+    respuesta += `- **Gastos fijos**: $${resumenFinanciero.totalGastosFijos.toLocaleString('es-AR')}\n`;
+    respuesta += `  - Gastos recurrentes: $${resumenFinanciero.gastosFijosDetalle.recurrentes.toLocaleString('es-AR')} (${gastosRecurrentes?.length || 0} conceptos)\n`;
+    respuesta += `  - Servicios: $${resumenFinanciero.gastosFijosDetalle.servicios.toLocaleString('es-AR')} (${servicios?.length || 0} servicios)\n`;
+    
+    if (resumenFinanciero.totalCompromisosMensuales > 0) {
+      respuesta += `- **Compromisos de deuda**: $${resumenFinanciero.totalCompromisosMensuales.toLocaleString('es-AR')}\n`;
+      if (prestamos?.length > 0) {
+        respuesta += `  - Préstamos: $${resumenFinanciero.gastosFijosDetalle.prestamos.toLocaleString('es-AR')} (${prestamos.length} préstamos)\n`;
+      }
+      if (financiaciones?.length > 0) {
+        respuesta += `  - Financiaciones: $${resumenFinanciero.gastosFijosDetalle.financiaciones.toLocaleString('es-AR')} (${financiaciones.length} financiaciones)\n`;
+      }
+    }
+    
+    respuesta += `- **Total comprometido**: $${totalCompromisos.toLocaleString('es-AR')} (**${porcentajeCompromisos}%** de tus ingresos)\n`;
+    respuesta += `- **Disponible**: $${disponible.toLocaleString('es-AR')} (**${(100 - parseFloat(porcentajeCompromisos)).toFixed(1)}%**)\n\n`;
+    
+    // Análisis de la situación
+    if (parseFloat(porcentajeCompromisos) > 70) {
+      respuesta += `🚨 **Situación crítica**: Tus compromisos fijos representan ${porcentajeCompromisos}% de tus ingresos.\n\n`;
+      respuesta += `### ⚠️ Recomendaciones Urgentes:\n`;
+      respuesta += `- Revisar inmediatamente todos los gastos no esenciales\n`;
+      respuesta += `- Considerar renegociar términos de préstamos si es posible\n`;
+      respuesta += `- Evaluar cancelar servicios menos prioritarios\n`;
+    } else if (parseFloat(porcentajeCompromisos) > 50) {
+      respuesta += `⚡ **Situación ajustada**: Tus compromisos representan ${porcentajeCompromisos}% de tus ingresos.\n\n`;
+      respuesta += `### 💡 Recomendaciones:\n`;
+      respuesta += `- Mantener control estricto de gastos variables\n`;
+      respuesta += `- Buscar oportunidades de optimización en servicios\n`;
+      respuesta += `- Crear un fondo de emergencia gradualmente\n`;
+    } else {
+      respuesta += `✅ **Buena situación**: Tienes un margen saludable del ${(100 - parseFloat(porcentajeCompromisos)).toFixed(1)}%.\n\n`;
+      respuesta += `### 🎯 Oportunidades:\n`;
+      respuesta += `- Potencial de ahorro: $${(disponible * 0.3).toLocaleString('es-AR')} mensuales\n`;
+      respuesta += `- Considera inversiones para hacer crecer tu dinero\n`;
+      respuesta += `- Establece metas de ahorro específicas\n`;
+    }
+    
+    respuesta += `\n### 📝 Consideraciones Importantes\n`;
+    respuesta += `- Este análisis se basa en tus gastos fijos registrados\n`;
+    respuesta += `- Los gastos variables (supermercado, ocio) no están incluidos en este cálculo\n`;
+    respuesta += `- Considera reservar al menos $${(disponible * 0.2).toLocaleString('es-AR')} para emergencias\n`;
+    
+    // Análisis específico de los gastos más altos
+    if (gastosRecurrentes?.length > 0) {
+      const gastoMasAlto = gastosRecurrentes[0];
+      respuesta += `\n### 🔍 Análisis Detallado\n`;
+      respuesta += `- Tu gasto recurrente más alto es **${gastoMasAlto.concepto}**: $${gastoMasAlto.monto.toLocaleString('es-AR')}\n`;
+      respuesta += `- Esto representa el ${((gastoMasAlto.monto / ingresosEstimados) * 100).toFixed(1)}% de tus ingresos\n`;
+    }
+    
+  } else {
+    respuesta += `### 📋 Compromisos Mensuales Registrados\n`;
+    respuesta += `- **Gastos fijos**: $${resumenFinanciero.totalGastosFijos.toLocaleString('es-AR')}\n`;
+    if (resumenFinanciero.totalCompromisosMensuales > 0) {
+      respuesta += `- **Compromisos de deuda**: $${resumenFinanciero.totalCompromisosMensuales.toLocaleString('es-AR')}\n`;
+    }
+    respuesta += `- **Total**: $${totalCompromisos.toLocaleString('es-AR')}\n\n`;
+    respuesta += `Para un análisis completo de tu situación, menciona tus ingresos mensuales aproximados.\n`;
+  }
+  
+  return respuesta;
+}
+
+// Función para generar respuestas generales sin datos específicos
+function generarRespuestaGeneral(messageContent: string): string {
+  const textoLower = messageContent.toLowerCase();
+  
+  if (textoLower.includes('presupuesto')) {
+    return `## Cómo crear un presupuesto efectivo\n\n### 📊 Regla 50/30/20:\n- **50%** para necesidades (alquiler, comida, servicios)\n- **30%** para deseos (entretenimiento, compras)\n- **20%** para ahorro e inversión\n\n### 📝 Pasos a seguir:\n1. Registra todos tus ingresos mensuales\n2. Lista todos tus gastos fijos\n3. Establece límites para gastos variables\n4. Revisa y ajusta mensualmente\n\n¿Te gustaría que profundice en algún aspecto específico?`;
+  }
+  
+  if (textoLower.includes('ahorro') || textoLower.includes('ahorrar')) {
+    return `## Estrategias de ahorro efectivas\n\n### 🎯 Métodos probados:\n- **Pago automático**: Transfiere a ahorro apenas cobres\n- **Regla de las 24 horas**: Espera un día antes de compras grandes\n- **Método de sobres**: Asigna efectivo para cada categoría\n- **Desafío 52 semanas**: Ahorra incrementalmente cada semana\n\n### 💡 Tips específicos:\n- Cancela suscripciones que no uses\n- Compara precios antes de comprar\n- Cocina más en casa\n- Usa transporte público cuando sea posible\n\n¿Hay alguna área específica donde quieras ahorrar más?`;
+  }
+  
+  if (textoLower.includes('inversión') || textoLower.includes('invertir')) {
+    return `## Guía de inversión para principiantes\n\n### 🏗️ Antes de invertir:\n1. **Fondo de emergencia**: 3-6 meses de gastos\n2. **Deudas de alto interés**: Págalas primero\n3. **Objetivos claros**: Define para qué inviertes\n\n### 📈 Opciones en Argentina:\n- **Conservador**: Plazos fijos UVA, LECAP\n- **Moderado**: Fondos comunes, ONs\n- **Agresivo**: Acciones, CEDEARs\n\n### ⚠️ Principios clave:\n- Diversifica siempre\n- Invierte solo lo que puedas permitirte perder\n- Piensa a largo plazo\n- Edúcate constantemente\n\n¿Te interesa algún tipo de inversión en particular?`;
+  }
+  
+  // Respuesta conversacional general
+  return `Entiendo tu consulta sobre finanzas personales. Te puedo ayudar con:\n\n### 💰 Áreas de especialidad:\n- **Presupuestos**: Cómo crear y mantener un presupuesto efectivo\n- **Ahorro**: Estrategias para ahorrar más dinero\n- **Inversiones**: Opciones de inversión según tu perfil\n- **Deudas**: Cómo manejar y eliminar deudas\n- **Planificación**: Objetivos financieros a corto y largo plazo\n\n### 📊 Para análisis personalizados:\nRegistra tus gastos recurrentes y servicios en la aplicación para obtener recomendaciones específicas basadas en tu situación real.\n\n¿Hay algún tema específico en el que te gustaría que profundice?`;
 } 

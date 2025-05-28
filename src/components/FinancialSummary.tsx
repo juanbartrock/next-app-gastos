@@ -7,6 +7,106 @@ import { Loader2, RefreshCw } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 
+// Función super simple para renderizar markdown básico - GARANTIZADO QUE FUNCIONA
+function renderMarkdown(text: string): JSX.Element {
+  const parts = text.split('\n');
+  
+  return (
+    <div className="space-y-2">
+      {parts.map((line, index) => {
+        const trimmedLine = line.trim();
+        
+        // Headers
+        if (trimmedLine.startsWith('### ')) {
+          return (
+            <h3 key={index} className="text-base font-semibold mb-1 mt-3 text-current">
+              {trimmedLine.replace('### ', '')}
+            </h3>
+          );
+        }
+        if (trimmedLine.startsWith('## ')) {
+          return (
+            <h2 key={index} className="text-lg font-bold mb-2 mt-3 text-current">
+              {trimmedLine.replace('## ', '')}
+            </h2>
+          );
+        }
+        if (trimmedLine.startsWith('# ')) {
+          return (
+            <h1 key={index} className="text-xl font-bold mb-2 mt-2 text-current">
+              {trimmedLine.replace('# ', '')}
+            </h1>
+          );
+        }
+        
+        // Lista con viñetas
+        if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
+          return (
+            <div key={index} className="flex items-start ml-3 mb-1">
+              <span className="text-current mr-2 mt-0.5">•</span>
+              <span className="text-current">{processSimpleBold(trimmedLine.slice(2))}</span>
+            </div>
+          );
+        }
+        
+        // Lista numerada
+        if (trimmedLine.match(/^\d+\. /)) {
+          const number = trimmedLine.match(/^(\d+)\./)?.[1] || '1';
+          const content = trimmedLine.replace(/^\d+\. /, '');
+          return (
+            <div key={index} className="flex items-start ml-3 mb-1">
+              <span className="text-current mr-2 font-medium">{number}.</span>
+              <span className="text-current">{processSimpleBold(content)}</span>
+            </div>
+          );
+        }
+        
+        // Línea vacía
+        if (!trimmedLine) {
+          return <div key={index} className="h-1"></div>;
+        }
+        
+        // Párrafo normal
+        return (
+          <p key={index} className="mb-1 text-current leading-relaxed">
+            {processSimpleBold(trimmedLine)}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+// Función súper simple para procesar negrita
+function processSimpleBold(text: string): JSX.Element {
+  // Dividir el texto por patrones de negrita **texto**
+  const regex = /(\*\*[^*]+\*\*)/g;
+  const parts = text.split(regex);
+  
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+          // Es texto en negrita
+          const boldText = part.slice(2, -2);
+          return (
+            <strong key={i} className="font-bold text-current">
+              {boldText}
+            </strong>
+          );
+        } else {
+          // Es texto normal
+          return (
+            <span key={i} className="text-current">
+              {part}
+            </span>
+          );
+        }
+      })}
+    </>
+  );
+}
+
 interface FinancialSummaryProps {
   className?: string
   context?: "dashboard" | "recurrentes" | "general"
@@ -46,7 +146,14 @@ export function FinancialSummary({ className, context = "dashboard" }: Financial
       }
 
       const data = await response.json()
-      setSummary(data.response)
+      
+      // Verificar si OpenAI está configurado
+      let responseContent = data.response;
+      if (data.debug && !data.debug.openaiConfigured) {
+        responseContent += "\n\n---\n\n*Nota: El asistente IA avanzado no está configurado. Este análisis se basa en respuestas predefinidas usando tus datos financieros reales.*";
+      }
+      
+      setSummary(responseContent)
       setLastUpdated(new Date())
     } catch (error) {
       console.error("Error:", error)
@@ -113,8 +220,8 @@ export function FinancialSummary({ className, context = "dashboard" }: Financial
             </Button>
           </div>
         ) : (
-          <div className="text-sm whitespace-pre-wrap">
-            {summary}
+          <div className="text-sm">
+            {renderMarkdown(summary)}
           </div>
         )}
       </CardContent>

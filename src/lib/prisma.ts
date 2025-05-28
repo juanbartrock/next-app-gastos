@@ -3,10 +3,8 @@ import { PrismaClient } from '@prisma/client'
 // Añadir manejo global de errores y configuración de log
 const prismaClientSingleton = () => {
   const client = new PrismaClient({
-    log: process.env.NODE_ENV === 'development' 
-      ? ['query', 'error', 'warn'] 
-      : ['error'],
-    errorFormat: 'pretty',
+    log: [], // Desactivar TODOS los logs de Prisma
+    errorFormat: 'minimal',
   });
   
   // Crear un proxy que permita acceder a modelos que no sean reconocidos por TypeScript

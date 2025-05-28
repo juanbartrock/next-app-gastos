@@ -6,10 +6,13 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 
-// Inicializar OpenAI con la clave API directamente
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Inicializar OpenAI solo si la API key está disponible
+let openai: OpenAI | null = null;
+if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim() !== "") {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,6 +54,20 @@ export async function POST(request: NextRequest) {
     console.log("API Key:", process.env.OPENAI_API_KEY ? "Configurada" : "No configurada");
     console.log("Archivo guardado en:", tempFilePath);
 
+    // Verificar si OpenAI está disponible
+    if (!openai) {
+      // Limpiar el archivo temporal
+      try {
+        fs.unlinkSync(tempFilePath);
+      } catch (error) {
+        console.error("Error al eliminar archivo temporal:", error);
+      }
+      return NextResponse.json(
+        { error: "Servicio de transcripción no disponible" },
+        { status: 503 }
+      );
+    }
+
     // Transcribir usando OpenAI Whisper con el archivo del sistema de archivos
     const transcription = await openai.audio.transcriptions.create({
       file: fs.createReadStream(tempFilePath),
@@ -67,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     // Devolver la transcripción
     return NextResponse.json({
-      text: transcription.text
+      text: transcription?.text
     });
   } catch (error: any) {
     console.error("Error en la transcripción:", error);

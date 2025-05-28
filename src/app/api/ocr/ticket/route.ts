@@ -3,10 +3,13 @@ import { getServerSession } from "next-auth"
 import { options } from "@/app/api/auth/[...nextauth]/options"
 import OpenAI from "openai"
 
-// Configurar cliente de OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-})
+// Configurar cliente de OpenAI solo si la API key está disponible
+let openai: OpenAI | null = null
+if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim() !== "") {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+  })
+}
 
 // Función para generar datos de ejemplo si falla OpenAI
 function generarDatosEjemplo() {
@@ -84,7 +87,7 @@ export async function POST(request: NextRequest) {
 
     try {
       // Verificar si debemos usar el modo fallback (para pruebas o si OpenAI falla)
-      const usarFallback = process.env.USE_OCR_FALLBACK === "true" || !process.env.OPENAI_API_KEY;
+      const usarFallback = process.env.USE_OCR_FALLBACK === "true" || !process.env.OPENAI_API_KEY || !openai;
       
       if (usarFallback) {
         console.log("Usando modo fallback para OCR (datos de ejemplo)");
@@ -92,7 +95,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Usar la API de visión de OpenAI para extraer información del ticket
-      const completion = await openai.chat.completions.create({
+      const completion = await openai!.chat.completions.create({
         model: "gpt-4o",
         messages: [
           {

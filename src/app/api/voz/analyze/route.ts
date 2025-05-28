@@ -4,10 +4,13 @@ import { options } from "@/app/api/auth/[...nextauth]/options";
 import { OpenAI } from "openai";
 import prisma from "@/lib/prisma";
 
-// Inicializar OpenAI con la clave API directamente
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Inicializar OpenAI solo si la API key está disponible
+let openai: OpenAI | null = null;
+if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim() !== "") {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,6 +33,14 @@ export async function POST(request: NextRequest) {
     console.log("API Key (analyze):", process.env.OPENAI_API_KEY ? "Configurada" : "No configurada");
     console.log("Texto a analizar:", text);
 
+    // Verificar si OpenAI está disponible
+    if (!openai) {
+      return NextResponse.json(
+        { error: "Servicio de análisis de voz no disponible" },
+        { status: 503 }
+      );
+    }
+
     // Obtener las categorías disponibles para referenciarlas en el prompt
     const categorias = await prisma.categoria.findMany({
       where: { status: true },
@@ -38,7 +49,7 @@ export async function POST(request: NextRequest) {
 
     // Construir lista de categorías para el prompt
     const categoriasTexto = categorias
-      .map((cat) => `${cat.id}: ${cat.descripcion} (${cat.grupo_categoria || "General"})`)
+      .map((cat: any) => `${cat.id}: ${cat.descripcion} (${cat.grupo_categoria || "General"})`)
       .join("\n");
 
     // Prompt para GPT
@@ -60,7 +71,7 @@ export async function POST(request: NextRequest) {
     `;
 
     // Llamar a la API de OpenAI para analizar el texto
-    const completion = await openai.chat.completions.create({
+    const completion = await openai?.chat.completions.create({
       model: "gpt-3.5-turbo-0125",
       messages: [
         { 
@@ -73,7 +84,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Extraer y analizar la respuesta
-    const analysisText = completion.choices[0].message.content;
+    const analysisText = completion?.choices[0].message.content;
     console.log("Respuesta del análisis:", analysisText);
     
     const analysisData = JSON.parse(analysisText || "{}");

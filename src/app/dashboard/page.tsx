@@ -349,6 +349,27 @@ export default function BankingDashboard() {
       <main className="flex-1">
         <div className="max-w-screen-2xl mx-auto px-6 py-4 md:py-6">
           <div className="grid gap-6">
+            {/* Month Navigation */}
+            <div className="flex items-center justify-between">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigateBalance('prev')}
+              >
+                Anterior
+              </Button>
+              <div className="text-lg font-semibold">
+                {new Date(currentYear, currentMonth).toLocaleDateString('es', { month: 'long', year: 'numeric' })}
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigateBalance('next')}
+              >
+                Siguiente
+              </Button>
+            </div>
+
             {/* Balance Cards - Situación mensual */}
             <Card className="overflow-hidden">
               <CardHeader className="px-6 py-3">
@@ -411,27 +432,6 @@ export default function BankingDashboard() {
               
               {/* Widget de Tareas */}
               <TareasWidget />
-            </div>
-
-            {/* Month Navigation */}
-            <div className="flex items-center justify-between">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => navigateBalance('prev')}
-              >
-                Anterior
-              </Button>
-              <div className="text-lg font-semibold">
-                {new Date(currentYear, currentMonth).toLocaleDateString('es', { month: 'long', year: 'numeric' })}
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => navigateBalance('next')}
-              >
-                Siguiente
-              </Button>
             </div>
 
             {/* Two Column Layout: Form and Transactions */}

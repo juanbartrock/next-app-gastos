@@ -7,10 +7,13 @@ import { runScraper, runAllScrapers, ScraperOptions } from '@/scraping'
 import fs from 'fs'
 import path from 'path'
 
-// Inicializar cliente de OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Inicializar cliente de OpenAI solo si la API key está disponible
+let openai: OpenAI | null = null;
+if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim() !== "") {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 // Definir el tipo de las promociones
 interface PromocionAlternativa {
@@ -52,14 +55,14 @@ async function analizarGastosRecurrentes(userId: string) {
     
     // Combinar todo
     return {
-      gastosRecurrentes: gastosRecurrentes.map(g => ({
+      gastosRecurrentes: gastosRecurrentes.map((g: any) => ({
         id: g.id,
         concepto: g.concepto,
         monto: Number(g.monto),
         periodicidad: g.periodicidad,
         categoria: g.categoria?.descripcion || 'Sin categoría'
       })),
-      servicios: servicios.map(s => ({
+      servicios: servicios.map((s: any) => ({
         id: s.id,
         nombre: s.nombre,
         descripcion: s.descripcion,
@@ -76,6 +79,12 @@ async function analizarGastosRecurrentes(userId: string) {
 // Función para generar recomendaciones usando GPT-4
 async function generarRecomendaciones(datos: any) {
   try {
+    // Verificar si OpenAI está disponible
+    if (!openai) {
+      console.log('OpenAI no configurado, devolviendo recomendaciones vacías');
+      return [];
+    }
+
     const prompt = `
     Eres un asesor financiero especializado en identificar oportunidades de ahorro. 
     Analiza los siguientes gastos recurrentes y servicios contratados del usuario:
@@ -325,7 +334,7 @@ export async function POST() {
             // Adaptar las promociones al formato esperado
             const promotionsFormatted = result.promotions.map(promo => {
               // Buscar si hay un servicio similar en los datos del usuario
-              const matchingService = datos.servicios.find(s => 
+              const matchingService = datos.servicios.find((s: any) => 
                 s.nombre.toLowerCase().includes(serviceName.toLowerCase()) ||
                 serviceName.toLowerCase().includes(s.nombre.toLowerCase())
               );
