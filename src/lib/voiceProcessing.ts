@@ -2,13 +2,23 @@ import { OpenAI } from "openai";
 import fs from "fs";
 import prisma from "@/lib/prisma";
 
-// Inicializar OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Verificar si OpenAI está configurado
+const isOpenAIConfigured = !!process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim() !== ""
+
+// Inicializar OpenAI solo si está configurado
+let openai: OpenAI | null = null
+if (isOpenAIConfigured) {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 // Función para transcribir audio
 export async function transcribeAudio(filePath: string): Promise<string> {
+  if (!openai) {
+    throw new Error("OpenAI no está configurado para transcripción de audio");
+  }
+
   try {
     const transcription = await openai.audio.transcriptions.create({
       file: fs.createReadStream(filePath),
@@ -32,6 +42,10 @@ export async function transcribeAudio(filePath: string): Promise<string> {
 
 // Función para analizar texto y extraer información del gasto
 export async function analyzeExpenseText(text: string, userId: string): Promise<any> {
+  if (!openai) {
+    throw new Error("OpenAI no está configurado para análisis de texto");
+  }
+
   try {
     // Obtener las categorías disponibles
     const categorias = await prisma.categoria.findMany({

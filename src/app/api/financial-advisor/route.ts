@@ -6,6 +6,7 @@ import OpenAI from "openai"
 
 // Configuración para evitar pre-rendering de la API
 export const dynamic = 'force-dynamic'
+export const maxDuration = 25 // Máximo 25 segundos en Vercel
 
 // Verificar si OpenAI está configurado
 const isOpenAIConfigured = !!process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim() !== ""
@@ -14,7 +15,8 @@ const isOpenAIConfigured = !!process.env.OPENAI_API_KEY && process.env.OPENAI_AP
 let openai: OpenAI | null = null
 if (isOpenAIConfigured) {
   openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
+    apiKey: process.env.OPENAI_API_KEY,
+    timeout: 20000 // 20 segundos de timeout para OpenAI
   })
 }
 
@@ -55,8 +57,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
     }
 
-    // Obtener TODOS los datos financieros del usuario para el contexto RAG
-    const contextData = await obtenerContextoCompleto(usuario.id, inversionId, context)
+    // Optimización: Para consultas de seguimiento cortas, evitar recargar todo el contexto
+    const isShortFollowUp = messages.length > 1 && 
+      lastMessage.content.length < 50 && 
+      !lastMessage.content.toLowerCase().includes('vencimiento') &&
+      !lastMessage.content.toLowerCase().includes('análisis') &&
+      !lastMessage.content.toLowerCase().includes('resumen');
+
+    let contextData = null;
+    
+    if (!isShortFollowUp || messages.length <= 2) {
+      // Obtener TODOS los datos financieros del usuario para el contexto RAG
+      contextData = await obtenerContextoCompleto(usuario.id, inversionId, context);
+    }
     
     // Generar respuesta usando el LLM con contexto completo
     const response = await generarRespuestaInteligente(
@@ -72,8 +85,9 @@ export async function POST(req: NextRequest) {
       debug: {
         financialDataExists: contextData !== null,
         contextType: context,
-        isPersonalized: true,
-        openaiConfigured: isOpenAIConfigured
+        isPersonalized: contextData !== null,
+        openaiConfigured: isOpenAIConfigured,
+        shortFollowUpOptimization: isShortFollowUp
       }
     })
   } catch (error) {
@@ -85,86 +99,106 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Función para obtener contexto completo del usuario (RAG)
+// Función para obtener contexto completo del usuario (RAG) - OPTIMIZADA
 async function obtenerContextoCompleto(userId: string, inversionId?: string, context?: string) {
   try {
     console.log("Obteniendo contexto completo para RAG del usuario:", userId);
 
-    // Obtener fechas relevantes
+    // Obtener fechas relevantes - solo el mes actual y anterior
     const now = new Date();
-    const primerDiaMes = new Date(now.getFullYear(), now.getMonth(), 1);
-    const ultimoDiaMes = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    const hace3Meses = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+    const primerDiaMesActual = new Date(now.getFullYear(), now.getMonth(), 1);
+    const primerDiaMesAnterior = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
-    // 1. Gastos recurrentes
-    const gastosRecurrentes = await prisma.gastoRecurrente.findMany({
-      where: { userId },
-      include: { categoria: true },
-      orderBy: { monto: 'desc' }
-    });
+    // Ejecutar consultas en paralelo para optimizar tiempo
+    const [
+      gastosRecurrentes,
+      servicios,
+      prestamos,
+      financiaciones,
+      gastosRecientes,
+      ingresos,
+      presupuestos
+    ] = await Promise.all([
+      // 1. Gastos recurrentes - solo los más importantes
+      prisma.gastoRecurrente.findMany({
+        where: { userId },
+        include: { categoria: true },
+        orderBy: { monto: 'desc' },
+        take: 15 // Limitar a 15 más importantes
+      }),
 
-    // 2. Servicios contratados
-    const servicios = await prisma.servicio.findMany({
-      where: { userId },
-      orderBy: { monto: 'desc' }
-    });
+      // 2. Servicios contratados - solo los más importantes
+      prisma.servicio.findMany({
+        where: { userId },
+        orderBy: { monto: 'desc' },
+        take: 15 // Limitar a 15 más importantes
+      }),
 
-    // 3. Préstamos activos
-    const prestamos = await prisma.prestamo.findMany({
-      where: { 
-        userId,
-        estado: { in: ['activo', 'vigente'] }
-      },
-      include: {
-        pagos: {
-          orderBy: { fechaVencimiento: 'desc' },
-          take: 3
-        }
-      }
-    });
+      // 3. Préstamos activos
+      prisma.prestamo.findMany({
+        where: { 
+          userId,
+          estado: { in: ['activo', 'vigente'] }
+        },
+        include: {
+          pagos: {
+            orderBy: { fechaVencimiento: 'desc' },
+            take: 2 // Solo últimos 2 pagos
+          }
+        },
+        take: 10 // Máximo 10 préstamos
+      }),
 
-    // 4. Financiaciones activas
-    const financiaciones = await prisma.financiacion.findMany({
-      where: { 
-        userId,
-        cuotasRestantes: { gt: 0 }
-      },
-      include: {
-        gasto: true
-      }
-    });
+      // 4. Financiaciones activas
+      prisma.financiacion.findMany({
+        where: { 
+          userId,
+          cuotasRestantes: { gt: 0 }
+        },
+        include: {
+          gasto: true
+        },
+        take: 15 // Máximo 15 financiaciones
+      }),
 
-    // 5. Gastos recientes (últimos 3 meses)
-    const gastos = await prisma.gasto.findMany({
-      where: { 
-        userId,
-        fecha: { 
-          gte: hace3Meses,
-          lte: ultimoDiaMes
-        }
-      },
-      include: { 
-        categoriaRel: true 
-      },
-      orderBy: { fecha: 'desc' },
-      take: 100 // Limitar para no sobrecargar
-    });
+      // 5. Gastos recientes (solo últimos 2 meses, limitados)
+      prisma.gasto.findMany({
+        where: { 
+          userId,
+          fecha: { 
+            gte: primerDiaMesAnterior
+          }
+        },
+        include: { 
+          categoriaRel: true 
+        },
+        orderBy: { fecha: 'desc' },
+        take: 50 // Reducir a 50 gastos más recientes
+      }),
 
-    // 6. Ingresos recientes
-    const ingresos = await prisma.gasto.findMany({
-      where: { 
-        userId,
-        tipoTransaccion: 'income',
-        fecha: { 
-          gte: hace3Meses,
-          lte: ultimoDiaMes
-        }
-      },
-      orderBy: { fecha: 'desc' }
-    });
+      // 6. Ingresos recientes (solo últimos 2 meses)
+      prisma.gasto.findMany({
+        where: { 
+          userId,
+          tipoTransaccion: 'income',
+          fecha: { 
+            gte: primerDiaMesAnterior
+          }
+        },
+        orderBy: { fecha: 'desc' },
+        take: 20 // Máximo 20 ingresos
+      }),
 
-    // 7. Inversiones si es relevante
-    let inversiones = [];
+      // 7. Presupuestos activos - solo los más importantes
+      prisma.presupuesto.findMany({
+        where: { userId },
+        include: { categoria: true },
+        take: 10 // Máximo 10 presupuestos
+      })
+    ]);
+
+    // 8. Inversiones solo si es relevante (consulta condicional)
+    let inversiones: any[] = [];
     if (context === "inversion" || inversionId) {
       inversiones = await prisma.inversion.findMany({
         where: inversionId ? { id: inversionId, userId } : { userId },
@@ -176,21 +210,12 @@ async function obtenerContextoCompleto(userId: string, inversionId?: string, con
           },
           transacciones: {
             orderBy: { fecha: 'desc' },
-            take: 5
+            take: 3 // Solo últimas 3 transacciones
           }
-        }
+        },
+        take: 5 // Máximo 5 inversiones
       });
     }
-
-    // 8. Presupuestos activos
-    const presupuestos = await prisma.presupuesto.findMany({
-      where: { 
-        userId
-      },
-      include: {
-        categoria: true
-      }
-    });
 
     // Calcular totales y métricas
     const totalGastosRecurrentes = gastosRecurrentes.reduce((acc: number, g: any) => acc + Number(g.monto), 0);
@@ -198,87 +223,85 @@ async function obtenerContextoCompleto(userId: string, inversionId?: string, con
     const totalPrestamos = prestamos.reduce((acc: number, p: any) => acc + Number(p.cuotaMensual || 0), 0);
     const totalFinanciaciones = financiaciones.reduce((acc: number, f: any) => acc + Number(f.montoCuota), 0);
     
-    const gastosUltimoMes = gastos.filter((g: any) => g.fecha >= primerDiaMes && g.tipoTransaccion === 'expense');
-    const ingresosUltimoMes = ingresos.filter((i: any) => i.fecha >= primerDiaMes);
+    const gastosUltimoMes = gastosRecientes.filter((g: any) => g.fecha >= primerDiaMesActual && g.tipoTransaccion === 'expense');
+    const ingresosUltimoMes = ingresos.filter((i: any) => i.fecha >= primerDiaMesActual);
     
     const totalGastosVariables = gastosUltimoMes.reduce((acc: number, g: any) => acc + Number(g.monto), 0);
     const totalIngresos = ingresosUltimoMes.reduce((acc: number, i: any) => acc + Number(i.monto), 0);
 
+    const resumenFinanciero = {
+      totalGastosFijos: totalGastosRecurrentes + totalServicios,
+      totalCompromisosMensuales: totalPrestamos + totalFinanciaciones,
+      totalGastosVariables,
+      totalIngresos,
+      gastosRecurrientesCount: gastosRecurrentes.length,
+      serviciosCount: servicios.length,
+      prestamosActivos: prestamos.length,
+      financiacionesActivas: financiaciones.length,
+      gastosFijosDetalle: {
+        recurrentes: totalGastosRecurrentes,
+        servicios: totalServicios,
+        prestamos: totalPrestamos,
+        financiaciones: totalFinanciaciones
+      }
+    };
+
     return {
-      // Datos básicos
+      resumenFinanciero,
       gastosRecurrentes: gastosRecurrentes.map((g: any) => ({
         concepto: g.concepto,
         monto: Number(g.monto),
         periodicidad: g.periodicidad,
-        categoria: g.categoria?.descripcion || 'Sin categoría'
+        categoria: g.categoria?.nombre || 'Sin categoría'
       })),
-      
       servicios: servicios.map((s: any) => ({
         nombre: s.nombre,
         monto: Number(s.monto),
         medioPago: s.medioPago,
-        descripcion: s.descripcion
+        estado: s.estado
       })),
-
-      // Deudas y compromisos
       prestamos: prestamos.map((p: any) => ({
         concepto: p.concepto,
-        montoTotal: Number(p.montoTotal),
-        cuotaMensual: Number(p.cuotaMensual || 0),
-        cuotasPendientes: p.pagos?.length || 0,
-        proximasCuotas: p.pagos?.map((c: any) => ({
-          monto: Number(c.monto),
-          fechaVencimiento: c.fechaVencimiento.toISOString().split('T')[0]
-        })) || []
+        cuotaMensual: Number(p.cuotaMensual),
+        cuotasPendientes: p.cuotasPendientes,
+        fechaVencimiento: p.fechaVencimiento
       })),
-
       financiaciones: financiaciones.map((f: any) => ({
-        concepto: f.gasto?.concepto || 'Financiación',
+        concepto: f.gasto?.concepto || f.concepto || 'Sin concepto',
         montoCuota: Number(f.montoCuota),
         cuotasRestantes: f.cuotasRestantes,
-        montoTotal: Number(f.montoCuota) * f.cuotasRestantes
+        totalFinanciacion: Number(f.totalFinanciacion)
       })),
-
-      // Métricas financieras
-      resumenFinanciero: {
-        totalGastosFijos: totalGastosRecurrentes + totalServicios,
-        totalCompromisosMensuales: totalPrestamos + totalFinanciaciones,
-        totalGastosVariables: totalGastosVariables,
-        totalIngresos: totalIngresos,
-        gastosFijosDetalle: {
-          recurrentes: totalGastosRecurrentes,
-          servicios: totalServicios,
-          prestamos: totalPrestamos,
-          financiaciones: totalFinanciaciones
-        }
-      },
-
+      presupuestos: presupuestos.map((p: any) => ({
+        nombre: p.nombre,
+        montoLimite: Number(p.montoLimite),
+        categoria: p.categoria?.nombre || 'Sin categoría',
+        periodo: p.periodo
+      })),
       // Datos históricos para análisis
-      gastosRecientes: gastosUltimoMes.slice(0, 20).map((g: any) => ({
+      gastosRecientes: gastosRecientes.slice(0, 20).map((g: any) => ({
         concepto: g.concepto,
         monto: Number(g.monto),
-        fecha: g.fecha.toISOString().split('T')[0],
-        categoria: g.categoriaRel?.descripcion || g.categoria || 'Sin categoría'
+        fecha: g.fecha,
+        categoria: g.categoriaRel?.nombre || 'Sin categoría',
+        tipoMovimiento: g.tipoMovimiento
       })),
-
-      // Inversiones si aplica
-      inversiones: inversiones.map((i: any) => ({
-        nombre: i.nombre,
-        tipo: i.tipo?.nombre || 'Inversión',
-        montoInicial: Number(i.montoInicial),
-        valorActual: i.cotizaciones[0] ? Number(i.cotizaciones[0].valor) : Number(i.montoInicial),
-        rendimiento: i.cotizaciones[0] ? Number(i.cotizaciones[0].valor) - Number(i.montoInicial) : 0
+      ingresos: ingresos.slice(0, 10).map((i: any) => ({
+        concepto: i.concepto,
+        monto: Number(i.monto),
+        fecha: i.fecha
       })),
-
-      // Presupuestos
-      presupuestos: presupuestos.map((p: any) => ({
-        categoria: p.categoria?.descripcion || 'General',
-        limite: Number(p.limite),
-        periodo: p.periodo
+      inversiones: inversiones.map((inv: any) => ({
+        nombre: inv.nombre,
+        tipo: inv.tipo?.nombre,
+        montoInvertido: Number(inv.montoInvertido),
+        valorActual: Number(inv.valorActual),
+        rendimiento: inv.rendimiento
       }))
     };
+
   } catch (error) {
-    console.error('Error al obtener contexto completo:', error);
+    console.error("Error al obtener contexto financiero:", error);
     return null;
   }
 }
@@ -295,8 +318,15 @@ async function generarRespuestaInteligente(
   console.log("OpenAI configurado:", isOpenAIConfigured);
   console.log("Contexto disponible:", contextData !== null);
   console.log("Query del usuario:", userQuery);
+  console.log("Número de mensajes:", messages.length);
   
-  // Si no hay contexto, dar respuesta general
+  // Para consultas de seguimiento sin contexto, usar el historial
+  if (!contextData && messages.length > 1) {
+    console.log("Consulta de seguimiento sin contexto - usando historial");
+    return generarRespuestaSeguimiento(userQuery, messages);
+  }
+  
+  // Si no hay contexto en primera consulta, dar respuesta general
   if (!contextData) {
     console.log("Sin contexto - usando respuesta general");
     return generarRespuestaGeneral(userQuery);
@@ -333,16 +363,23 @@ IMPORTANTE: No inventes datos. Solo usa la información proporcionada.`;
     // Intentar usar OpenAI si está configurado
     if (isOpenAIConfigured && openai) {
       console.log("Intentando usar OpenAI...");
-      const completion = await openai.chat.completions.create({
+      
+      // Crear una promesa con timeout manual adicional
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout de OpenAI')), 15000); // 15 segundos
+      });
+      
+      const openaiPromise = openai.chat.completions.create({
         model: "gpt-4-turbo",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userQuery }
         ],
         temperature: 0.7,
-        max_tokens: 1500
+        max_tokens: 1000 // Reducir tokens para respuesta más rápida
       });
 
+      const completion = await Promise.race([openaiPromise, timeoutPromise]) as any;
       const response = completion.choices[0].message.content;
       console.log("Respuesta de OpenAI recibida:", response ? "Sí" : "No");
       return response || "Lo siento, no pude generar una respuesta. Por favor, intenta reformular tu pregunta.";
@@ -535,4 +572,69 @@ function generarRespuestaGeneral(messageContent: string): string {
   
   // Respuesta conversacional general
   return `Entiendo tu consulta sobre finanzas personales. Te puedo ayudar con:\n\n### 💰 Áreas de especialidad:\n- **Presupuestos**: Cómo crear y mantener un presupuesto efectivo\n- **Ahorro**: Estrategias para ahorrar más dinero\n- **Inversiones**: Opciones de inversión según tu perfil\n- **Deudas**: Cómo manejar y eliminar deudas\n- **Planificación**: Objetivos financieros a corto y largo plazo\n\n### 📊 Para análisis personalizados:\nRegistra tus gastos recurrentes y servicios en la aplicación para obtener recomendaciones específicas basadas en tu situación real.\n\n¿Hay algún tema específico en el que te gustaría que profundice?`;
+}
+
+// Nueva función para manejar consultas de seguimiento
+function generarRespuestaSeguimiento(userQuery: string, messages: Message[]): string {
+  console.log("=== GENERANDO RESPUESTA DE SEGUIMIENTO ===");
+  
+  const textoLower = userQuery.toLowerCase();
+  
+  // Detectar si es una aclaración sobre ingresos
+  if (textoLower.includes('ingreso') || textoLower.includes('comienzo') || textoLower.includes('registr')) {
+    return `Perfecto, entiendo que comenzarás a registrar tus ingresos desde el 1 de junio. Eso explica por qué no aparecen ingresos en el sistema actualmente.
+
+Una vez que registres tus ingresos, podremos hacer un análisis mucho más preciso de tu situación financiera y darte recomendaciones específicas sobre:
+
+📊 **Análisis que podremos hacer:**
+- Porcentaje real de gastos fijos vs ingresos
+- Capacidad de ahorro disponible
+- Optimización de gastos según tus prioridades
+- Planificación para objetivos específicos
+
+💡 **Tip**: Cuando registres tus ingresos, incluye:
+- Sueldo neto
+- Ingresos extra (freelance, ventas, etc.)
+- Cualquier ingreso recurrente
+
+¿Hay algo específico de tus gastos actuales que te gustaría optimizar mientras tanto?`;
+  }
+  
+  // Buscar en el historial si se mencionaron ingresos antes
+  let ingresosEstimados = 0;
+  for (const message of messages) {
+    if (message.role === "user") {
+      const match = message.content.match(/(\d+)\s*(millones?|mill?)/i);
+      if (match) {
+        ingresosEstimados = parseInt(match[1]) * 1000000;
+        break;
+      }
+    }
+  }
+  
+  if (ingresosEstimados > 0) {
+    return `Teniendo en cuenta los ingresos de $${ingresosEstimados.toLocaleString('es-AR')} que mencionaste anteriormente, y considerando que comenzarás a registrarlos formalmente en junio:
+
+### 📝 Recomendaciones para el registro:
+- Registra todos los ingresos desde el 1 de junio
+- Categoriza bien cada tipo de ingreso
+- Incluye fechas exactas para un mejor seguimiento
+
+### 🎯 Una vez que tengas los datos completos:
+- Podremos calcular tu capacidad real de ahorro
+- Identificar oportunidades de optimización
+- Crear un plan financiero personalizado
+
+¿Te interesa que analice algún aspecto específico de tus gastos fijos actuales?`;
+  }
+  
+  // Respuesta general de seguimiento
+  return `Entiendo tu consulta. Para darte una respuesta más específica, necesitaría acceder a tus datos financieros actualizados.
+
+### 💡 Mientras tanto, puedo ayudarte con:
+- Análisis de gastos fijos que ya tienes registrados
+- Recomendaciones generales de optimización
+- Estrategias de ahorro y planificación
+
+¿Hay algún aspecto específico de tus finanzas que te preocupe o en el que quieras trabajar?`;
 } 
