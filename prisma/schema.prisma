@@ -56,6 +56,8 @@ model User {
   servicios         Servicio[]        // Relación con Servicios
   tiposInversion    TipoInversion[]   // Relación con Tipos de Inversión personalizados
   inversiones       Inversion[]       // Relación con Inversiones
+  alertas           Alerta[]          // Relación con Alertas
+  configuracionAlertas ConfiguracionAlerta[] // Relación con Configuraciones de Alertas
   plan              Plan?             @relation(fields: [planId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
@@ -142,6 +144,7 @@ model GastoRecurrente {
   user         User       @relation(fields: [userId], references: [id])
   servicio     Servicio?  @relation(fields: [servicioId], references: [id])
   tareas       Tarea[]    // Relación con Tareas
+  alertas      Alerta[]   // Relación con Alertas
 }
 
 model Financiacion {
@@ -232,6 +235,7 @@ model Prestamo {
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   pagos                 PagoPrestamo[] // Relación con los pagos realizados
   tareas                Tarea[]   // Relación con Tareas
+  alertas               Alerta[]  // Relación con Alertas
 }
 
 // Modelo para registrar los pagos realizados a préstamos
@@ -270,6 +274,7 @@ model Presupuesto {
   categoria   Categoria  @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   tareas      Tarea[]    // Relación con Tareas
+  alertas     Alerta[]   // Relación con Alertas
 
   @@unique([userId, categoriaId, mes, año])
 }
@@ -308,6 +313,7 @@ model Promocion {
   estado             String                 @default("active") // active, expired, used
   servicio           Servicio?              @relation(fields: [servicioId], references: [id], onDelete: SetNull)
   alternativas       ServicioAlternativo[]  // Servicios alternativos asociados
+  alertas            Alerta[]               // Relación con Alertas
 }
 
 // Modelo para servicios alternativos (para comparación)
@@ -361,6 +367,7 @@ model Inversion {
   transacciones      TransaccionInversion[]  // Transacciones de la inversión
   cotizaciones       CotizacionInversion[]   // Cotizaciones históricas
   tareas             Tarea[]                 // Relación con Tareas
+  alertas            Alerta[]                // Relación con Alertas
 }
 
 // Modelo para transacciones de inversión
@@ -434,4 +441,124 @@ model Tarea {
   gastoRecurrente    GastoRecurrente?  @relation(fields: [gastoRecurrenteId], references: [id], onDelete: Cascade)
   inversion          Inversion?        @relation(fields: [inversionId], references: [id], onDelete: Cascade)
   presupuesto        Presupuesto?      @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+  alertas            Alerta[]          // Relación con Alertas
+}
+
+// === SISTEMA DE ALERTAS MEJORADO ===
+
+// Tipos de alerta disponibles
+enum TipoAlerta {
+  PAGO_RECURRENTE
+  PRESUPUESTO_80
+  PRESUPUESTO_90
+  PRESUPUESTO_SUPERADO
+  META_PROGRESO
+  INVERSION_VENCIMIENTO
+  PRESTAMO_CUOTA
+  GASTO_INUSUAL
+  OPORTUNIDAD_AHORRO
+  SALDO_BAJO
+  RECOMENDACION_IA
+  TAREA_VENCIMIENTO
+  PROMOCION_DISPONIBLE
+}
+
+// Prioridades de alerta
+enum PrioridadAlerta {
+  BAJA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+// Canales de notificación
+enum CanalNotificacion {
+  IN_APP
+  EMAIL
+  SMS
+  WHATSAPP
+  PUSH
+}
+
+// Frecuencias de notificación
+enum FrecuenciaNotificacion {
+  INMEDIATA
+  DIARIA
+  SEMANAL
+  MENSUAL
+  PERSONALIZADA
+}
+
+// Modelo principal de alertas
+model Alerta {
+  id                  String               @id @default(cuid())
+  userId              String               // Usuario propietario de la alerta
+  tipo                TipoAlerta           // Tipo de alerta
+  prioridad           PrioridadAlerta      // Prioridad de la alerta
+  titulo              String               // Título de la alerta
+  mensaje             String               // Mensaje detallado
+  metadatos           Json?                // Datos adicionales (montos, IDs, etc.)
+  leida               Boolean              @default(false) // Si fue leída por el usuario
+  accionado           Boolean              @default(false) // Si se tomó alguna acción
+  fechaCreacion       DateTime             @default(now()) // Fecha de creación
+  fechaExpiracion     DateTime?            // Fecha de expiración (opcional)
+  canales             CanalNotificacion[]  // Canales donde se envió
+  accionesDisponibles Json?                // Acciones disponibles para la alerta
+  
+  // Relaciones opcionales con elementos específicos
+  gastoRecurrenteId   Int?
+  prestamoId          String?
+  inversionId         String?
+  presupuestoId       String?
+  tareaId             String?
+  promocionId         Int?
+  
+  // Campos de auditoria
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  
+  // Relaciones
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gastoRecurrente     GastoRecurrente?     @relation(fields: [gastoRecurrenteId], references: [id], onDelete: SetNull)
+  prestamo            Prestamo?            @relation(fields: [prestamoId], references: [id], onDelete: SetNull)
+  inversion           Inversion?           @relation(fields: [inversionId], references: [id], onDelete: SetNull)
+  presupuesto         Presupuesto?         @relation(fields: [presupuestoId], references: [id], onDelete: SetNull)
+  tarea               Tarea?               @relation(fields: [tareaId], references: [id], onDelete: SetNull)
+  promocion           Promocion?           @relation(fields: [promocionId], references: [id], onDelete: SetNull)
+  
+  @@index([userId, fechaCreacion])
+  @@index([userId, leida])
+  @@index([tipo, fechaCreacion])
+}
+
+// Configuración de alertas por usuario
+model ConfiguracionAlerta {
+  id                  String                   @id @default(cuid())
+  userId              String                   // Usuario propietario
+  tipoAlerta          TipoAlerta               // Tipo de alerta a configurar
+  habilitado          Boolean                  @default(true) // Si este tipo de alerta está habilitado
+  canales             CanalNotificacion[]      // Canales preferidos para este tipo
+  frecuencia          FrecuenciaNotificacion   @default(INMEDIATA) // Frecuencia de notificación
+  
+  // Configuración de horarios
+  horarioInicio       String?                  // Hora de inicio (formato HH:MM)
+  horarioFin          String?                  // Hora de fin (formato HH:MM)
+  diasSemana          Int[]                    // Días de la semana (0=domingo, 6=sábado)
+  
+  // Filtros específicos
+  montoMinimo         Float?                   // Monto mínimo para triggear la alerta
+  categoriasExcluidas String[]                 // IDs de categorías excluidas
+  
+  // Configuración específica por tipo de alerta
+  configuracionExtra  Json?                    // Configuración específica (umbrales, etc.)
+  
+  // Campos de auditoria
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  
+  // Relaciones
+  user                User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, tipoAlerta])
+  @@index([userId, habilitado])
 }

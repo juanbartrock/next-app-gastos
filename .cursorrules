@@ -6,6 +6,116 @@
 - **UI**: TailwindCSS, Shadcn/ui, Lucide React
 - **Base de datos**: PostgreSQL unificada (desarrollo y producción con Neon)
 
+## 🚀 HOJA DE RUTA DE DESARROLLO 
+> **Referencia**: Ver `prox-propuestas.md` para información detallada
+
+### Estado Actual Implementado ✅
+- Sistema básico de gestión de gastos y transacciones
+- Autenticación con NextAuth.js
+- Dashboard con visibilidad de valores (botón ojo)
+- Tema oscuro por defecto
+- Sistema de presupuestos básico
+- Gestión de préstamos e inversiones
+- Panel de administración
+- Sistema de scraping para promociones
+- **🎉 SISTEMA DE ALERTAS COMPLETO (FASE 1) - Enero 2025**
+
+### **✅ FASE 1 COMPLETADA - Sistema de Alertas Mejorado**
+- ✅ Modelo `Alerta` y `ConfiguracionAlerta` en Prisma
+- ✅ APIs completas para gestión de alertas (`/api/alertas/*`)
+- ✅ `NotificationCenter` implementado y funcionando
+- ✅ Página dedicada `/alertas` con tabs (Activas, Historial, Configuración)
+- ✅ Centro de notificaciones persistente en header
+- ✅ 13 tipos de alerta implementados
+- ✅ 4 niveles de prioridad con iconos y colores
+- ✅ Integración completa con VisibilityContext y ThemeProvider
+- ✅ Sin duplicación de headers
+- ✅ Acciones completas: marcar leída, accionar, eliminar
+
+### Próximas Funcionalidades Prioritarias 🎯
+
+#### **FASE 2 - Motor Automático de Alertas** (Siguiente)
+- [ ] `AlertEngine` para evaluación automática de condiciones
+- [ ] Alertas de presupuestos automáticas (80%, 90%, 100% usado)
+- [ ] Sistema de programación de evaluaciones
+- [ ] Detección automática de gastos inusuales/anómalos
+- [ ] Configuración granular completa por usuario
+
+#### **FASE 3 - Inteligencia Artificial**
+- [ ] Integración OpenAI para análisis de patrones
+- [ ] Recomendaciones personalizadas de ahorro
+- [ ] Alertas predictivas basadas en tendencias
+- [ ] Reportes inteligentes automáticos
+
+#### **FASE 4 - Experiencia Avanzada**
+- [ ] Gamificación (badges, streaks, logros)
+- [ ] Widgets personalizables en dashboard
+- [ ] PWA con notificaciones push
+- [ ] Integraciones bancarias argentinas
+
+### Reglas Específicas para Desarrollo de Alertas 🔔 ✅
+
+#### Patrones de Implementación ✅
+```typescript
+// Modelo base para alertas - IMPLEMENTADO
+interface Alerta {
+  id: string
+  userId: string
+  tipo: TipoAlerta
+  prioridad: PrioridadAlerta
+  titulo: string
+  mensaje: string
+  leida: boolean
+  accionado: boolean
+  fechaCreacion: Date
+  fechaExpiracion?: Date
+  metadatos?: Record<string, any>
+  // Relaciones opcionales
+  gastoRecurrenteId?: number
+  prestamoId?: string
+  inversionId?: string
+  presupuestoId?: string
+  tareaId?: string
+  promocionId?: number
+}
+
+// Engine de evaluación de alertas - PENDIENTE FASE 2
+class AlertEngine {
+  async evaluateConditions(userId: string): Promise<Alerta[]>
+  async processPresupuestosAlerts(userId: string): Promise<Alerta[]>
+  async analyzePatterns(userId: string): Promise<Alerta[]>
+}
+```
+
+#### Componentes UI Estándar ✅
+```typescript
+// NotificationCenter en header - IMPLEMENTADO
+export function NotificationCenter() {
+  const { alertas, stats } = useAlertas()
+  const { valuesVisible } = useVisibility()
+  return (
+    <DropdownMenu>
+      <Bell />
+      <Badge>{stats.noLeidas}</Badge>
+      {/* Lista de alertas con acciones */}
+    </DropdownMenu>
+  )
+}
+
+// AlertsList para gestión completa - IMPLEMENTADO
+export function AlertsList({ alertas, onMarcarLeida, onEliminar }) {
+  // Componente completo con filtros, acciones y estados
+}
+```
+
+#### APIs Implementadas ✅
+- ✅ `GET /api/alertas` - Listar alertas con filtros y paginación
+- ✅ `POST /api/alertas` - Crear nueva alerta  
+- ✅ `PUT /api/alertas/[id]` - Actualizar alerta
+- ✅ `DELETE /api/alertas/[id]` - Eliminar alerta
+- ✅ `GET/PUT /api/alertas/config` - Configuraciones de usuario
+- ✅ `POST /api/alertas/test` - Crear alertas de prueba (con CORS)
+
 ## Estructura del Proyecto
 ```
 src/
@@ -13,16 +123,25 @@ src/
 │   ├── api/               # API Routes
 │   ├── admin/             # Panel de administración
 │   ├── dashboard/         # Dashboard principal
+│   ├── alertas/           # ✅ Centro de alertas (IMPLEMENTADO)
+│   ├── test-alertas/      # ✅ Página de pruebas (IMPLEMENTADO)
 │   ├── transacciones/     # Gestión de transacciones
 │   ├── grupos/            # Gastos grupales
 │   ├── prestamos/         # Gestión de préstamos
 │   ├── inversiones/       # Gestión de inversiones
 │   └── ...
 ├── components/            # Componentes reutilizables
-│   └── ui/               # Componentes UI de Shadcn
+│   ├── ui/               # Componentes UI de Shadcn
+│   └── alertas/          # ✅ Componentes de alertas (IMPLEMENTADO)
+│       ├── NotificationCenter.tsx    # ✅ Centro de notificaciones
+│       └── AlertsList.tsx           # ✅ Lista de alertas
 ├── lib/                  # Utilidades y configuraciones
+│   └── alert-engine/     # 🚧 Motor de alertas (FASE 2)
 ├── contexts/             # Contextos de React
+│   ├── VisibilityContext.tsx   # ✅ Implementado
+│   └── AlertsContext.tsx       # 🚧 Futuro (FASE 2)
 ├── providers/            # Proveedores de la aplicación
+│   └── ThemeProvider.tsx       # ✅ Implementado
 └── scraping/             # Sistema de scraping para promociones
 ```
 
@@ -62,9 +181,11 @@ src/
 - Usar TailwindCSS para estilos, evitar CSS custom
 - Implementar loading states y skeleton loaders
 - Usar Lucide React para iconos
+- **Integrar con VisibilityContext para ocultación de valores**
+- **Soportar ThemeProvider para modo oscuro por defecto**
 
 ### 6. Gestión de Estado
-- Usar React Context para estado global (Currency, Sidebar)
+- Usar React Context para estado global (Currency, Sidebar, Visibility, Theme)
 - Implementar custom hooks para lógica reutilizable
 - Usar `useState` y `useEffect` apropiadamente
 - Evitar prop drilling excesivo
@@ -100,6 +221,13 @@ src/
 - Usar Puppeteer para sitios que requieren JavaScript
 - Implementar rate limiting y respeto por robots.txt
 - Guardar promociones con fechas de vencimiento
+
+#### Sistema de Alertas (Nuevo)
+- Usar AlertEngine para evaluación automática de condiciones
+- Implementar diferentes tipos de alerta según prioridad
+- Soporte para múltiples canales (in-app, email, SMS, WhatsApp)
+- Configuración granular por usuario
+- Integración con OpenAI para alertas inteligentes
 
 ### 9. Performance y Optimización
 - Usar `loading.tsx` y `error.tsx` en rutas
@@ -142,7 +270,7 @@ src/
 DATABASE_URL=postgresql://...
 NEXTAUTH_SECRET=...
 NEXTAUTH_URL=...
-OPENAI_API_KEY=... (opcional, para asesor financiero)
+OPENAI_API_KEY=... (requerido para alertas inteligentes)
 ```
 
 ## Comandos de Desarrollo
@@ -182,6 +310,8 @@ interface ComponentProps {
 
 export function Component({ prop }: ComponentProps) {
   const [loading, setLoading] = useState(false)
+  const { valuesVisible } = useVisibility() // Usar contexto de visibilidad
+  const { theme } = useTheme() // Usar contexto de tema
   
   // Lógica del componente
   
@@ -189,7 +319,7 @@ export function Component({ prop }: ComponentProps) {
   
   return (
     <div className="space-y-4">
-      {/* JSX */}
+      {/* JSX con soporte para visibilidad y tema */}
     </div>
   )
 }
@@ -212,4 +342,7 @@ const result = await prisma.gasto.findMany({
 - **NO implementar reseteo automático de base de datos**
 - **Siempre validar permisos de usuario antes de operaciones**
 - **Usar PostgreSQL/Neon exclusivamente (no SQLite)**
-- **Mantener consistencia en el formato de fechas y monedas** 
+- **Mantener consistencia en el formato de fechas y monedas**
+- **Seguir la hoja de ruta en `prox-propuestas.md` para nuevas funcionalidades**
+- **Implementar sistema de alertas según arquitectura definida**
+- **Usar contextos de Visibility y Theme en todos los componentes nuevos** 

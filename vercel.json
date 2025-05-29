@@ -9,6 +9,20 @@
       }
     }
   ],
+  "functions": {
+    "src/app/api/ai/**/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/alertas/evaluate/route.ts": {
+      "maxDuration": 25
+    },
+    "src/app/api/alertas/scheduler/route.ts": {
+      "maxDuration": 20
+    },
+    "src/app/api/scraping/**/route.ts": {
+      "maxDuration": 25
+    }
+  },
   "env": {
     "NEXT_TELEMETRY_DISABLED": "1",
     "NODE_ENV": "production"
@@ -22,6 +36,18 @@
         { "key": "Access-Control-Allow-Headers", "value": "X-Twilio-Signature, Content-Type, Accept" },
         { "key": "Access-Control-Max-Age", "value": "86400" }
       ]
+    },
+    {
+      "source": "/api/ai/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "s-maxage=300, stale-while-revalidate=600" }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/ai/:path*",
+      "destination": "/api/ai/:path*"
     }
   ]
 } 

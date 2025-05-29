@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu"
 import { ExpenseForm } from "@/components/ExpenseForm"
-import { RecurringPaymentAlert } from "@/components/RecurringPaymentAlert"
+import { NotificationCenter } from "@/components/alertas/NotificationCenter"
 import { FinancialDataWidget } from "@/components/FinancialDataWidget"
 import { TareasWidget } from "@/components/TareasWidget"
 import { DollarIndicator } from "@/components/DollarIndicator"
@@ -304,8 +304,8 @@ export default function BankingDashboard() {
                 <Moon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
               </div>
               
-              {/* Componente de alertas de pagos recurrentes */}
-              <RecurringPaymentAlert />
+              {/* Componente de centro de notificaciones */}
+              <NotificationCenter />
 
               {/* Avatar y menú de usuario */}
               <DropdownMenu>

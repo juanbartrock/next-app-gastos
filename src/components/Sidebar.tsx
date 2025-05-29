@@ -16,7 +16,9 @@ import {
   Wallet,
   DollarSign,
   Building2,
-  CheckSquare2
+  CheckSquare2,
+  Bell,
+  Upload
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSidebar } from "@/contexts/SidebarContext"
@@ -74,6 +76,26 @@ export function Sidebar() {
         >
           <Grid className="w-5 h-5" />
           {isOpen && <span className="ml-3">Dashboard</span>}
+        </Button>
+        
+        <Button 
+          variant={isActive("/importar-datos") ? "secondary" : "ghost"}
+          className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400 mb-1"
+          style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+          onClick={() => handleNavigation('/importar-datos')}
+        >
+          <Upload className="w-5 h-5 text-blue-500" />
+          {isOpen && <span className="ml-3">Importar Datos</span>}
+        </Button>
+        
+        <Button 
+          variant={isActive("/alertas") ? "secondary" : "ghost"}
+          className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400 mb-1"
+          style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+          onClick={() => handleNavigation('/alertas')}
+        >
+          <Bell className="w-5 h-5 text-amber-500" />
+          {isOpen && <span className="ml-3">Alertas</span>}
         </Button>
         
         <Button 
