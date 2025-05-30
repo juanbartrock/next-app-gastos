@@ -66,151 +66,214 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* Navegación */}
-      <nav className="flex-1 px-2">
-        <Button 
-          variant={isActive("/") ? "secondary" : "ghost"}
-          className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400 mb-1"
-          style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-          onClick={() => handleNavigation('/?dashboard=true')}
-        >
-          <Grid className="w-5 h-5" />
-          {isOpen && <span className="ml-3">Dashboard</span>}
-        </Button>
-        
-        <Button 
-          variant={isActive("/importar-datos") ? "secondary" : "ghost"}
-          className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400 mb-1"
-          style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-          onClick={() => handleNavigation('/importar-datos')}
-        >
-          <Upload className="w-5 h-5 text-blue-500" />
-          {isOpen && <span className="ml-3">Importar Datos</span>}
-        </Button>
-        
-        <Button 
-          variant={isActive("/alertas") ? "secondary" : "ghost"}
-          className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400 mb-1"
-          style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-          onClick={() => handleNavigation('/alertas')}
-        >
-          <Bell className="w-5 h-5 text-amber-500" />
-          {isOpen && <span className="ml-3">Alertas</span>}
-        </Button>
-        
-        <Button 
-          variant={isActive("/tareas") ? "secondary" : "ghost"}
-          className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400 mb-1"
-          style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-          onClick={() => handleNavigation('/tareas')}
-        >
-          <CheckSquare2 className="w-5 h-5 text-purple-500" />
-          {isOpen && <span className="ml-3">Tareas</span>}
-        </Button>
-        
-        <Button 
-          variant={isActive("/inversiones") ? "secondary" : "ghost"}
-          className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400 mb-1"
-          style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-          onClick={() => handleNavigation('/inversiones')}
-        >
-          <TrendingUp className="w-5 h-5 text-green-500" />
-          {isOpen && <span className="ml-3">Inversiones</span>}
-        </Button>
-        
-        <Button 
-          variant={isActive("/voz") ? "secondary" : "ghost"}
-          className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400 mb-1"
-          style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-          onClick={() => handleNavigation('/voz')}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 dark:text-gray-400">
-            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-            <line x1="12" x2="12" y1="19" y2="22"></line>
-          </svg>
-          {isOpen && <span className="ml-3">Gastos por Voz</span>}
-        </Button>
-        
-        <Button 
-          variant={isActive("/recurrentes") ? "secondary" : "ghost"}
-          className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400 mb-1"
-          style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-          onClick={() => handleNavigation('/recurrentes')}
-        >
-          <Repeat className="w-5 h-5" />
-          {isOpen && <span className="ml-3">Recurrentes</span>}
-        </Button>
-        
-        <Button 
-          variant={isActive("/financiacion") ? "secondary" : "ghost"}
-          className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400 mb-1"
-          style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-          onClick={() => handleNavigation('/financiacion')}
-        >
-          <CreditCard className="w-5 h-5" />
-          {isOpen && <span className="ml-3">Financiación</span>}
-        </Button>
-        
-        <Button 
-          variant={isActive("/prestamos") ? "secondary" : "ghost"}
-          className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400 mb-1"
-          style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-          onClick={() => handleNavigation('/prestamos')}
-        >
-          <Building2 className="w-5 h-5 text-blue-500" />
-          {isOpen && <span className="ml-3">Préstamos</span>}
-        </Button>
-        
-        <Button 
-          variant={isActive("/presupuestos") ? "secondary" : "ghost"}
-          className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400 mb-1"
-          style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-          onClick={() => handleNavigation('/presupuestos')}
-        >
-          <PieChart className="w-5 h-5" />
-          {isOpen && <span className="ml-3">Presupuestos</span>}
-        </Button>
-        
-        <Button 
-          variant={isActive("/informes") ? "secondary" : "ghost"}
-          className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400 mb-1"
-          style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-          onClick={() => handleNavigation('/informes')}
-        >
-          <BarChart3 className="w-5 h-5" />
-          {isOpen && <span className="ml-3">Informes</span>}
-        </Button>
-        
-        <Button 
-          variant={isActive("/grupos") ? "secondary" : "ghost"}
-          className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400 mb-1"
-          style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-          onClick={() => handleNavigation('/grupos')}
-        >
-          <Users className="w-5 h-5" />
-          {isOpen && <span className="ml-3">Grupos</span>}
-        </Button>
-        
-        <Button 
-          variant={isActive("/recomendaciones-ahorro") ? "secondary" : "ghost"}
-          className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400 mb-1"
-          style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-          onClick={() => handleNavigation('/recomendaciones-ahorro')}
-        >
-          <LightbulbIcon className="w-5 h-5" />
-          {isOpen && <span className="ml-3">Recomendaciones</span>}
-        </Button>
-        
-        <Button 
-          variant={isActive("/seguimiento-precios") ? "secondary" : "ghost"}
-          className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400 mb-1"
-          style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-          onClick={() => handleNavigation('/seguimiento-precios')}
-        >
-          <Tag className="w-5 h-5 text-orange-500" />
-          {isOpen && <span className="ml-3">Seguimiento Precios</span>}
-        </Button>
+      {/* Navegación con scroll */}
+      <nav className="flex-1 px-2 overflow-y-auto sidebar-scroll">
+        <div className="space-y-1 pb-4">
+          {/* Estilos CSS personalizados para scroll sutil */}
+          <style jsx>{`
+            .sidebar-scroll::-webkit-scrollbar {
+              width: 4px;
+            }
+            
+            .sidebar-scroll::-webkit-scrollbar-track {
+              background: transparent;
+            }
+            
+            .sidebar-scroll::-webkit-scrollbar-thumb {
+              background: rgba(156, 163, 175, 0.3);
+              border-radius: 20px;
+              transition: all 0.2s ease;
+            }
+            
+            .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+              background: rgba(156, 163, 175, 0.5);
+            }
+            
+            .dark .sidebar-scroll::-webkit-scrollbar-thumb {
+              background: rgba(75, 85, 99, 0.4);
+            }
+            
+            .dark .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+              background: rgba(75, 85, 99, 0.6);
+            }
+            
+            /* Para Firefox */
+            .sidebar-scroll {
+              scrollbar-width: thin;
+              scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
+            }
+            
+            .dark .sidebar-scroll {
+              scrollbar-color: rgba(75, 85, 99, 0.4) transparent;
+            }
+          `}</style>
+          {/* Dashboard - Más usado */}
+          <Button 
+            variant={isActive("/") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/?dashboard=true')}
+          >
+            <Grid className="w-5 h-5" />
+            {isOpen && <span className="ml-3">Dashboard</span>}
+          </Button>
+          
+          {/* Alertas - Importante para seguimiento */}
+          <Button 
+            variant={isActive("/alertas") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/alertas')}
+          >
+            <Bell className="w-5 h-5 text-amber-500" />
+            {isOpen && <span className="ml-3">Alertas</span>}
+          </Button>
+          
+          {/* Tareas - Gestión diaria */}
+          <Button 
+            variant={isActive("/tareas") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/tareas')}
+          >
+            <CheckSquare2 className="w-5 h-5 text-purple-500" />
+            {isOpen && <span className="ml-3">Tareas</span>}
+          </Button>
+          
+          {/* Presupuestos - Control frecuente */}
+          <Button 
+            variant={isActive("/presupuestos") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/presupuestos')}
+          >
+            <PieChart className="w-5 h-5" />
+            {isOpen && <span className="ml-3">Presupuestos</span>}
+          </Button>
+          
+          {/* Inversiones - Seguimiento importante */}
+          <Button 
+            variant={isActive("/inversiones") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/inversiones')}
+          >
+            <TrendingUp className="w-5 h-5 text-green-500" />
+            {isOpen && <span className="ml-3">Inversiones</span>}
+          </Button>
+          
+          {/* Gastos por Voz - Funcionalidad especial */}
+          <Button 
+            variant={isActive("/voz") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/voz')}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 dark:text-gray-400">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+              <line x1="12" x2="12" y1="19" y2="22"></line>
+            </svg>
+            {isOpen && <span className="ml-3">Gastos por Voz</span>}
+          </Button>
+          
+          {/* Recurrentes - Gestión periódica */}
+          <Button 
+            variant={isActive("/recurrentes") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/recurrentes')}
+          >
+            <Repeat className="w-5 h-5" />
+            {isOpen && <span className="ml-3">Recurrentes</span>}
+          </Button>
+          
+          {/* Financiación */}
+          <Button 
+            variant={isActive("/financiacion") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/financiacion')}
+          >
+            <CreditCard className="w-5 h-5" />
+            {isOpen && <span className="ml-3">Financiación</span>}
+          </Button>
+          
+          {/* Préstamos */}
+          <Button 
+            variant={isActive("/prestamos") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/prestamos')}
+          >
+            <Building2 className="w-5 h-5 text-blue-500" />
+            {isOpen && <span className="ml-3">Préstamos</span>}
+          </Button>
+          
+          {/* Informes - Revisión periódica */}
+          <Button 
+            variant={isActive("/informes") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/informes')}
+          >
+            <BarChart3 className="w-5 h-5" />
+            {isOpen && <span className="ml-3">Informes</span>}
+          </Button>
+          
+          {/* Grupos - Funcionalidad colaborativa */}
+          <Button 
+            variant={isActive("/grupos") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/grupos')}
+          >
+            <Users className="w-5 h-5" />
+            {isOpen && <span className="ml-3">Grupos</span>}
+          </Button>
+          
+          {/* Recomendaciones - Funcionalidad de ayuda */}
+          <Button 
+            variant={isActive("/recomendaciones-ahorro") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/recomendaciones-ahorro')}
+          >
+            <LightbulbIcon className="w-5 h-5" />
+            {isOpen && <span className="ml-3">Recomendaciones</span>}
+          </Button>
+          
+          {/* Seguimiento Precios - Funcionalidad especial */}
+          <Button 
+            variant={isActive("/seguimiento-precios") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/seguimiento-precios')}
+          >
+            <Tag className="w-5 h-5 text-orange-500" />
+            {isOpen && <span className="ml-3">Seguimiento Precios</span>}
+          </Button>
+
+          {/* Separador visual */}
+          {isOpen && (
+            <div className="my-4 border-t border-gray-200 dark:border-gray-600 pt-2">
+              <span className="text-xs text-gray-400 dark:text-gray-500 px-3 font-medium">
+                Configuración Inicial
+              </span>
+            </div>
+          )}
+          
+          {/* Importar Datos - Funcionalidad de setup inicial (al final) */}
+          <Button 
+            variant={isActive("/importar-datos") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/importar-datos')}
+          >
+            <Upload className="w-5 h-5 text-blue-500" />
+            {isOpen && <span className="ml-3">Importar Datos</span>}
+          </Button>
+        </div>
       </nav>
     </div>
   )
