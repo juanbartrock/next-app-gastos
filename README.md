@@ -360,4 +360,4 @@ MIT License - Ver `LICENSE` para más detalles.
 
 ---
 
-**Desarrollado en Argentina ��🇷 | Enero 2025**
+**Desarrollado en Argentina ��🇴 | Enero 2025**
