@@ -20,7 +20,8 @@ export function CurrencySelector() {
     exchangeRate,
     exchangeRates,
     setCurrency, 
-    setExchangeRateType 
+    setExchangeRateType,
+    isLoading
   } = useCurrency()
 
   // Mostrar etiqueta según la moneda y tipo de cambio seleccionados
@@ -33,10 +34,16 @@ export function CurrencySelector() {
     return `USD (${exchangeRateType})`
   }
 
+  // Formatear tasa de cambio para mostrar
+  const formatRate = (rate: number) => {
+    if (rate === 0) return 'N/A'
+    return rate.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="flex items-center gap-1">
+        <Button variant="outline" size="sm" className="flex items-center gap-1" disabled={isLoading}>
           <DollarSign className="h-4 w-4" />
           <span>{getLabel()}</span>
         </Button>
@@ -63,13 +70,13 @@ export function CurrencySelector() {
               onValueChange={(value) => setExchangeRateType(value as ExchangeRateType)}
             >
               <DropdownMenuRadioItem value="oficial">
-                Dólar oficial (ARS {exchangeRates.oficial})
+                Dólar oficial (ARS {formatRate(exchangeRates.oficial)})
               </DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="blue">
-                Dólar blue (ARS {exchangeRates.blue})
+                Dólar blue (ARS {formatRate(exchangeRates.blue)})
               </DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="cripto">
-                Dólar cripto (ARS {exchangeRates.cripto})
+                Dólar cripto (ARS {formatRate(exchangeRates.cripto)})
               </DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
           </>
