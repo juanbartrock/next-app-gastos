@@ -1,26 +1,15 @@
 {
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next",
-      "config": {
-        "installCommand": "npm install",
-        "buildCommand": "npx prisma generate && next build"
-      }
-    }
-  ],
   "functions": {
     "src/app/api/**/*.ts": {
       "maxDuration": 25
     }
   },
   "regions": ["iad1"],
+  "buildCommand": "npx prisma generate && next build",
+  "installCommand": "npm install",
   "env": {
     "NEXT_TELEMETRY_DISABLED": "1",
-    "NODE_ENV": "production",
-    "NEXTAUTH_URL": "@nextauth_url",
-    "DATABASE_URL": "@database_url",
-    "OPENAI_API_KEY": "@openai_api_key"
+    "NODE_ENV": "production"
   },
   "headers": [
     {
