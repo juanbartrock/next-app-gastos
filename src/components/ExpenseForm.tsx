@@ -11,15 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ArrowDown, ArrowUp, CalendarIcon, CreditCard, Plus, Users, Loader2 } from "lucide-react"
+import { ArrowDown, ArrowUp, CalendarIcon, CreditCard, Plus, Loader2 } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { toast } from "sonner"
 import { useCurrency } from "@/contexts/CurrencyContext"
-
-interface Grupo {
-  id: string;
-  nombre: string;
-}
 
 interface ExpenseFormProps {
   onTransactionAdded: () => void
@@ -68,14 +63,14 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
   const [amount, setAmount] = useState("")
   const [date, setDate] = useState<Date | undefined>(new Date())
   const [dateStr, setDateStr] = useState<string>(formatDateToDDMMYYYY(new Date()))
+  const [fechaImputacion, setFechaImputacion] = useState<Date | undefined>(undefined)
+  const [fechaImputacionStr, setFechaImputacionStr] = useState<string>("")
+  const [mostrarFechaImputacion, setMostrarFechaImputacion] = useState<boolean>(false)
   const [transactionType, setTransactionType] = useState<"income" | "expense">("expense")
   const [movementType, setMovementType] = useState<"efectivo" | "digital" | "ahorro" | "tarjeta">("efectivo")
   const [error, setError] = useState<string>("")
   const [success, setSuccess] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(false)
-  const [grupos, setGrupos] = useState<Grupo[]>([])
-  const [selectedGrupoId, setSelectedGrupoId] = useState<string>("personal")
-  const [loadingGrupos, setLoadingGrupos] = useState(false)
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [loadingCategorias, setLoadingCategorias] = useState(false)
   
@@ -89,26 +84,6 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
   const [showAdvancedOptions, setShowAdvancedOptions] = useState<boolean>(false)
 
   const { currency, formatMoney } = useCurrency()
-
-  // Cargar los grupos del usuario
-  useEffect(() => {
-    const fetchGrupos = async () => {
-      try {
-        setLoadingGrupos(true)
-        const response = await fetch("/api/grupos")
-        if (response.ok) {
-          const data = await response.json()
-          setGrupos(data)
-        }
-      } catch (error) {
-        console.error("Error al cargar grupos:", error)
-      } finally {
-        setLoadingGrupos(false)
-      }
-    }
-
-    fetchGrupos()
-  }, [])
 
   // Cargar las categorías
   useEffect(() => {
@@ -188,6 +163,14 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
         return;
     }
 
+    // Validar fecha de imputación si se proporciona
+    const parsedFechaImputacion = fechaImputacionStr ? parseDDMMYYYY(fechaImputacionStr) : undefined;
+    if (fechaImputacionStr && !parsedFechaImputacion) {
+      setError("Formato de Fecha de imputación inválido. Usar DD/MM/YYYY");
+      setLoading(false);
+      return;
+    }
+
     try {
       // Crear el gasto
       const response = await fetch('/api/gastos', {
@@ -203,7 +186,9 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
           tipoTransaccion: transactionType,
           tipoMovimiento: movementType,
           fecha: parsedDate,
-          grupoId: selectedGrupoId === "personal" ? null : selectedGrupoId
+          fechaImputacion: parsedFechaImputacion,  // Nueva fecha de imputación
+          grupoId: null,
+          incluirEnFamilia: true
         }),
       })
 
@@ -270,9 +255,11 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
       const today = new Date()
       setDate(today)
       setDateStr(formatDateToDDMMYYYY(today))
+      setFechaImputacion(undefined)
+      setFechaImputacionStr("")
+      setMostrarFechaImputacion(false)
       setTransactionType("expense")
       setMovementType("efectivo")
-      setSelectedGrupoId("personal")
       setCantidadCuotas("1")
       setFechaPrimerPago(undefined)
       setFechaPrimerPagoStr("")
@@ -480,7 +467,7 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
         {/* Contenido visible siempre */}
         <div className={`space-y-4 ${showAdvancedOptions ? "" : "hidden"}`}>
           <div className="space-y-2">
-            <Label htmlFor="date">Fecha (DD/MM/YYYY)</Label>
+            <Label htmlFor="date">Fecha de depósito/transacción (DD/MM/YYYY)</Label>
             <Input
               type="text"
               id="date"
@@ -494,26 +481,41 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Grupo (opcional)</Label>
-            <Select value={selectedGrupoId} onValueChange={setSelectedGrupoId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar grupo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="personal">Personal (sin grupo)</SelectItem>
-                {loadingGrupos ? (
-                  <SelectItem value="loading" disabled>Cargando grupos...</SelectItem>
-                ) : (
-                  grupos.map((grupo) => (
-                    <SelectItem key={grupo.id} value={grupo.id}>
-                      {grupo.nombre}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+          {/* Checkbox para activar fecha de imputación */}
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="mostrarFechaImputacion"
+              checked={mostrarFechaImputacion}
+              onChange={(e) => setMostrarFechaImputacion(e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <Label htmlFor="mostrarFechaImputacion" className="flex items-center cursor-pointer">
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              Usar fecha diferente para imputación contable
+            </Label>
           </div>
+
+          {/* Campo de fecha de imputación */}
+          {mostrarFechaImputacion && (
+            <div className="space-y-2 p-4 border border-amber-200 dark:border-amber-700 rounded-md bg-amber-50 dark:bg-amber-900/20">
+              <Label htmlFor="fechaImputacion">Fecha de imputación contable (DD/MM/YYYY)</Label>
+              <Input
+                type="text"
+                id="fechaImputacion"
+                value={fechaImputacionStr}
+                onChange={(e) => {
+                  setFechaImputacionStr(e.target.value)
+                  const parsedFechaImputacion = parseDDMMYYYY(e.target.value)
+                  setFechaImputacion(parsedFechaImputacion)
+                }}
+                placeholder="DD/MM/YYYY"
+              />
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                <strong>Ejemplo:</strong> Salario depositado el 31/05/2024 pero corresponde a junio → usar 01/06/2024 como fecha de imputación
+              </p>
+            </div>
+          )}
         </div>
 
         <Button type="submit" className="w-full" disabled={loading}>

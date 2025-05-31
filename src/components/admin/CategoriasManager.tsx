@@ -352,17 +352,17 @@ export function CategoriasManager() {
                       <div>
                         <Label htmlFor="grupo">Grupo (opcional)</Label>
                         <Select
-                          value={formCategoria.grupo_categoria}
+                          value={formCategoria.grupo_categoria || "sin_grupo"}
                           onValueChange={(value) => setFormCategoria(prev => ({
                             ...prev,
-                            grupo_categoria: value
+                            grupo_categoria: value === "sin_grupo" ? "" : value
                           }))}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Seleccionar grupo" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Sin grupo</SelectItem>
+                            <SelectItem value="sin_grupo">Sin grupo</SelectItem>
                             {grupos.map(grupo => (
                               <SelectItem key={grupo} value={grupo}>
                                 {grupo}

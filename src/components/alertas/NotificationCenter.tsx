@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import Link from "next/link"
+import { useSession } from "next-auth/react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,18 +71,36 @@ export function NotificationCenter() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { valuesVisible } = useVisibility()
+  const { data: session, status } = useSession()
 
   useEffect(() => {
-    fetchAlertas()
-  }, [])
+    // Solo intentar obtener alertas si el usuario está autenticado
+    if (status === "authenticated" && session?.user?.id) {
+      fetchAlertas()
+    } else if (status === "unauthenticated") {
+      setLoading(false)
+      setError(null)
+      setAlertas([])
+      setStats({ noLeidas: 0, total: 0 })
+    }
+  }, [status, session])
 
   const fetchAlertas = async () => {
+    // Verificar autenticación antes de hacer la petición
+    if (!session?.user?.id) {
+      setLoading(false)
+      return
+    }
+
     try {
       setLoading(true)
       setError(null)
       
       const response = await fetch("/api/alertas?limite=10&leidas=false")
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("No autorizado")
+        }
         throw new Error("Error al obtener alertas")
       }
 
@@ -98,6 +117,11 @@ export function NotificationCenter() {
   }
 
   const marcarComoLeida = async (alertaId: string) => {
+    // Verificar autenticación antes de hacer la petición
+    if (!session?.user?.id) {
+      return
+    }
+
     try {
       const response = await fetch(`/api/alertas/${alertaId}`, {
         method: "PUT",

@@ -17,6 +17,9 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url)
     const desde = url.searchParams.get('desde')
     const hasta = url.searchParams.get('hasta')
+    const soloFamiliares = url.searchParams.get('soloFamiliares') === 'true'
+    const soloPersonales = url.searchParams.get('soloPersonales') === 'true'
+    const usarFechaImputacion = url.searchParams.get('usarFechaImputacion') === 'true'  // Nuevo parámetro
     
     // Convertir fechas si fueron proporcionadas
     const fechaDesde = desde ? new Date(desde) : null
@@ -37,84 +40,95 @@ export async function GET(request: NextRequest) {
         })
       : null
 
-    // Si encontramos al usuario, obtenemos sus gastos personales y los de sus grupos
-    if (usuario) {
-      // Obtener IDs de grupos a los que pertenece el usuario
-      const gruposMiembro = await prisma.grupoMiembro.findMany({
-        where: { userId: usuario.id },
-        select: { grupoId: true }
-      })
-      
-      const gruposIds = gruposMiembro.map(g => g.grupoId)
-      
-      // Construir condiciones de consulta
-      let whereCondition: any = {
-        OR: [
-          { userId: usuario.id },
-          { grupoId: { in: gruposIds.length > 0 ? gruposIds : undefined } }
-        ],
-        // Excluir los gastos de tipo tarjeta para que no impacten en el flujo de dinero
-        AND: [
-          { 
-            NOT: { 
-              tipoMovimiento: "tarjeta" 
-            } 
-          }
-        ]
+    if (!usuario) {
+      return NextResponse.json(
+        { error: 'No autorizado' },
+        { status: 401 }
+      )
+    }
+
+    // Construir condiciones de consulta - Solo gastos del usuario logueado
+    let whereCondition: any = {
+      userId: usuario.id,
+      // Excluir los gastos de tipo tarjeta para que no impacten en el flujo de dinero
+      NOT: { 
+        tipoMovimiento: "tarjeta" 
       }
-      
-      // Agregar condiciones de fecha si se proporcionaron
-      if (fechaDesde || fechaHasta) {
-        whereCondition.AND = whereCondition.AND || []
-        
-        if (fechaDesde) {
-          whereCondition.AND.push({
-            fecha: {
-              gte: fechaDesde
-            }
-          })
-        }
-        
-        if (fechaHasta) {
-          whereCondition.AND.push({
-            fecha: {
-              lte: fechaHasta
-            }
-          })
-        }
-      }
-      
-      // Obtener gastos personales y de los grupos a los que pertenece
-      const gastos = await prisma.gasto.findMany({
-        where: whereCondition,
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true
-            }
-          },
-          grupo: {
-            select: {
-              id: true,
-              nombre: true
-            }
-          }
-        },
-        orderBy: {
-          fecha: 'desc'
-        }
-      })
-      
-      return NextResponse.json(gastos)
+    }
+
+    // Filtros adicionales
+    if (soloFamiliares) {
+      whereCondition.incluirEnFamilia = true
+    } else if (soloPersonales) {
+      whereCondition.incluirEnFamilia = false
     }
     
-    // Si no hay usuario autenticado o no se encontró, devolver error
-    return NextResponse.json(
-      { error: 'No autorizado' },
-      { status: 401 }
-    )
+    // Agregar condiciones de fecha si se proporcionaron
+    if (fechaDesde || fechaHasta) {
+      whereCondition.AND = []
+      
+      if (fechaDesde) {
+        const condicionFecha = usarFechaImputacion ? {
+          OR: [
+            { fechaImputacion: { gte: fechaDesde } },  // Usar fechaImputacion si existe
+            { 
+              AND: [
+                { fechaImputacion: null },  // Si no hay fechaImputacion
+                { fecha: { gte: fechaDesde } }  // Usar fecha normal
+              ]
+            }
+          ]
+        } : {
+          fecha: { gte: fechaDesde }
+        }
+        
+        whereCondition.AND.push(condicionFecha)
+      }
+      
+      if (fechaHasta) {
+        const condicionFecha = usarFechaImputacion ? {
+          OR: [
+            { fechaImputacion: { lte: fechaHasta } },  // Usar fechaImputacion si existe
+            { 
+              AND: [
+                { fechaImputacion: null },  // Si no hay fechaImputacion
+                { fecha: { lte: fechaHasta } }  // Usar fecha normal
+              ]
+            }
+          ]
+        } : {
+          fecha: { lte: fechaHasta }
+        }
+        
+        whereCondition.AND.push(condicionFecha)
+      }
+    }
+    
+    // Obtener gastos del usuario
+    const gastos = await prisma.gasto.findMany({
+      where: whereCondition,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        categoriaRel: {
+          select: {
+            id: true,
+            descripcion: true,
+            grupo_categoria: true
+          }
+        }
+      },
+      orderBy: {
+        fecha: 'desc'
+      }
+    })
+    
+    return NextResponse.json(gastos)
   } catch (error) {
     console.error('Error al obtener gastos:', error)
     return NextResponse.json(
@@ -184,46 +198,43 @@ async function crearCategoriasIniciales() {
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(options)
-    let userId: string | undefined = undefined
     
-    // Si hay un usuario autenticado, obtener su ID
-    if (session?.user?.email) {
-      const usuario = await prisma.user.findUnique({
-        where: { email: session.user.email }
-      })
-      
-      if (usuario) {
-        userId = usuario.id
-      }
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: 'No autorizado' },
+        { status: 401 }
+      )
     }
     
-    const { concepto, monto, categoria, categoriaId, tipoTransaccion, tipoMovimiento, fecha, grupoId } = await request.json()
+    // Obtener usuario
+    const usuario = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
     
-    // Si se está asociando a un grupo, verificar que el usuario pertenezca a ese grupo
-    if (grupoId && userId) {
-      const esMiembro = await prisma.grupoMiembro.findUnique({
-        where: {
-          grupoId_userId: {
-            grupoId,
-            userId
-          }
-        }
-      })
-      
-      if (!esMiembro) {
-        return NextResponse.json(
-          { error: 'No perteneces a este grupo' },
-          { status: 403 }
-        )
-      }
+    if (!usuario) {
+      return NextResponse.json(
+        { error: 'Usuario no encontrado' },
+        { status: 404 }
+      )
     }
+    
+    const { 
+      concepto, 
+      monto, 
+      categoria, 
+      categoriaId, 
+      tipoTransaccion, 
+      tipoMovimiento, 
+      fecha, 
+      fechaImputacion,  // Nuevo campo para imputación contable
+      incluirEnFamilia = true  // Nuevo campo con valor por defecto
+    } = await request.json()
 
     // Verificar que la categoría existe si se proporciona un ID
     let categoriaExiste = null
     let nombreCategoria = categoria;
     
     if (categoriaId) {
-      // Usar Prisma client 
       categoriaExiste = await prisma.categoria.findUnique({
         where: { id: Number(categoriaId) }
       });
@@ -240,6 +251,19 @@ export async function POST(request: Request) {
       }
     }
 
+    // Procesar fecha de imputación
+    let fechaImputacionProcessed = null;
+    if (fechaImputacion) {
+      try {
+        fechaImputacionProcessed = new Date(fechaImputacion);
+        if (isNaN(fechaImputacionProcessed.getTime())) {
+          fechaImputacionProcessed = null;
+        }
+      } catch (error) {
+        fechaImputacionProcessed = null;
+      }
+    }
+
     const gasto = await prisma.gasto.create({
       data: {
         concepto,
@@ -248,9 +272,10 @@ export async function POST(request: Request) {
         tipoTransaccion: tipoTransaccion || 'expense',
         tipoMovimiento: tipoMovimiento || 'efectivo',
         fecha: fecha || new Date(),
+        fechaImputacion: fechaImputacionProcessed,  // Fecha para imputación contable
         updatedAt: new Date(),
-        ...(userId && { userId }),
-        ...(grupoId && { grupoId }),
+        userId: usuario.id,  // Siempre asignar al usuario logueado
+        incluirEnFamilia: Boolean(incluirEnFamilia),  // Nuevo campo
         ...(categoriaId && { categoriaId })
       }
     })

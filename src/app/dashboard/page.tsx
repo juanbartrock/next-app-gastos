@@ -5,8 +5,35 @@ import { useRouter } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart, Bell, ChevronLeft, ChevronRight, CreditCard, DollarSign, Edit2, Loader2, LogOut, Moon, Settings, Sun, User, Bot, ChevronUp, ChevronDown, Eye, EyeOff } from "lucide-react"
-import { format } from "date-fns"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { 
+  BarChart, 
+  Bell, 
+  ChevronLeft, 
+  ChevronRight, 
+  DollarSign, 
+  Loader2, 
+  LogOut, 
+  Moon, 
+  Settings, 
+  Sun, 
+  User, 
+  ChevronUp, 
+  ChevronDown, 
+  Eye, 
+  EyeOff,
+  TrendingUp,
+  TrendingDown,
+  Users,
+  UserCheck,
+  Wallet,
+  CreditCard,
+  Banknote,
+  PiggyBank
+} from "lucide-react"
+import { format, startOfMonth, endOfMonth } from "date-fns"
 import { es } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { useSidebar } from "@/contexts/SidebarContext"
@@ -29,7 +56,88 @@ import { DollarIndicator } from "@/components/DollarIndicator"
 import { CurrencySelector } from "@/components/CurrencySelector"
 import { useCurrency } from "@/contexts/CurrencyContext"
 
-// Componente personalizado para envolver ExpenseForm
+// Componente para mostrar estadísticas de gastos
+function BalanceCard({ 
+  title, 
+  amount, 
+  subtitle, 
+  icon: Icon, 
+  variant = "default",
+  trend
+}: {
+  title: string
+  amount: string
+  subtitle?: string
+  icon: any
+  variant?: "default" | "positive" | "negative"
+  trend?: { value: number; period: string }
+}) {
+  const { valuesVisible } = useVisibility()
+  
+  const getVariantStyles = () => {
+    switch (variant) {
+      case "positive":
+        return "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950"
+      case "negative":
+        return "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950"
+      default:
+        return "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950"
+    }
+  }
+
+  const getIconStyles = () => {
+    switch (variant) {
+      case "positive":
+        return "text-green-600 dark:text-green-400"
+      case "negative":
+        return "text-red-600 dark:text-red-400"
+      default:
+        return "text-blue-600 dark:text-blue-400"
+    }
+  }
+
+  return (
+    <Card className={cn("transition-all hover:shadow-md", getVariantStyles())}>
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+            <p className="text-3xl font-bold">
+              {valuesVisible ? amount : "••••••"}
+            </p>
+            {subtitle && (
+              <p className="text-xs text-muted-foreground">{subtitle}</p>
+            )}
+            {trend && (
+              <div className="flex items-center gap-1 text-xs">
+                {trend.value > 0 ? (
+                  <TrendingUp className="h-3 w-3 text-green-500" />
+                ) : (
+                  <TrendingDown className="h-3 w-3 text-red-500" />
+                )}
+                <span className={trend.value > 0 ? "text-green-600" : "text-red-600"}>
+                  {Math.abs(trend.value)}% vs {trend.period}
+                </span>
+              </div>
+            )}
+          </div>
+          <Icon className={cn("h-8 w-8", getIconStyles())} />
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Componente para cargar datos
+function LoadingScreen() {
+  return (
+    <div className="h-screen w-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 dark:border-blue-300"></div>
+    </div>
+  )
+}
+
+// Wrapper para formulario de gastos sin título
 function DashboardExpenseForm({ onTransactionAdded }: { onTransactionAdded: () => void }) {
   return (
     <div className="expense-form-wrapper">
@@ -43,45 +151,142 @@ function DashboardExpenseForm({ onTransactionAdded }: { onTransactionAdded: () =
   )
 }
 
-function LoadingScreen() {
+// Componente para mostrar últimos movimientos
+function UltimosMovimientos({ gastos }: { gastos: any[] }) {
+  const { formatMoney } = useCurrency()
+  const { valuesVisible } = useVisibility()
+  const router = useRouter()
+  
+  const ultimosMovimientos = gastos
+    .slice(0, 5)
+    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+
+  const getMovementIcon = (tipoMovimiento: string) => {
+    switch (tipoMovimiento) {
+      case 'efectivo':
+        return <Banknote className="h-4 w-4 text-green-600" />
+      case 'digital':
+        return <CreditCard className="h-4 w-4 text-blue-600" />
+      case 'ahorro':
+        return <PiggyBank className="h-4 w-4 text-purple-600" />
+      case 'tarjeta':
+        return <CreditCard className="h-4 w-4 text-orange-600" />
+      default:
+        return <DollarSign className="h-4 w-4 text-gray-600" />
+    }
+  }
+
+  const getTransactionColor = (tipoTransaccion: string) => {
+    return tipoTransaccion === 'income' ? 'text-green-600' : 'text-red-600'
+  }
+
   return (
-    <div className="h-screen w-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
-      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 dark:border-blue-300"></div>
+    <div className="space-y-3">
+      {ultimosMovimientos.length === 0 ? (
+        <div className="text-center py-6 text-muted-foreground">
+          <p>No hay movimientos registrados</p>
+        </div>
+      ) : (
+        <>
+          {ultimosMovimientos.map((movimiento) => (
+            <div
+              key={movimiento.id}
+              className="flex items-center justify-between p-3 rounded-lg border bg-card hover:shadow-sm transition-shadow"
+            >
+              <div className="flex items-center gap-3">
+                {getMovementIcon(movimiento.tipoMovimiento)}
+                <div className="flex-1">
+                  <p className="font-medium text-sm truncate max-w-[150px]">
+                    {movimiento.concepto}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {format(new Date(movimiento.fecha), 'dd/MM/yy', { locale: es })}
+                    {movimiento.incluirEnFamilia && (
+                      <span className="ml-2 text-blue-500">• Familiar</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className={cn(
+                  "font-semibold text-sm",
+                  getTransactionColor(movimiento.tipoTransaccion)
+                )}>
+                  {movimiento.tipoTransaccion === 'income' ? '+' : '-'}
+                  {valuesVisible ? formatMoney(movimiento.monto) : "••••"}
+                </p>
+                <p className="text-xs text-muted-foreground capitalize">
+                  {movimiento.tipoMovimiento}
+                </p>
+              </div>
+            </div>
+          ))}
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full mt-3"
+            onClick={() => router.push('/transacciones/nuevo')}
+          >
+            Ver todos los movimientos
+          </Button>
+        </>
+      )}
     </div>
   )
 }
 
-export default function BankingDashboard() {
+export default function DashboardRedesigned() {
   // Hooks de autenticación y contextos
   const router = useRouter()
   const { data: session, status } = useSession()
   const { isOpen } = useSidebar()
   const { theme, toggleTheme } = useTheme()
   const { valuesVisible, toggleVisibility } = useVisibility()
+  const { formatMoney } = useCurrency()
   
   // Estados de la interfaz de usuario
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
-  const [transactions, setTransactions] = useState<any[]>([])
-  const [editingTransaction, setEditingTransaction] = useState<any>(null)
+  const [gastosPersonales, setGastosPersonales] = useState<any[]>([])
+  const [gastosFamiliares, setGastosFamiliares] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [balanceIndex, setBalanceIndex] = useState(0)
   const [signingOut, setSigningOut] = useState(false)
 
-  // Reemplazar la función formatMoney con la del contexto de moneda
-  const { formatMoney } = useCurrency();
-
-  // Definir fetchTransactions antes de usarlo en useEffect
-  const fetchTransactions = async () => {
+  // Función para cargar gastos personales
+  const fetchGastosPersonales = async () => {
     try {
-      setLoading(true)
-      const response = await fetch('/api/gastos')
+      const response = await fetch('/api/gastos?usarFechaImputacion=true')
       if (response.ok) {
         const data = await response.json()
-        setTransactions(data)
+        setGastosPersonales(data)
       }
     } catch (error) {
-      console.error('Error al cargar transacciones:', error)
+      console.error('Error al cargar gastos personales:', error)
+    }
+  }
+
+  // Función para cargar gastos familiares
+  const fetchGastosFamiliares = async () => {
+    try {
+      const response = await fetch('/api/gastos/familiares?usarFechaImputacion=true')
+      if (response.ok) {
+        const data = await response.json()
+        setGastosFamiliares(data)
+      }
+    } catch (error) {
+      console.error('Error al cargar gastos familiares:', error)
+    }
+  }
+
+  // Función para recargar todos los datos
+  const reloadData = async () => {
+    setLoading(true)
+    try {
+      await Promise.all([
+        fetchGastosPersonales(),
+        fetchGastosFamiliares()
+      ])
     } finally {
       setLoading(false)
     }
@@ -90,22 +295,19 @@ export default function BankingDashboard() {
   // Efecto para redireccionar si no está autenticado
   useEffect(() => {
     if (status === "unauthenticated") {
-      console.log("Usuario no autenticado, redirigiendo a login");
-      router.push("/login");
-    } else if (status === "authenticated") {
-      console.log("Usuario autenticado correctamente:", session?.user?.name);
+      router.push("/login")
     }
-  }, [status, router, session]);
+  }, [status, router])
 
-  // Efecto para cargar transacciones
+  // Efecto para cargar datos iniciales
   useEffect(() => {
     if (status === "authenticated") {
-      fetchTransactions();
+      reloadData()
     }
-  }, [status]);
+  }, [status])
 
   // Navegación por meses
-  const navigateBalance = (direction: "prev" | "next") => {
+  const navigateMonth = (direction: "prev" | "next") => {
     if (direction === "prev") {
       if (currentMonth === 0) {
         setCurrentMonth(11)
@@ -123,31 +325,12 @@ export default function BankingDashboard() {
     }
   }
   
-  // Navegación por tipos de saldo
+  // Navegación por tipos de saldo total
   const navigateBalanceType = (direction: "prev" | "next") => {
     if (direction === "prev") {
-      setBalanceIndex((current) => (current === 0 ? balanceTypes.length - 1 : current - 1))
+      setBalanceIndex((current) => (current === 0 ? totalBalanceTypes.length - 1 : current - 1))
     } else {
-      setBalanceIndex((current) => (current === balanceTypes.length - 1 ? 0 : current + 1))
-    }
-  }
-
-  const handleEditTransaction = async (updatedTransaction: any) => {
-    try {
-      const response = await fetch(`/api/gastos/${updatedTransaction.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatedTransaction),
-      })
-
-      if (response.ok) {
-        await fetchTransactions()
-        setEditingTransaction(null)
-      }
-    } catch (error) {
-      console.error('Error:', error)
+      setBalanceIndex((current) => (current === totalBalanceTypes.length - 1 ? 0 : current + 1))
     }
   }
 
@@ -155,118 +338,127 @@ export default function BankingDashboard() {
     return <LoadingScreen />
   }
 
-  // Cálculo de balances
-  const balanceData = (() => {
-    if (!transactions.length) return { income: 0, expenses: 0, balance: 0, efectivo: 0, digital: 0, ahorro: 0 }
+  // Cálculos de gastos personales del mes actual
+  const gastosPersonalesDelMes = gastosPersonales.filter(gasto => {
+    const fechaContable = (gasto as any).fechaImputacion || gasto.fecha
+    const gastoDate = new Date(fechaContable)
+    return gastoDate.getMonth() === currentMonth && gastoDate.getFullYear() === currentYear
+  })
 
-    try {
-      // Filtrar transacciones del mes actual
-      const currentTransactions = transactions.filter(transaction => {
-        const transactionDate = new Date(transaction.fecha)
+  const personalMonthStats = (() => {
+    let ingresos = 0
+    let gastos = 0
 
-        // Convertir la fecha a UTC para evitar problemas con zonas horarias
-        const transactionMonth = transactionDate.getUTCMonth()
-        const transactionYear = transactionDate.getUTCFullYear()
-
-        const isCurrentMonth = transactionMonth === currentMonth && transactionYear === currentYear
-        const isNotTarjeta = transaction.tipoMovimiento !== 'tarjeta'
-
-        return isCurrentMonth && isNotTarjeta
-      })
-
-      // Calcular gastos e ingresos del mes
-      let totalExpenses = 0
-      let totalIncome = 0
-
-      currentTransactions.forEach(transaction => {
-        const amount = Number(transaction.monto)
-        // Asumimos que si no es ingreso, es gasto
-        if (transaction.tipoTransaccion === 'ingreso') {
-          totalIncome += amount
-        } else {
-          totalExpenses += amount
-        }
-      })
-        
-      // Calcular saldos por tipo de movimiento (excluyendo tarjeta)
-      const totals = transactions
-        .filter(t => t.tipoMovimiento !== 'tarjeta')
-        .reduce((acc, t) => {
-          const amount = t.tipoTransaccion === 'ingreso' ? Number(t.monto) : -Number(t.monto)
-          
-          // Actualizar total general
-          acc.total += amount
-          
-          // Actualizar totales por tipo de movimiento
-          if (t.tipoMovimiento === 'efectivo') {
-            acc.efectivo += amount
-          } else if (t.tipoMovimiento === 'digital') {
-            acc.digital += amount
-          } else if (t.tipoMovimiento === 'ahorro') {
-            acc.ahorro += amount
-          }
-          
-          return acc
-        }, { total: 0, efectivo: 0, digital: 0, ahorro: 0 })
-
-      return {
-        income: totalIncome || 0,
-        expenses: totalExpenses || 0,
-        balance: (totalIncome - totalExpenses) || 0,
-        total: totals.total || 0,
-        efectivo: totals.efectivo || 0,
-        digital: totals.digital || 0,
-        ahorro: totals.ahorro || 0
+    gastosPersonalesDelMes.forEach(gasto => {
+      const amount = Number(gasto.monto)
+      if (gasto.tipoTransaccion === 'income') {
+        ingresos += amount
+      } else {
+        gastos += amount
       }
-    } catch (error) {
-      console.error('Error al calcular balances:', error)
-      return { income: 0, expenses: 0, balance: 0, total: 0, efectivo: 0, digital: 0, ahorro: 0 }
+    })
+
+    return {
+      ingresos,
+      gastos,
+      balance: ingresos - gastos
     }
   })()
-  
-  // Función para mostrar valores ocultos
-  const displayValue = (value: string) => {
-    return valuesVisible ? value : "••••••"
-  }
-  
-  // Definir tipos de balance para navegación
-  const balanceTypes = [
-    { label: "Saldo total", amount: formatMoney(isNaN(balanceData.total) ? 0 : balanceData.total) },
-    { label: "Total Efectivo", amount: formatMoney(isNaN(balanceData.efectivo) ? 0 : balanceData.efectivo) },
-    { label: "Total Digital", amount: formatMoney(isNaN(balanceData.digital) ? 0 : balanceData.digital) },
-    { label: "Total Ahorros", amount: formatMoney(isNaN(balanceData.ahorro) ? 0 : balanceData.ahorro) },
+
+  // Cálculos de gastos familiares del mes actual
+  const gastosFamiliaresDelMes = gastosFamiliares.filter(gasto => {
+    const fechaContable = (gasto as any).fechaImputacion || gasto.fecha
+    const gastoDate = new Date(fechaContable)
+    return gastoDate.getMonth() === currentMonth && gastoDate.getFullYear() === currentYear
+  })
+
+  const familyMonthStats = (() => {
+    let ingresos = 0
+    let gastos = 0
+
+    gastosFamiliaresDelMes.forEach(gasto => {
+      const amount = Number(gasto.monto)
+      if (gasto.tipoTransaccion === 'income') {
+        ingresos += amount
+      } else {
+        gastos += amount
+      }
+    })
+
+    return {
+      ingresos,
+      gastos,
+      balance: ingresos - gastos
+    }
+  })()
+
+  // Cálculos de saldos totales por tipo de movimiento
+  const totalBalances = (() => {
+    const totals = { total: 0, efectivo: 0, digital: 0, ahorro: 0 }
+
+    gastosFamiliares.forEach(gasto => {
+      const amount = gasto.tipoTransaccion === 'income' ? Number(gasto.monto) : -Number(gasto.monto)
+      
+      totals.total += amount
+      
+      if (gasto.tipoMovimiento === 'efectivo') {
+        totals.efectivo += amount
+      } else if (gasto.tipoMovimiento === 'digital') {
+        totals.digital += amount
+      } else if (gasto.tipoMovimiento === 'ahorro') {
+        totals.ahorro += amount
+      }
+    })
+
+    return totals
+  })()
+
+  // Tipos de balance total para navegación
+  const totalBalanceTypes = [
+    { label: "Saldo Total Familiar", amount: formatMoney(totalBalances.total) },
+    { label: "Total Efectivo", amount: formatMoney(totalBalances.efectivo) },
+    { label: "Total Digital", amount: formatMoney(totalBalances.digital) },
+    { label: "Total Ahorros", amount: formatMoney(totalBalances.ahorro) },
   ]
 
   return (
-    <div className="flex flex-col">
-      <header className="bg-transparent border-b">
+    <div className="flex flex-col min-h-screen">
+      {/* Header mejorado */}
+      <header className="bg-white dark:bg-gray-900 border-b shadow-sm">
         <div className="max-w-screen-2xl mx-auto px-6">
-          <div className="flex items-center justify-between py-3 md:py-4">
+          <div className="flex items-center justify-between py-4">
             {/* Sección izquierda: Saldo y Cotizaciones */}
-            <div className="flex items-center gap-4">
-              {/* Widget de Saldo */}
-              <div className="flex items-center p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 min-w-[280px]">
+            <div className="flex items-center gap-6">
+              {/* Widget de Saldo Total */}
+              <div className="flex items-center p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 rounded-xl shadow-sm border border-blue-100 dark:border-blue-800 min-w-[320px]">
                 <div className="flex flex-col flex-1 text-center">
-                  <div className="text-xs uppercase font-medium text-gray-500 dark:text-gray-400 tracking-wider">
-                    {balanceTypes[balanceIndex].label}
+                  <div className="text-xs uppercase font-semibold text-blue-600 dark:text-blue-400 tracking-wider mb-1">
+                    {totalBalanceTypes[balanceIndex].label}
                   </div>
-                  <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-1">
-                    {displayValue(balanceTypes[balanceIndex].amount)}
+                  <div className="text-4xl font-bold text-blue-700 dark:text-blue-300">
+                    {valuesVisible ? totalBalanceTypes[balanceIndex].amount : "••••••"}
+                  </div>
+                  <div className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                    Incluye gastos familiares
                   </div>
                 </div>
-                <div className="flex flex-col border-l pl-4 border-gray-200 dark:border-gray-700 py-1">
-                  <button 
+                <div className="flex flex-col border-l pl-4 border-blue-200 dark:border-blue-700 py-1">
+                  <Button 
+                    variant="ghost"
+                    size="sm"
                     onClick={() => navigateBalanceType("prev")}
-                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors mb-2"
+                    className="text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 h-8 w-8 p-0"
                   >
-                    <ChevronUp className="h-5 w-5" />
-                  </button>
-                  <button 
+                    <ChevronUp className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost"
+                    size="sm"
                     onClick={() => navigateBalanceType("next")}
-                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    className="text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 h-8 w-8 p-0"
                   >
-                    <ChevronDown className="h-5 w-5" />
-                  </button>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
               
@@ -274,11 +466,10 @@ export default function BankingDashboard() {
               <DollarIndicator />
             </div>
 
+            {/* Sección derecha: Controles */}
             <div className="flex items-center gap-4">
-              {/* Selector de moneda */}
               <CurrencySelector />
               
-              {/* Botón de visibilidad de valores */}
               <Button
                 variant="ghost"
                 size="icon"
@@ -293,7 +484,6 @@ export default function BankingDashboard() {
                 )}
               </Button>
               
-              {/* Alternador de tema */}
               <div className="flex items-center">
                 <Sun className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 <Switch
@@ -304,13 +494,11 @@ export default function BankingDashboard() {
                 <Moon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
               </div>
               
-              {/* Componente de centro de notificaciones */}
               <NotificationCenter />
 
-              {/* Avatar y menú de usuario */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 bg-blue-100 text-blue-600">
+                  <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300">
                     {session?.user?.name?.charAt(0) || 'U'}
                   </Button>
                 </DropdownMenuTrigger>
@@ -328,16 +516,12 @@ export default function BankingDashboard() {
                   <DropdownMenuItem 
                     disabled={signingOut}
                     onClick={async () => {
-                      setSigningOut(true);
+                      setSigningOut(true)
                       try {
-                        await signOut({ 
-                          callbackUrl: '/login',
-                          redirect: true
-                        });
-                        router.push('/login');
+                        await signOut({ callbackUrl: '/login' })
                       } catch (error) {
-                        console.error('Error al cerrar sesión:', error);
-                        setSigningOut(false);
+                        console.error('Error al cerrar sesión:', error)
+                        setSigningOut(false)
                       }
                     }}
                   >
@@ -360,189 +544,191 @@ export default function BankingDashboard() {
         </div>
       </header>
 
-      <main className="flex-1">
-        <div className="max-w-screen-2xl mx-auto px-6 py-4 md:py-6">
-          <div className="grid gap-6">
-            {/* Month Navigation */}
+      {/* Contenido principal */}
+      <main className="flex-1 bg-gray-50 dark:bg-gray-900">
+        <div className="max-w-screen-2xl mx-auto px-6 py-6">
+          <div className="space-y-6">
+            {/* Navegación de mes */}
             <div className="flex items-center justify-between">
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => navigateBalance('prev')}
+                onClick={() => navigateMonth('prev')}
+                className="flex items-center gap-2"
               >
+                <ChevronLeft className="h-4 w-4" />
                 Anterior
               </Button>
-              <div className="text-lg font-semibold">
-                {new Date(currentYear, currentMonth).toLocaleDateString('es', { month: 'long', year: 'numeric' })}
+              <div className="text-center">
+                <h1 className="text-2xl font-bold">
+                  {format(new Date(currentYear, currentMonth), 'MMMM yyyy', { locale: es })}
+                </h1>
+                <p className="text-sm text-muted-foreground">Dashboard financiero</p>
               </div>
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => navigateBalance('next')}
+                onClick={() => navigateMonth('next')}
+                className="flex items-center gap-2"
               >
                 Siguiente
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
 
-            {/* Balance Cards - Situación mensual */}
-            <Card className="overflow-hidden">
-              <CardHeader className="px-6 py-3">
-                <CardTitle>Situación mensual</CardTitle>
-              </CardHeader>
-              <CardContent className="px-6 pb-4">
+            {/* Tabs para separar vistas */}
+            <Tabs defaultValue="personal" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="personal" className="flex items-center gap-2">
+                  <UserCheck className="h-4 w-4" />
+                  Mi situación mensual
+                </TabsTrigger>
+                <TabsTrigger value="familiar" className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Situación familiar
+                </TabsTrigger>
+              </TabsList>
+              
+              {/* Tab Personal */}
+              <TabsContent value="personal" className="space-y-6">
                 <div className="grid gap-4 md:grid-cols-3">
-                  <Card className="hover:shadow-md transition-shadow">
-                    <CardHeader className="flex flex-row items-center justify-between p-4">
-                      <div>
-                        <CardTitle className="text-sm text-muted-foreground">Ingresos</CardTitle>
-                        <CardDescription className="text-2xl font-bold text-green-600 dark:text-green-400">
-                          {displayValue(formatMoney(balanceData.income))}
-                        </CardDescription>
-                      </div>
-                      <div className="bg-green-100 dark:bg-green-900 p-2 rounded-full">
-                        <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
-                      </div>
+                  <BalanceCard
+                    title="Mis Ingresos"
+                    amount={formatMoney(personalMonthStats.ingresos)}
+                    subtitle="Solo mis ingresos personales"
+                    icon={TrendingUp}
+                    variant="positive"
+                  />
+                  <BalanceCard
+                    title="Mis Gastos"
+                    amount={formatMoney(personalMonthStats.gastos)}
+                    subtitle="Solo mis gastos personales"
+                    icon={TrendingDown}
+                    variant="negative"
+                  />
+                  <BalanceCard
+                    title="Mi Balance"
+                    amount={formatMoney(personalMonthStats.balance)}
+                    subtitle="Balance personal del mes"
+                    icon={Wallet}
+                    variant={personalMonthStats.balance >= 0 ? "positive" : "negative"}
+                  />
+                </div>
+                
+                {/* Gráfico de gastos personales */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <BarChart className="h-5 w-5" />
+                        Mis gastos por categoría
+                      </CardTitle>
+                      <CardDescription>
+                        Distribución de mis gastos personales este mes
+                      </CardDescription>
                     </CardHeader>
+                    <CardContent>
+                      <FinancialDataWidget />
+                    </CardContent>
                   </Card>
                   
-                  <Card className="hover:shadow-md transition-shadow">
-                    <CardHeader className="flex flex-row items-center justify-between p-4">
-                      <div>
-                        <CardTitle className="text-sm text-muted-foreground">Gastos</CardTitle>
-                        <CardDescription className="text-2xl font-bold text-red-600 dark:text-red-400">
-                          {displayValue(formatMoney(balanceData.expenses))}
-                        </CardDescription>
-                      </div>
-                      <div className="bg-red-100 dark:bg-red-900 p-2 rounded-full">
-                        <CreditCard className="h-5 w-5 text-red-600 dark:text-red-400" />
-                      </div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Próximas tareas</CardTitle>
+                      <CardDescription>
+                        Tareas pendientes y recordatorios
+                      </CardDescription>
                     </CardHeader>
-                  </Card>
-                  
-                  <Card className="hover:shadow-md transition-shadow">
-                    <CardHeader className="flex flex-row items-center justify-between p-4">
-                      <div>
-                        <CardTitle className="text-sm text-muted-foreground">Balance</CardTitle>
-                        <CardDescription className={cn(
-                          "text-2xl font-bold",
-                          balanceData.balance >= 0 ? "text-blue-600 dark:text-blue-400" : "text-red-600 dark:text-red-400"
-                        )}>
-                          {displayValue(formatMoney(balanceData.balance))}
-                        </CardDescription>
-                      </div>
-                      <div className="bg-blue-100 dark:bg-blue-900 p-2 rounded-full">
-                        <BarChart className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                      </div>
-                    </CardHeader>
+                    <CardContent>
+                      <TareasWidget />
+                    </CardContent>
                   </Card>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Sección: Gráfico de Gastos y Widget de Tareas */}
-            <div className="grid lg:grid-cols-2 gap-6">
-              {/* Widget Financiero */}
-              <FinancialDataWidget />
+              </TabsContent>
               
-              {/* Widget de Tareas */}
-              <TareasWidget />
-            </div>
+              {/* Tab Familiar */}
+              <TabsContent value="familiar" className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <BalanceCard
+                    title="Ingresos Familiares"
+                    amount={formatMoney(familyMonthStats.ingresos)}
+                    subtitle="Ingresos de todos los miembros"
+                    icon={TrendingUp}
+                    variant="positive"
+                  />
+                  <BalanceCard
+                    title="Gastos Familiares"
+                    amount={formatMoney(familyMonthStats.gastos)}
+                    subtitle="Gastos marcados como familiares"
+                    icon={TrendingDown}
+                    variant="negative"
+                  />
+                  <BalanceCard
+                    title="Balance Familiar"
+                    amount={formatMoney(familyMonthStats.balance)}
+                    subtitle="Balance familiar del mes"
+                    icon={Users}
+                    variant={familyMonthStats.balance >= 0 ? "positive" : "negative"}
+                  />
+                </div>
 
-            {/* Two Column Layout: Form and Transactions */}
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Transaction Input Form */}
-              <Card className="overflow-hidden">
-                <CardHeader className="px-6 py-5">
-                  <CardTitle>Nuevo Registro</CardTitle>
+                {/* Estadísticas adicionales familiares */}
+                <div className="grid gap-4 md:grid-cols-4">
+                  <BalanceCard
+                    title="Total Efectivo"
+                    amount={formatMoney(totalBalances.efectivo)}
+                    icon={Banknote}
+                    variant="default"
+                  />
+                  <BalanceCard
+                    title="Total Digital"
+                    amount={formatMoney(totalBalances.digital)}
+                    icon={CreditCard}
+                    variant="default"
+                  />
+                  <BalanceCard
+                    title="Total Ahorros"
+                    amount={formatMoney(totalBalances.ahorro)}
+                    icon={PiggyBank}
+                    variant="default"
+                  />
+                  <BalanceCard
+                    title="Saldo General"
+                    amount={formatMoney(totalBalances.total)}
+                    icon={DollarSign}
+                    variant={totalBalances.total >= 0 ? "positive" : "negative"}
+                  />
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            {/* Formulario de nuevo movimiento y últimos movimientos */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Registrar nuevo movimiento</CardTitle>
+                  <CardDescription>
+                    Registra un nuevo gasto o ingreso. Usa el checkbox para indicar si debe incluirse en los totales familiares.
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="px-6 pb-6">
-                  <DashboardExpenseForm onTransactionAdded={fetchTransactions} />
+                <CardContent>
+                  <DashboardExpenseForm onTransactionAdded={reloadData} />
                 </CardContent>
               </Card>
 
-              {/* Transaction List */}
-              <Card className="overflow-hidden">
-                <CardHeader className="px-6 py-5">
-                  <CardTitle>Transacciones Recientes</CardTitle>
+              {/* Últimos movimientos */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Últimos movimientos</CardTitle>
+                  <CardDescription>
+                    Movimientos recientes registrados
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="p-0">
-                  <div className="max-h-[300px] overflow-auto">
-                    {loading ? (
-                      <div className="flex justify-center items-center p-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                      </div>
-                    ) : transactions.length === 0 ? (
-                      <div className="text-center p-8 text-muted-foreground">
-                        No hay transacciones registradas.
-                      </div>
-                    ) : (
-                      <div>
-                        {transactions
-                          .filter(transaction => {
-                            const transactionDate = new Date(transaction.fecha)
-                            return transactionDate.getMonth() === currentMonth && 
-                                  transactionDate.getFullYear() === currentYear
-                          })
-                          .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
-                          .slice(0, 5) // Mostrar solo las 5 más recientes
-                          .map((transaction) => (
-                            <div 
-                              key={transaction.id} 
-                              className="flex items-center justify-between px-4 py-3 border-b last:border-0 hover:bg-muted/50"
-                            >
-                              <div className="flex items-center">
-                                <div className={cn(
-                                  "w-10 h-10 rounded-full flex items-center justify-center mr-3",
-                                  transaction.tipoTransaccion === 'ingreso' 
-                                    ? "bg-green-100 dark:bg-green-900" 
-                                    : "bg-red-100 dark:bg-red-900"
-                                )}>
-                                  {transaction.tipoTransaccion === 'ingreso' ? (
-                                    <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
-                                  ) : (
-                                    <CreditCard className="h-5 w-5 text-red-600 dark:text-red-400" />
-                                  )}
-                                </div>
-                                <div>
-                                  <div className="font-medium">{transaction.descripcion}</div>
-                                  <div className="text-sm text-muted-foreground">
-                                    {format(new Date(transaction.fecha), 'PPP', { locale: es })}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className={cn(
-                                  "font-medium",
-                                  transaction.tipoTransaccion === 'ingreso' ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
-                                )}>
-                                  {transaction.tipoTransaccion === 'ingreso' ? '+' : '-'}{displayValue(formatMoney(transaction.monto))}
-                                </span>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon"
-                                  onClick={() => setEditingTransaction(transaction)}
-                                >
-                                  <Edit2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-4 text-center">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => router.push('/transacciones')}
-                    >
-                      Ver todo el historial
-                    </Button>
-                  </div>
+                <CardContent>
+                  <UltimosMovimientos gastos={gastosPersonales} />
                 </CardContent>
               </Card>
             </div>
-
-
           </div>
         </div>
       </main>

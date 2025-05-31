@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertsList } from "@/components/alertas/AlertsList"
+import { ConfiguracionAlertas } from "@/components/alertas/ConfiguracionAlertas"
 import { PageLayout } from "@/components/PageLayout"
 
 // Tipos para las alertas
@@ -353,15 +354,7 @@ export default function AlertasPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8">
-                  <Settings className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                    Configuración en desarrollo
-                  </h3>
-                  <p className="text-gray-500 dark:text-gray-400">
-                    La configuración de alertas estará disponible próximamente.
-                  </p>
-                </div>
+                <ConfiguracionAlertas />
               </CardContent>
             </Card>
           </TabsContent>

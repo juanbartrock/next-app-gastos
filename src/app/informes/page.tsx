@@ -146,7 +146,7 @@ export default function InformesPage() {
         const fechaFin = new Date(año, mes, 0)
         
         // 1. Obtener gastos del mes
-        const gastosResponse = await fetch(`/api/gastos?desde=${fechaInicio.toISOString()}&hasta=${fechaFin.toISOString()}`)
+        const gastosResponse = await fetch(`/api/gastos?desde=${fechaInicio.toISOString()}&hasta=${fechaFin.toISOString()}&usarFechaImputacion=true`)
         const gastos = await gastosResponse.json()
         
         // Filtrar solo los gastos (no ingresos) y sumar el total
@@ -250,7 +250,7 @@ export default function InformesPage() {
         
         // Obtener gastos para cada mes
         const promesasGastos = fechas.map(async (periodo) => {
-          const response = await fetch(`/api/gastos?desde=${periodo.fechaInicio.toISOString()}&hasta=${periodo.fechaFin.toISOString()}`)
+          const response = await fetch(`/api/gastos?desde=${periodo.fechaInicio.toISOString()}&hasta=${periodo.fechaFin.toISOString()}&usarFechaImputacion=true`)
           const gastosMes = await response.json()
           const soloGastosMes = gastosMes.filter((g: Gasto) => g.tipoTransaccion === 'expense')
           const totalMes = soloGastosMes.reduce((acc: number, g: Gasto) => acc + g.monto, 0)

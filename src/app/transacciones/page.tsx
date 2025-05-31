@@ -9,11 +9,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, ChevronDown, ChevronUp, Edit, PackageOpen, Plus, Search, ShoppingBag, Trash } from "lucide-react"
+import { ArrowLeft, ChevronDown, ChevronUp, Edit, PackageOpen, Plus, Search, ShoppingBag, Trash, Banknote, Send, Filter, Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useCurrency } from "@/contexts/CurrencyContext"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
+import { useSession } from "next-auth/react"
 
 interface GastoDetalle {
   id: number
@@ -32,9 +33,11 @@ interface Gasto {
   concepto: string
   monto: number
   fecha: string
+  fechaImputacion?: string
   categoria: string
   tipoTransaccion: string
   tipoMovimiento: string
+  incluirEnFamilia: boolean
   createdAt: string
   updatedAt: string
   userId: string | null
@@ -51,14 +54,18 @@ interface Gasto {
 }
 
 export default function TransaccionesPage() {
+  const { data: session } = useSession()
+  const router = useRouter()
+  const { formatMoney } = useCurrency()
+  
   const [transactions, setTransactions] = useState<Gasto[]>([])
   const [filteredTransactions, setFilteredTransactions] = useState<Gasto[]>([])
   const [searchTerm, setSearchTerm] = useState("")
-  const [categoryFilter, setCategoryFilter] = useState("")
-  const [typeFilter, setTypeFilter] = useState("")
-  const [movementTypeFilter, setMovementTypeFilter] = useState("")
+  const [categoryFilter, setCategoryFilter] = useState("all")
+  const [typeFilter, setTypeFilter] = useState("all")
+  const [movementTypeFilter, setMovementTypeFilter] = useState("all")
   const [selectedTransaction, setSelectedTransaction] = useState<Gasto | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [editingDetalle, setEditingDetalle] = useState<GastoDetalle | null>(null)
   const [mostrarFormDetalle, setMostrarFormDetalle] = useState(false)
   const [nuevoDetalle, setNuevoDetalle] = useState({
@@ -69,25 +76,30 @@ export default function TransaccionesPage() {
     seguimiento: false
   })
   
-  const router = useRouter()
-  const { formatMoney } = useCurrency()
-
   useEffect(() => {
-    const fetchTransactions = async () => {
-      try {
-        const response = await fetch('/api/gastos')
-        if (response.ok) {
-          const data = await response.json()
-          setTransactions(data)
-          setFilteredTransactions(data)
-        }
-      } catch (error) {
-        console.error('Error al cargar transacciones:', error)
-      }
+    if (session) {
+      fetchTransactions()
     }
+  }, [session])
 
-    fetchTransactions()
-  }, [])
+  const fetchTransactions = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/gastos')
+      if (response.ok) {
+        const data = await response.json()
+        setTransactions(data)
+        setFilteredTransactions(data)
+      } else {
+        toast.error("Error al cargar las transacciones")
+      }
+    } catch (error) {
+      console.error("Error fetching transactions:", error)
+      toast.error("Error al cargar las transacciones")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
     let filtered = transactions
@@ -128,33 +140,66 @@ export default function TransaccionesPage() {
     }
   }, [nuevoDetalle.cantidad, nuevoDetalle.precioUnitario])
 
-  // Cargar detalles de transacción
+  // Manejar click en fila
   const handleRowClick = async (transaction: Gasto) => {
-    if (selectedTransaction && selectedTransaction.id === transaction.id) {
-      // Si ya está seleccionado, deseleccionamos
+    if (selectedTransaction?.id === transaction.id) {
       setSelectedTransaction(null)
       return
     }
-    
-    setLoading(true)
+
     try {
+      setLoading(true)
       const response = await fetch(`/api/gastos/${transaction.id}?includeDetails=true`)
-      
       if (response.ok) {
         const data = await response.json()
         setSelectedTransaction(data)
       } else {
-        toast.error("No se pudieron cargar los detalles del gasto")
+        toast.error("Error al cargar los detalles")
       }
     } catch (error) {
-      console.error("Error al cargar detalles:", error)
+      console.error("Error fetching transaction details:", error)
       toast.error("Error al cargar los detalles")
     } finally {
       setLoading(false)
     }
   }
-  
-  // Agregar nuevo detalle
+
+  // Función para eliminar transacción
+  const eliminarTransaccion = async (transactionId: number, event: React.MouseEvent) => {
+    event.stopPropagation() // Evitar que se abra el detalle
+    
+    if (!confirm("¿Estás seguro de que deseas eliminar esta transacción?")) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/gastos/${transactionId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        toast.success("Transacción eliminada correctamente")
+        fetchTransactions() // Recargar la lista
+        if (selectedTransaction?.id === transactionId) {
+          setSelectedTransaction(null) // Cerrar detalle si era la seleccionada
+        }
+      } else {
+        const errorData = await response.json()
+        toast.error(errorData.error || "Error al eliminar la transacción")
+      }
+    } catch (error) {
+      console.error("Error al eliminar transacción:", error)
+      toast.error("Error al eliminar la transacción")
+    }
+  }
+
+  // Función para ir a editar
+  const editarTransaccion = (transactionId: number, event: React.MouseEvent) => {
+    event.stopPropagation() // Evitar que se abra el detalle
+    router.push(`/transacciones/${transactionId}/editar`)
+  }
+
+  // Agregar detalle
   const agregarDetalle = async () => {
     if (!selectedTransaction) return
     
@@ -163,15 +208,17 @@ export default function TransaccionesPage() {
       return
     }
     
-    const producto = {
-      descripcion: nuevoDetalle.descripcion,
-      cantidad: parseFloat(nuevoDetalle.cantidad) || 1,
-      precioUnitario: nuevoDetalle.precioUnitario ? parseFloat(nuevoDetalle.precioUnitario.replace(/[^\d.]/g, "")) : null,
-      subtotal: parseFloat(nuevoDetalle.subtotal.replace(/[^\d.]/g, "")) || 0,
-      seguimiento: nuevoDetalle.seguimiento
-    }
-    
     try {
+      setLoading(true)
+      
+      const producto = {
+        descripcion: nuevoDetalle.descripcion,
+        cantidad: parseFloat(nuevoDetalle.cantidad) || 1,
+        precioUnitario: nuevoDetalle.precioUnitario ? parseFloat(nuevoDetalle.precioUnitario.replace(/[^\d.]/g, "")) : null,
+        subtotal: parseFloat(nuevoDetalle.subtotal.replace(/[^\d.]/g, "")) || 0,
+        seguimiento: nuevoDetalle.seguimiento
+      }
+      
       const response = await fetch('/api/gastos/detalles', {
         method: 'POST',
         headers: {
@@ -207,9 +254,11 @@ export default function TransaccionesPage() {
     } catch (error) {
       console.error("Error al guardar detalle:", error)
       toast.error("No se pudo guardar el detalle")
+    } finally {
+      setLoading(false)
     }
   }
-  
+
   // Eliminar detalle
   const eliminarDetalle = async (detalleId: number) => {
     if (!selectedTransaction) return
@@ -395,15 +444,44 @@ export default function TransaccionesPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8 flex items-center justify-between">
-          <Button 
-            variant="ghost" 
-            className="gap-2"
-            onClick={() => router.push("/?dashboard=true")}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Volver
-          </Button>
-          <h1 className="text-2xl font-bold dark:text-white">Historial de Transacciones</h1>
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost" 
+              className="gap-2"
+              onClick={() => router.push("/?dashboard=true")}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Volver
+            </Button>
+            <h1 className="text-2xl font-bold dark:text-white">Historial de Transacciones</h1>
+          </div>
+          
+          {/* Botones de acciones rápidas */}
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="outline"
+              className="gap-2"
+              onClick={() => router.push('/transacciones/extraccion-cajero')}
+            >
+              <Banknote className="w-4 h-4" />
+              Extraer Cajero
+            </Button>
+            <Button 
+              variant="outline"
+              className="gap-2"
+              onClick={() => router.push('/transacciones/transferir')}
+            >
+              <Send className="w-4 h-4" />
+              Transferir
+            </Button>
+            <Button 
+              className="gap-2"
+              onClick={() => router.push('/transacciones/nuevo')}
+            >
+              <Plus className="w-4 h-4" />
+              Nueva Transacción
+            </Button>
+          </div>
         </div>
 
         <Card className="mb-6">
@@ -484,6 +562,7 @@ export default function TransaccionesPage() {
                     <th className="pb-3 font-normal text-right">Tipo Transacción</th>
                     <th className="pb-3 font-normal text-right">Tipo Movimiento</th>
                     <th className="pb-3 font-normal text-right">Monto</th>
+                    <th className="pb-3 font-normal text-right">Acciones</th>
                     <th className="pb-3 font-normal text-right">Detalles</th>
                   </tr>
                 </thead>
@@ -495,7 +574,14 @@ export default function TransaccionesPage() {
                       onClick={() => handleRowClick(transaction)}
                     >
                       <td className="py-3 text-sm">
-                        {format(new Date(transaction.fecha), "dd MMM yyyy", { locale: es })}
+                        <div className="flex flex-col">
+                          <span>{format(new Date(transaction.fecha), "dd MMM yyyy", { locale: es })}</span>
+                          {transaction.fechaImputacion && (
+                            <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                              📊 {format(new Date(transaction.fechaImputacion), "dd MMM yyyy", { locale: es })}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 text-sm capitalize">{transaction.categoria}</td>
                       <td className="py-3 text-sm">{transaction.concepto}</td>
@@ -516,6 +602,28 @@ export default function TransaccionesPage() {
                       </td>
                       <td className="text-right text-sm font-medium">
                         {formatMoney(transaction.monto)}
+                      </td>
+                      <td className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            onClick={(e) => editarTransaccion(transaction.id, e)}
+                            title="Editar transacción"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={(e) => eliminarTransaccion(transaction.id, e)}
+                            title="Eliminar transacción"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </td>
                       <td className="text-right">
                         {selectedTransaction?.id === transaction.id ? (
@@ -545,10 +653,10 @@ export default function TransaccionesPage() {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={() => router.push(`/transacciones/${selectedTransaction.id}`)}
+                    onClick={() => router.push(`/transacciones/${selectedTransaction.id}/editar`)}
                   >
                     <Edit className="h-4 w-4 mr-2" />
-                    Ver Completo
+                    Editar Transacción
                   </Button>
                   <Button
                     size="sm"
@@ -564,6 +672,14 @@ export default function TransaccionesPage() {
                 <span className="font-semibold">{selectedTransaction.concepto}</span>
                 <span className="mx-2">•</span>
                 <span>{format(new Date(selectedTransaction.fecha), "d 'de' MMMM 'de' yyyy", { locale: es })}</span>
+                {selectedTransaction.fechaImputacion && (
+                  <>
+                    <span className="mx-2">•</span>
+                    <span className="text-amber-600 dark:text-amber-400">
+                      Imputación: {format(new Date(selectedTransaction.fechaImputacion), "d 'de' MMMM 'de' yyyy", { locale: es })}
+                    </span>
+                  </>
+                )}
                 <span className="mx-2">•</span>
                 <span className="font-semibold">{formatMoney(selectedTransaction.monto)}</span>
               </div>
@@ -724,7 +840,7 @@ export default function TransaccionesPage() {
                                     eliminarDetalle(detalle.id);
                                   }}
                                 >
-                                  <Trash className="h-4 w-4" />
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>
                             </div>
@@ -734,23 +850,14 @@ export default function TransaccionesPage() {
                     </div>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
-                      <PackageOpen className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                      <p>No hay detalles para esta transacción</p>
-                      <p className="text-sm mt-1">Los tickets y facturas escaneadas muestran detalles de productos</p>
+                      <ShoppingBag className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                      <p>No hay productos registrados en esta transacción</p>
+                      <p className="text-sm">Haz clic en "Agregar Producto" para empezar</p>
                     </div>
                   )}
                 </>
               )}
             </CardContent>
-            <CardFooter className="flex justify-end pt-0">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedTransaction(null)}
-              >
-                Cerrar detalles
-              </Button>
-            </CardFooter>
           </Card>
         )}
       </div>

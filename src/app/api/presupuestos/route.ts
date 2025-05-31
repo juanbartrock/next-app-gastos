@@ -44,7 +44,8 @@ export async function GET(request: NextRequest) {
         
         // Obtener gastos para el mes y año específicos en la categoría
         if (presupuesto.categoriaId) {
-          const gastos = await prisma.gasto.findMany({
+          // Primero obtener todos los gastos de la categoría para el usuario
+          const todosLosGastos = await prisma.gasto.findMany({
             where: {
               userId: session.user.id,
               categoriaId: presupuesto.categoriaId,
@@ -52,14 +53,19 @@ export async function GET(request: NextRequest) {
               tipoMovimiento: {
                 not: 'tarjeta'  // Excluir gastos de tipo tarjeta
               },
-              fecha: {
-                gte: new Date(presupuesto.año, presupuesto.mes - 1, 1),
-                lt: new Date(presupuesto.año, presupuesto.mes, 1),
-              },
             },
           });
           
-          gastoActual = gastos.reduce((sum, gasto) => sum + gasto.monto, 0);
+          // Filtrar por fecha contable (fechaImputacion si existe, sino fecha)
+          const fechaInicio = new Date(presupuesto.año, presupuesto.mes - 1, 1);
+          const fechaFin = new Date(presupuesto.año, presupuesto.mes, 1);
+          
+          const gastosFiltrados = todosLosGastos.filter(gasto => {
+            const fechaContable = (gasto as any).fechaImputacion || gasto.fecha;
+            return fechaContable >= fechaInicio && fechaContable < fechaFin;
+          });
+          
+          gastoActual = gastosFiltrados.reduce((sum, gasto) => sum + gasto.monto, 0);
         }
         
         return {

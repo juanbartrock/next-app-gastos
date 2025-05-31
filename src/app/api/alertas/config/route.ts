@@ -40,9 +40,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
+    const userId = session.user.id // Asegurar que no es undefined
+
     const configuraciones = await prisma.configuracionAlerta.findMany({
       where: {
-        userId: session.user.id
+        userId: userId
       },
       orderBy: {
         tipoAlerta: "asc"
@@ -71,7 +73,7 @@ export async function GET(request: NextRequest) {
         tiposAlerta.map(tipo => 
           prisma.configuracionAlerta.create({
             data: {
-              userId: session.user.id,
+              userId: userId,
               tipoAlerta: tipo as any,
               habilitado: true,
               canales: ["IN_APP"],
@@ -103,6 +105,8 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
+    const userId = session.user.id // Asegurar que no es undefined
+
     const body = await request.json()
     
     // Validar que sea un array de configuraciones
@@ -123,7 +127,7 @@ export async function PUT(request: NextRequest) {
         return await prisma.configuracionAlerta.upsert({
           where: {
             userId_tipoAlerta: {
-              userId: session.user.id,
+              userId: userId,
               tipoAlerta: config.tipoAlerta
             }
           },
@@ -139,7 +143,7 @@ export async function PUT(request: NextRequest) {
             configuracionExtra: config.configuracionExtra || {}
           },
           create: {
-            userId: session.user.id,
+            userId: userId,
             tipoAlerta: config.tipoAlerta,
             habilitado: config.habilitado,
             canales: config.canales,

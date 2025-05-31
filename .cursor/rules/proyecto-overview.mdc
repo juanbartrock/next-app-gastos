@@ -1,0 +1,46 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Sistema de Gestión de Gastos - Proyecto Completado
+
+## Estado del Proyecto ✅
+Este es un **proyecto 100% completado** con **3 fases implementadas** desarrollado en Argentina:
+
+- **FASE 1**: Sistema de Alertas Avanzado ✅
+- **FASE 2**: Motor Automático de Alertas ✅  
+- **FASE 3**: Inteligencia Artificial Completa ✅
+
+## Documentación Principal
+- **README completo**: [README.md](mdc:README.md)
+- **Documentación técnica**: [DOCUMENTACION.md](mdc:DOCUMENTACION.md)
+- **Reglas de desarrollo**: [.cursorrules](mdc:.cursorrules)
+- **Fase 2 completada**: [FASE_2_COMPLETADA.md](mdc:FASE_2_COMPLETADA.md)
+- **Fase 3 completada**: [FASE_3_COMPLETADA.md](mdc:FASE_3_COMPLETADA.md)
+- **Deployment**: [DEPLOYMENT_AI_VERCEL.md](mdc:DEPLOYMENT_AI_VERCEL.md)
+
+## Stack Tecnológico Principal
+- **Next.js 15** con App Router y Server Components
+- **React 18** con TypeScript completo
+- **Prisma** con 30+ modelos interconectados
+- **PostgreSQL/Neon** para producción
+- **OpenAI API** para inteligencia artificial
+- **NextAuth.js** para autenticación segura
+- **TailwindCSS + Shadcn/ui** para interfaz
+
+## Base de Datos
+- **Schema principal**: [prisma/schema.prisma](mdc:prisma/schema.prisma)
+- **30+ modelos** incluyendo Alerta, ConfiguracionAlerta, User, Gasto, etc.
+- **PostgreSQL/Neon** tanto en desarrollo como producción
+
+## Variables de Entorno Requeridas
+Configuradas en [.env](mdc:.env):
+- `DATABASE_URL` - PostgreSQL/Neon
+- `NEXTAUTH_SECRET` y `NEXTAUTH_URL` - Autenticación
+- `OPENAI_API_KEY` - **Requerido** para funcionalidades de IA
+- `TWILIO_*` - Opcional para notificaciones
+
+## Estado: Listo para Producción
+El proyecto está completamente funcional y listo para deployment inmediato en Vercel con Plan Pro.
+

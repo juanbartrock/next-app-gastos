@@ -406,14 +406,96 @@ export class AlertEngine {
   }
 
   /**
-   * Evalúa alertas de tareas vencidas
+   * Evalúa alertas de tareas (próximas y vencidas)
    */
   async processTareasAlerts(userId: string): Promise<AlertaGenerada[]> {
     const alertas: AlertaGenerada[] = []
     const ahora = new Date()
+    const mañana = new Date(Date.now() + 24 * 60 * 60 * 1000)
+    const en3Dias = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
 
     try {
-      // Tareas vencidas
+      // 1. TAREAS PRÓXIMAS A VENCER (1-3 días)
+      const tareasProximas = await prisma.tarea.findMany({
+        where: {
+          userId,
+          estado: 'pendiente',
+          fechaVencimiento: {
+            gte: ahora,
+            lte: en3Dias,
+          },
+        },
+      })
+
+      for (const tarea of tareasProximas) {
+        // Verificar si ya existe una alerta para esta tarea en los últimos 2 días
+        const alertaExistente = await prisma.alerta.findFirst({
+          where: {
+            userId,
+            tareaId: tarea.id,
+            tipo: 'TAREA_VENCIMIENTO',
+            fechaCreacion: {
+              gte: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+            },
+          },
+        })
+
+        if (alertaExistente) continue
+
+        const diasHastaVencimiento = Math.ceil((tarea.fechaVencimiento!.getTime() - ahora.getTime()) / (1000 * 60 * 60 * 24))
+        
+        let prioridad: PrioridadAlerta = 'MEDIA'
+        let emoji = '📅'
+        
+        if (tarea.prioridad === 'alta') prioridad = 'ALTA'
+        if (tarea.esFinanciera) {
+          prioridad = 'ALTA'
+          emoji = '💰'
+        }
+        if (diasHastaVencimiento <= 1) {
+          prioridad = 'ALTA'
+          emoji = '⚠️'
+        }
+
+        let mensaje = `${emoji} La tarea "${tarea.titulo}"`
+        
+        if (diasHastaVencimiento === 0) {
+          mensaje += ` vence HOY.`
+        } else if (diasHastaVencimiento === 1) {
+          mensaje += ` vence MAÑANA.`
+        } else {
+          mensaje += ` vence en ${diasHastaVencimiento} días.`
+        }
+        
+        if (tarea.esFinanciera) {
+          mensaje += ' 💰 Es una tarea financiera importante.'
+        }
+        
+        if (tarea.descripcion) {
+          mensaje += ` Descripción: ${tarea.descripcion}`
+        }
+
+        alertas.push({
+          tipo: 'TAREA_VENCIMIENTO',
+          prioridad,
+          titulo: diasHastaVencimiento <= 1 ? `${emoji} Tarea urgente - ${tarea.titulo}` : `📅 Tarea próxima - ${tarea.titulo}`,
+          mensaje,
+          metadatos: {
+            tareaId: tarea.id,
+            titulo: tarea.titulo,
+            descripcion: tarea.descripcion,
+            prioridadTarea: tarea.prioridad,
+            esFinanciera: tarea.esFinanciera,
+            categoria: tarea.categoria,
+            fechaVencimiento: tarea.fechaVencimiento,
+            diasHastaVencimiento,
+            esProxima: true,
+          },
+          tareaId: tarea.id,
+        })
+      }
+
+      // 2. TAREAS YA VENCIDAS
       const tareasVencidas = await prisma.tarea.findMany({
         where: {
           userId,
@@ -443,12 +525,13 @@ export class AlertEngine {
         
         let prioridad: PrioridadAlerta = 'MEDIA'
         if (tarea.prioridad === 'alta') prioridad = 'ALTA'
+        if (tarea.esFinanciera) prioridad = 'ALTA'
         if (diasVencida > 7) prioridad = 'CRITICA'
 
         alertas.push({
           tipo: 'TAREA_VENCIMIENTO',
           prioridad,
-          titulo: `Tarea vencida - ${tarea.titulo}`,
+          titulo: `🚨 Tarea vencida - ${tarea.titulo}`,
           mensaje: `La tarea "${tarea.titulo}" venció hace ${diasVencida} día${diasVencida > 1 ? 's' : ''}. ${tarea.esFinanciera ? '💰 Es una tarea financiera.' : ''}`,
           metadatos: {
             tareaId: tarea.id,
@@ -459,6 +542,7 @@ export class AlertEngine {
             categoria: tarea.categoria,
             fechaVencimiento: tarea.fechaVencimiento,
             diasVencida,
+            esProxima: false,
           },
           tareaId: tarea.id,
         })

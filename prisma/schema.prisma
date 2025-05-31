@@ -76,7 +76,6 @@ model Grupo {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
   adminId     String
-  gastos      Gasto[]
   admin       User           @relation("GrupoAdmin", fields: [adminId], references: [id])
   miembros    GrupoMiembro[]
 }
@@ -97,19 +96,19 @@ model Gasto {
   id              Int             @id @default(autoincrement())
   concepto        String
   monto           Float
-  fecha           DateTime        @default(now())
+  fecha           DateTime        @default(now()) // Fecha real de la transacción/depósito
+  fechaImputacion DateTime?       // Fecha para imputación contable (mes al que corresponde)
   categoria       String
   tipoTransaccion String          @default("expense")
   tipoMovimiento  String          @default("efectivo")
+  incluirEnFamilia Boolean        @default(true)  // Nuevo campo para control familiar
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
-  userId          String?
-  grupoId         String?
+  userId          String          // Ahora es obligatorio - todo gasto pertenece a un usuario
   categoriaId     Int?
   financiacion    Financiacion?
   categoriaRel    Categoria?      @relation(fields: [categoriaId], references: [id])
-  grupo           Grupo?          @relation(fields: [grupoId], references: [id])
-  user            User?           @relation(fields: [userId], references: [id])
+  user            User            @relation(fields: [userId], references: [id])
   detalles        GastoDetalle[]  // Relación con detalles del gasto
 }
 
