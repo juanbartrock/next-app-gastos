@@ -18,7 +18,8 @@ import {
   Building2,
   CheckSquare2,
   Bell,
-  Upload
+  Upload,
+  Archive
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSidebar } from "@/contexts/SidebarContext"
@@ -171,6 +172,17 @@ export function Sidebar() {
           >
             <DollarSign className="w-5 h-5 text-blue-500" />
             {isOpen && <span className="ml-3">Movimientos</span>}
+          </Button>
+          
+          {/* Buzón de Comprobantes - Nueva funcionalidad */}
+          <Button 
+            variant={isActive("/buzon") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/buzon')}
+          >
+            <Archive className="w-5 h-5 text-indigo-500" />
+            {isOpen && <span className="ml-3">Buzón Comprobantes</span>}
           </Button>
           
           {/* Recurrentes - Gestión periódica */}

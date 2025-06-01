@@ -58,6 +58,8 @@ model User {
   sessions             Session[]
   tareas               Tarea[]
   tiposInversion       TipoInversion[]
+  comprobantesTransferencia ComprobanteTransferencia[]
+  comprobantesPendientes ComprobantePendiente[]
   plan                 Plan?                 @relation(fields: [planId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
@@ -111,11 +113,13 @@ model Gasto {
   incluirEnFamilia  Boolean          @default(true)
   fechaImputacion   DateTime?
   gastoRecurrenteId Int?
+  origenComprobante String?
   financiacion      Financiacion?
   categoriaRel      Categoria?       @relation(fields: [categoriaId], references: [id])
   gastoRecurrente   GastoRecurrente? @relation("GastoGenerado", fields: [gastoRecurrenteId], references: [id])
   user              User             @relation(fields: [userId], references: [id])
   detalles          GastoDetalle[]
+  comprobanteTransferencia ComprobanteTransferencia?
 }
 
 model Categoria {
@@ -533,4 +537,76 @@ enum FrecuenciaNotificacion {
   SEMANAL
   MENSUAL
   PERSONALIZADA
+}
+
+model ComprobanteTransferencia {
+  id              String   @id @default(cuid())
+  userId          String
+  
+  nombreArchivo   String
+  tipoArchivo     String
+  tamanioArchivo  Int
+  rutaArchivo     String?
+  
+  fecha           DateTime
+  monto           Float
+  moneda          String   @default("ARS")
+  bancoEmisor     String?
+  cuentaOrigen    String?
+  cuentaDestino   String?
+  cbuOrigen       String?
+  cbuDestino      String?
+  aliasOrigen     String?
+  aliasDestino    String?
+  concepto        String?
+  numeroOperacion String?
+  comision        Float?   @default(0)
+  
+  estadoProcesamiento String @default("pendiente")
+  confianzaExtraccion Float?
+  erroresDetectados   String?
+  datosOriginalesOCR  String?
+  
+  gastoGeneradoId Int?     @unique
+  gastoGenerado   Gasto?   @relation(fields: [gastoGeneradoId], references: [id])
+  
+  fechaSubida     DateTime @default(now())
+  fechaProcesado  DateTime?
+  fechaDescartado DateTime?
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("comprobantes_transferencia")
+  @@index([userId, estadoProcesamiento])
+  @@index([userId, fechaSubida])
+}
+
+model ComprobantePendiente {
+  id                     String   @id @default(cuid())
+  userId                 String
+  
+  nombreArchivo          String
+  tipoDetectado          String   // 'transferencia', 'ticket', 'servicio', 'resumen_tarjeta', 'desconocido'
+  confianzaClasificacion Float    // 0-100
+  contenidoBase64        String   @db.Text
+  tamaño                 Int
+  metadatos              Json?
+  
+  estado                 String   @default("pendiente") // 'pendiente', 'procesando', 'confirmado', 'descartado'
+  
+  // Datos extraídos temporalmente (JSON)
+  datosExtraidos         Json?
+  errorProcesamiento     String?
+  
+  fechaSubida            DateTime @default(now())
+  fechaProcesado         DateTime?
+  fechaConfirmado        DateTime?
+  fechaDescartado        DateTime?
+  
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("comprobantes_pendientes")
+  @@index([userId, estado])
+  @@index([userId, fechaSubida])
+  @@index([estado, fechaSubida])
 }
