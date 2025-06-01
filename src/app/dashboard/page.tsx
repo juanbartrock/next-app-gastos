@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { 
   BarChart, 
   Bell, 
@@ -31,7 +32,10 @@ import {
   Wallet,
   CreditCard,
   Banknote,
-  PiggyBank
+  PiggyBank,
+  Shield,
+  Lock,
+  Info
 } from "lucide-react"
 import { format, startOfMonth, endOfMonth } from "date-fns"
 import { es } from "date-fns/locale"
@@ -39,6 +43,7 @@ import { cn } from "@/lib/utils"
 import { useSidebar } from "@/contexts/SidebarContext"
 import { useTheme } from "@/providers/ThemeProvider"
 import { useVisibility } from "@/contexts/VisibilityContext"
+import { usePermisosFamiliares } from "@/contexts/PermisosFamiliaresContext"
 import { Switch } from "@/components/ui/switch"
 import { 
   DropdownMenu, 
@@ -155,11 +160,17 @@ function DashboardExpenseForm({ onTransactionAdded }: { onTransactionAdded: () =
 function UltimosMovimientos({ gastos }: { gastos: any[] }) {
   const { formatMoney } = useCurrency()
   const { valuesVisible } = useVisibility()
-  const router = useRouter()
+  const [expandido, setExpandido] = useState(false)
   
+  const cantidadMostrar = expandido ? 20 : 5
   const ultimosMovimientos = gastos
-    .slice(0, 5)
+    .slice(0, expandido ? 50 : 15)  // Obtener más datos cuando esté expandido
     .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+
+  // Filtrar movimientos por tipo
+  const ingresos = ultimosMovimientos.filter(m => m.tipoTransaccion === 'income').slice(0, cantidadMostrar)
+  const egresos = ultimosMovimientos.filter(m => m.tipoTransaccion === 'expense').slice(0, cantidadMostrar)
+  const todos = ultimosMovimientos.slice(0, cantidadMostrar)
 
   const getMovementIcon = (tipoMovimiento: string) => {
     switch (tipoMovimiento) {
@@ -180,58 +191,172 @@ function UltimosMovimientos({ gastos }: { gastos: any[] }) {
     return tipoTransaccion === 'income' ? 'text-green-600' : 'text-red-600'
   }
 
-  return (
+  const renderMovimientos = (movimientos: any[], emptyMessage: string, tipoFiltro: string) => (
     <div className="space-y-3">
-      {ultimosMovimientos.length === 0 ? (
+      {movimientos.length === 0 ? (
         <div className="text-center py-6 text-muted-foreground">
-          <p>No hay movimientos registrados</p>
+          <p>{emptyMessage}</p>
         </div>
       ) : (
         <>
-          {ultimosMovimientos.map((movimiento) => (
-            <div
-              key={movimiento.id}
-              className="flex items-center justify-between p-3 rounded-lg border bg-card hover:shadow-sm transition-shadow"
-            >
-              <div className="flex items-center gap-3">
-                {getMovementIcon(movimiento.tipoMovimiento)}
-                <div className="flex-1">
-                  <p className="font-medium text-sm truncate max-w-[150px]">
-                    {movimiento.concepto}
+          <div className={cn("space-y-3", expandido && "max-h-96 overflow-y-auto")}>
+            {movimientos.map((movimiento) => (
+              <div
+                key={movimiento.id}
+                className="flex items-center justify-between p-3 rounded-lg border bg-card hover:shadow-sm transition-shadow"
+              >
+                <div className="flex items-center gap-3">
+                  {getMovementIcon(movimiento.tipoMovimiento)}
+                  <div className="flex-1">
+                    <p className="font-medium text-sm truncate max-w-[150px]">
+                      {movimiento.concepto}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(movimiento.fecha), 'dd/MM/yy', { locale: es })}
+                      {movimiento.incluirEnFamilia && (
+                        <span className="ml-2 text-blue-500">• Familiar</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className={cn(
+                    "font-semibold text-sm",
+                    getTransactionColor(movimiento.tipoTransaccion)
+                  )}>
+                    {movimiento.tipoTransaccion === 'income' ? '+' : '-'}
+                    {valuesVisible ? formatMoney(movimiento.monto) : "••••"}
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    {format(new Date(movimiento.fecha), 'dd/MM/yy', { locale: es })}
-                    {movimiento.incluirEnFamilia && (
-                      <span className="ml-2 text-blue-500">• Familiar</span>
-                    )}
+                  <p className="text-xs text-muted-foreground capitalize">
+                    {movimiento.tipoMovimiento}
                   </p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className={cn(
-                  "font-semibold text-sm",
-                  getTransactionColor(movimiento.tipoTransaccion)
-                )}>
-                  {movimiento.tipoTransaccion === 'income' ? '+' : '-'}
-                  {valuesVisible ? formatMoney(movimiento.monto) : "••••"}
-                </p>
-                <p className="text-xs text-muted-foreground capitalize">
-                  {movimiento.tipoMovimiento}
-                </p>
-              </div>
+            ))}
+          </div>
+          
+          {/* Información de paginación */}
+          {expandido && (
+            <div className="text-center text-xs text-muted-foreground py-2 border-t">
+              Mostrando {movimientos.length} 
+              {tipoFiltro === 'todos' && ' movimientos'}
+              {tipoFiltro === 'ingresos' && ' ingresos'}
+              {tipoFiltro === 'egresos' && ' egresos'}
             </div>
-          ))}
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full mt-3"
-            onClick={() => router.push('/transacciones/nuevo')}
-          >
-            Ver todos los movimientos
-          </Button>
+          )}
         </>
       )}
     </div>
+  )
+
+  return (
+    <Tabs defaultValue="todos" className="w-full">
+      <TabsList className="grid w-full grid-cols-3">
+        <TabsTrigger value="todos" className="flex items-center gap-2 text-xs">
+          <DollarSign className="h-3 w-3" />
+          Todo
+        </TabsTrigger>
+        <TabsTrigger value="ingresos" className="flex items-center gap-2 text-xs">
+          <TrendingUp className="h-3 w-3" />
+          Ingresos
+        </TabsTrigger>
+        <TabsTrigger value="egresos" className="flex items-center gap-2 text-xs">
+          <TrendingDown className="h-3 w-3" />
+          Egresos
+        </TabsTrigger>
+      </TabsList>
+      
+      <TabsContent value="todos" className="mt-4">
+        {renderMovimientos(todos, "No hay movimientos registrados", "todos")}
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full mt-3"
+          onClick={() => setExpandido(!expandido)}
+        >
+          {expandido ? "Mostrar menos" : `Ver todos los movimientos (${ultimosMovimientos.length})`}
+        </Button>
+      </TabsContent>
+      
+      <TabsContent value="ingresos" className="mt-4">
+        {renderMovimientos(ingresos, "No hay ingresos registrados", "ingresos")}
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full mt-3"
+          onClick={() => setExpandido(!expandido)}
+        >
+          {expandido ? "Mostrar menos" : `Ver todos los ingresos (${ultimosMovimientos.filter(m => m.tipoTransaccion === 'income').length})`}
+        </Button>
+      </TabsContent>
+      
+      <TabsContent value="egresos" className="mt-4">
+        {renderMovimientos(egresos, "No hay egresos registrados", "egresos")}
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full mt-3"
+          onClick={() => setExpandido(!expandido)}
+        >
+          {expandido ? "Mostrar menos" : `Ver todos los egresos (${ultimosMovimientos.filter(m => m.tipoTransaccion === 'expense').length})`}
+        </Button>
+      </TabsContent>
+    </Tabs>
+  )
+}
+
+// Componente para mostrar el nivel de acceso del usuario
+function NivelAccesoIndicator({ nivel, esAdministrador }: { nivel: string, esAdministrador: boolean }) {
+  const getIndicatorStyle = () => {
+    switch (nivel) {
+      case 'ADMINISTRADOR_FAMILIAR':
+        return "bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-200"
+      case 'MIEMBRO_COMPLETO':
+        return "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900 dark:text-blue-200"
+      case 'MIEMBRO_LIMITADO':
+        return "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-200"
+      case 'PERSONAL':
+        return "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900 dark:text-orange-200"
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900 dark:text-gray-200"
+    }
+  }
+
+  const getIcono = () => {
+    switch (nivel) {
+      case 'ADMINISTRADOR_FAMILIAR':
+        return <Shield className="h-3 w-3" />
+      case 'MIEMBRO_COMPLETO':
+        return <Users className="h-3 w-3" />
+      case 'MIEMBRO_LIMITADO':
+        return <Lock className="h-3 w-3" />
+      case 'PERSONAL':
+        return <User className="h-3 w-3" />
+      default:
+        return <Info className="h-3 w-3" />
+    }
+  }
+
+  const getTexto = () => {
+    switch (nivel) {
+      case 'ADMINISTRADOR_FAMILIAR':
+        return "Administrador Familiar"
+      case 'MIEMBRO_COMPLETO':
+        return "Acceso Familiar Completo"
+      case 'MIEMBRO_LIMITADO':
+        return "Acceso Limitado"
+      case 'PERSONAL':
+        return "Solo Personal"
+      default:
+        return "Sin Grupo"
+    }
+  }
+
+  return (
+    <Badge variant="outline" className={cn("flex items-center gap-1 text-xs", getIndicatorStyle())}>
+      {getIcono()}
+      {getTexto()}
+    </Badge>
   )
 }
 
@@ -243,6 +368,14 @@ export default function DashboardRedesigned() {
   const { theme, toggleTheme } = useTheme()
   const { valuesVisible, toggleVisibility } = useVisibility()
   const { formatMoney } = useCurrency()
+  const { 
+    nivel, 
+    puedeVerGastosFamiliares, 
+    esAdministradorFamiliar, 
+    tienePermisosFamiliares,
+    loading: permisosLoading,
+    error: permisosError
+  } = usePermisosFamiliares()
   
   // Estados de la interfaz de usuario
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
@@ -272,10 +405,20 @@ export default function DashboardRedesigned() {
       const response = await fetch('/api/gastos/familiares?usarFechaImputacion=true')
       if (response.ok) {
         const data = await response.json()
-        setGastosFamiliares(data)
+        // El API devuelve { gastos, permisos }, necesitamos extraer solo el array de gastos
+        if (data.gastos && Array.isArray(data.gastos)) {
+          setGastosFamiliares(data.gastos)
+        } else {
+          console.warn('Respuesta del API de gastos familiares no contiene array de gastos válido:', data)
+          setGastosFamiliares([])
+        }
+      } else {
+        console.error('Error en respuesta del API de gastos familiares:', response.status)
+        setGastosFamiliares([])
       }
     } catch (error) {
       console.error('Error al cargar gastos familiares:', error)
+      setGastosFamiliares([])
     }
   }
 
@@ -366,7 +509,7 @@ export default function DashboardRedesigned() {
   })()
 
   // Cálculos de gastos familiares del mes actual
-  const gastosFamiliaresDelMes = gastosFamiliares.filter(gasto => {
+  const gastosFamiliaresDelMes = (Array.isArray(gastosFamiliares) ? gastosFamiliares : []).filter(gasto => {
     const fechaContable = (gasto as any).fechaImputacion || gasto.fecha
     const gastoDate = new Date(fechaContable)
     return gastoDate.getMonth() === currentMonth && gastoDate.getFullYear() === currentYear
@@ -396,19 +539,22 @@ export default function DashboardRedesigned() {
   const totalBalances = (() => {
     const totals = { total: 0, efectivo: 0, digital: 0, ahorro: 0 }
 
-    gastosFamiliares.forEach(gasto => {
-      const amount = gasto.tipoTransaccion === 'income' ? Number(gasto.monto) : -Number(gasto.monto)
-      
-      totals.total += amount
-      
-      if (gasto.tipoMovimiento === 'efectivo') {
-        totals.efectivo += amount
-      } else if (gasto.tipoMovimiento === 'digital') {
-        totals.digital += amount
-      } else if (gasto.tipoMovimiento === 'ahorro') {
-        totals.ahorro += amount
-      }
-    })
+    // Verificar que gastosFamiliares sea un array
+    if (Array.isArray(gastosFamiliares)) {
+      gastosFamiliares.forEach(gasto => {
+        const amount = gasto.tipoTransaccion === 'income' ? Number(gasto.monto) : -Number(gasto.monto)
+        
+        totals.total += amount
+        
+        if (gasto.tipoMovimiento === 'efectivo') {
+          totals.efectivo += amount
+        } else if (gasto.tipoMovimiento === 'digital') {
+          totals.digital += amount
+        } else if (gasto.tipoMovimiento === 'ahorro') {
+          totals.ahorro += amount
+        }
+      })
+    }
 
     return totals
   })()
@@ -564,6 +710,10 @@ export default function DashboardRedesigned() {
                   {format(new Date(currentYear, currentMonth), 'MMMM yyyy', { locale: es })}
                 </h1>
                 <p className="text-sm text-muted-foreground">Dashboard financiero</p>
+                {/* Indicador de nivel de acceso */}
+                <div className="mt-2">
+                  <NivelAccesoIndicator nivel={nivel} esAdministrador={esAdministradorFamiliar} />
+                </div>
               </div>
               <Button 
                 variant="outline" 
@@ -578,15 +728,17 @@ export default function DashboardRedesigned() {
 
             {/* Tabs para separar vistas */}
             <Tabs defaultValue="personal" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className={cn("grid w-full", puedeVerGastosFamiliares() ? "grid-cols-2" : "grid-cols-1")}>
                 <TabsTrigger value="personal" className="flex items-center gap-2">
                   <UserCheck className="h-4 w-4" />
                   Mi situación mensual
                 </TabsTrigger>
-                <TabsTrigger value="familiar" className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Situación familiar
-                </TabsTrigger>
+                {puedeVerGastosFamiliares() && (
+                  <TabsTrigger value="familiar" className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Situación familiar
+                  </TabsTrigger>
+                )}
               </TabsList>
               
               {/* Tab Personal */}
@@ -628,7 +780,7 @@ export default function DashboardRedesigned() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <FinancialDataWidget />
+                      <FinancialDataWidget month={currentMonth} year={currentYear} />
                     </CardContent>
                   </Card>
                   
@@ -644,91 +796,137 @@ export default function DashboardRedesigned() {
                     </CardContent>
                   </Card>
                 </div>
+
+                {/* Formulario de nuevo movimiento y últimos movimientos personales */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Registrar nuevo movimiento</CardTitle>
+                      <CardDescription>
+                        Registra un nuevo gasto o ingreso personal. Usa el checkbox para indicar si debe incluirse en los totales familiares.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <DashboardExpenseForm onTransactionAdded={reloadData} />
+                    </CardContent>
+                  </Card>
+
+                  {/* Últimos movimientos personales */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Mis últimos movimientos</CardTitle>
+                      <CardDescription>
+                        Movimientos personales recientes registrados
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <UltimosMovimientos gastos={gastosPersonales} />
+                    </CardContent>
+                  </Card>
+                </div>
               </TabsContent>
               
               {/* Tab Familiar */}
-              <TabsContent value="familiar" className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <BalanceCard
-                    title="Ingresos Familiares"
-                    amount={formatMoney(familyMonthStats.ingresos)}
-                    subtitle="Ingresos de todos los miembros"
-                    icon={TrendingUp}
-                    variant="positive"
-                  />
-                  <BalanceCard
-                    title="Gastos Familiares"
-                    amount={formatMoney(familyMonthStats.gastos)}
-                    subtitle="Gastos marcados como familiares"
-                    icon={TrendingDown}
-                    variant="negative"
-                  />
-                  <BalanceCard
-                    title="Balance Familiar"
-                    amount={formatMoney(familyMonthStats.balance)}
-                    subtitle="Balance familiar del mes"
-                    icon={Users}
-                    variant={familyMonthStats.balance >= 0 ? "positive" : "negative"}
-                  />
-                </div>
+              {puedeVerGastosFamiliares() ? (
+                <TabsContent value="familiar" className="space-y-6">
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <BalanceCard
+                      title="Ingresos Familiares"
+                      amount={formatMoney(familyMonthStats.ingresos)}
+                      subtitle="Ingresos de todos los miembros"
+                      icon={TrendingUp}
+                      variant="positive"
+                    />
+                    <BalanceCard
+                      title="Gastos Familiares"
+                      amount={formatMoney(familyMonthStats.gastos)}
+                      subtitle="Gastos marcados como familiares"
+                      icon={TrendingDown}
+                      variant="negative"
+                    />
+                    <BalanceCard
+                      title="Balance Familiar"
+                      amount={formatMoney(familyMonthStats.balance)}
+                      subtitle="Balance familiar del mes"
+                      icon={Users}
+                      variant={familyMonthStats.balance >= 0 ? "positive" : "negative"}
+                    />
+                  </div>
 
-                {/* Estadísticas adicionales familiares */}
-                <div className="grid gap-4 md:grid-cols-4">
-                  <BalanceCard
-                    title="Total Efectivo"
-                    amount={formatMoney(totalBalances.efectivo)}
-                    icon={Banknote}
-                    variant="default"
-                  />
-                  <BalanceCard
-                    title="Total Digital"
-                    amount={formatMoney(totalBalances.digital)}
-                    icon={CreditCard}
-                    variant="default"
-                  />
-                  <BalanceCard
-                    title="Total Ahorros"
-                    amount={formatMoney(totalBalances.ahorro)}
-                    icon={PiggyBank}
-                    variant="default"
-                  />
-                  <BalanceCard
-                    title="Saldo General"
-                    amount={formatMoney(totalBalances.total)}
-                    icon={DollarSign}
-                    variant={totalBalances.total >= 0 ? "positive" : "negative"}
-                  />
-                </div>
-              </TabsContent>
+                  {/* Estadísticas adicionales familiares */}
+                  <div className="grid gap-4 md:grid-cols-4">
+                    <BalanceCard
+                      title="Total Efectivo"
+                      amount={formatMoney(totalBalances.efectivo)}
+                      icon={Banknote}
+                      variant="default"
+                    />
+                    <BalanceCard
+                      title="Total Digital"
+                      amount={formatMoney(totalBalances.digital)}
+                      icon={CreditCard}
+                      variant="default"
+                    />
+                    <BalanceCard
+                      title="Total Ahorros"
+                      amount={formatMoney(totalBalances.ahorro)}
+                      icon={PiggyBank}
+                      variant="default"
+                    />
+                    <BalanceCard
+                      title="Saldo General"
+                      amount={formatMoney(totalBalances.total)}
+                      icon={DollarSign}
+                      variant={totalBalances.total >= 0 ? "positive" : "negative"}
+                    />
+                  </div>
+
+                  {/* Formulario de nuevo movimiento y últimos movimientos familiares */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Registrar nuevo movimiento</CardTitle>
+                        <CardDescription>
+                          Registra un nuevo gasto o ingreso. Marca el checkbox para incluirlo en los totales familiares.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <DashboardExpenseForm onTransactionAdded={reloadData} />
+                      </CardContent>
+                    </Card>
+
+                    {/* Últimos movimientos familiares */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Últimos movimientos familiares</CardTitle>
+                        <CardDescription>
+                          Movimientos familiares recientes registrados
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <UltimosMovimientos gastos={gastosFamiliares} />
+                      </CardContent>
+                    </Card>
+                  </div>
+                </TabsContent>
+              ) : (
+                <TabsContent value="familiar" className="space-y-6">
+                  <Alert>
+                    <Lock className="h-4 w-4" />
+                    <AlertDescription>
+                      <div className="space-y-2">
+                        <p className="font-medium">Acceso Restringido</p>
+                        <p>No tienes permisos para ver la información familiar completa. Solo puedes acceder a tu información personal.</p>
+                        <p className="text-sm text-muted-foreground">
+                          {nivel === 'MIEMBRO_LIMITADO' && "Contacta al administrador familiar para solicitar permisos adicionales."}
+                          {nivel === 'PERSONAL' && "Únete a un grupo familiar o contacta al administrador para obtener acceso."}
+                        </p>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                </TabsContent>
+              )}
             </Tabs>
-
-            {/* Formulario de nuevo movimiento y últimos movimientos */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Registrar nuevo movimiento</CardTitle>
-                  <CardDescription>
-                    Registra un nuevo gasto o ingreso. Usa el checkbox para indicar si debe incluirse en los totales familiares.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <DashboardExpenseForm onTransactionAdded={reloadData} />
-                </CardContent>
-              </Card>
-
-              {/* Últimos movimientos */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Últimos movimientos</CardTitle>
-                  <CardDescription>
-                    Movimientos recientes registrados
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <UltimosMovimientos gastos={gastosPersonales} />
-                </CardContent>
-              </Card>
-            </div>
           </div>
         </div>
       </main>

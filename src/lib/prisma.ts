@@ -1,10 +1,11 @@
 import { PrismaClient } from '@prisma/client'
 
-// Añadir manejo global de errores y configuración de log
+// Configuración mejorada para manejar conexiones intermitentes de Neon
 const prismaClientSingleton = () => {
   const client = new PrismaClient({
-    log: [], // Desactivar TODOS los logs de Prisma
+    log: [], // Desactivar logs para evitar spam
     errorFormat: 'minimal',
+    datasourceUrl: process.env.DATABASE_URL,
   });
   
   // Crear un proxy que permita acceder a modelos que no sean reconocidos por TypeScript
@@ -27,6 +28,23 @@ const prismaClientSingleton = () => {
   });
 };
 
+// Función para conectar con reintentos
+async function connectWithRetry(client: any, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      await client.$connect();
+      console.log('✅ Conexión a base de datos establecida');
+      return;
+    } catch (error) {
+      console.log(`❌ Intento ${i + 1}/${maxRetries} falló:`, error);
+      if (i === maxRetries - 1) throw error;
+      
+      // Esperar antes del próximo intento (exponential backoff)
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+    }
+  }
+}
+
 // Declaración para TypeScript
 type PrismaClientSingleton = ReturnType<typeof prismaClientSingleton>;
 
@@ -42,5 +60,8 @@ const prisma = globalForPrisma.prisma ?? prismaClientSingleton();
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;
 }
+
+// Conectar automáticamente al importar
+connectWithRetry(prisma).catch(console.error);
 
 export default prisma 

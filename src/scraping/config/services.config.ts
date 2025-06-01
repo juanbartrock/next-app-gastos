@@ -40,7 +40,7 @@ export const serviceConfig: Record<string, ServiceConfig> = {
     country: 'ar',
     currency: 'ARS',
     enabled: true,
-    useForRecommendations: false,
+    useForRecommendations: true,
     scrapingUrls: [
       'https://www.spotify.com/ar/premium/',
       'https://www.spotify.com/ar/premium/#plans'

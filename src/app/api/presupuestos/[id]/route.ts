@@ -15,7 +15,8 @@ export async function GET(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
     
-    const id = parseInt(params.id);
+    // El ID es string, no necesita parseInt
+    const id = params.id;
     
     const presupuesto = await prisma.presupuesto.findUnique({
       where: {
@@ -82,7 +83,8 @@ export async function PUT(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
     
-    const id = parseInt(params.id);
+    // El ID es string, no necesita parseInt
+    const id = params.id;
     const { nombre, monto, categoriaId, mes, año } = await request.json();
     
     // Verificar que el presupuesto existe y pertenece al usuario
@@ -158,7 +160,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
     
-    const id = parseInt(params.id);
+    // El ID es string, no necesita parseInt
+    const id = params.id;
     
     // Verificar que el presupuesto existe y pertenece al usuario
     const existingBudget = await prisma.presupuesto.findUnique({

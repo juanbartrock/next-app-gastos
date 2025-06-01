@@ -44,20 +44,47 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Obtener grupos a los que pertenece el usuario
-    const gruposMiembro = await prisma.grupoMiembro.findMany({
+    // Verificar permisos familiares del usuario
+    const permisosFamiliares = await prisma.grupoMiembro.findMany({
       where: { userId: usuario.id },
-      select: { grupoId: true }
+      include: {
+        grupo: {
+          select: {
+            id: true,
+            adminId: true
+          }
+        }
+      }
     })
-    
-    if (gruposMiembro.length === 0) {
-      // Si no pertenece a ningún grupo, devolver solo sus gastos familiares
+
+    // Determinar si el usuario puede ver información familiar
+    // Por ahora usamos lógica simplificada basada en si es admin del grupo
+    const puedeVerFamiliar = permisosFamiliares.some(m => 
+      m.grupo.adminId === usuario.id || 
+      m.rol === 'administrador' // Usar rol string existente
+    )
+
+    // Si no tiene permisos familiares, devolver solo sus gastos personales
+    if (!puedeVerFamiliar) {
       let whereCondition: any = {
         userId: usuario.id,
         incluirEnFamilia: true,
-        NOT: { 
-          tipoMovimiento: "tarjeta" 
-        }
+        NOT: [
+          { tipoMovimiento: "tarjeta" },
+          // Excluir transferencias internas (son movimientos neutros para la familia)
+          // Solo excluir si la categoría es "Transferencias" Y es transferencia interna
+          {
+            AND: [
+              { categoria: "Transferencias" },
+              {
+                OR: [
+                  { concepto: { contains: "Transferencia interna:" } },
+                  { concepto: { contains: "Transferencia recibida de" } }
+                ]
+              }
+            ]
+          }
+        ]
       }
 
       // Agregar condiciones de fecha si se proporcionaron
@@ -124,7 +151,29 @@ export async function GET(request: NextRequest) {
         }
       })
 
-      return NextResponse.json(gastos)
+      return NextResponse.json({
+        gastos,
+        permisos: {
+          nivel: 'PERSONAL',
+          mensaje: 'Solo mostrando tus gastos personales. Contacta al administrador familiar para acceso completo.'
+        }
+      })
+    }
+
+    // Obtener grupos a los que pertenece el usuario
+    const gruposMiembro = await prisma.grupoMiembro.findMany({
+      where: { userId: usuario.id },
+      select: { grupoId: true }
+    })
+    
+    if (gruposMiembro.length === 0) {
+      return NextResponse.json({
+        gastos: [],
+        permisos: {
+          nivel: 'SIN_GRUPO',
+          mensaje: 'No perteneces a ningún grupo familiar.'
+        }
+      })
     }
 
     // Obtener todos los usuarios de los grupos familiares
@@ -145,9 +194,22 @@ export async function GET(request: NextRequest) {
         in: userIds
       },
       incluirEnFamilia: true,  // Solo gastos marcados como familiares
-      NOT: { 
-        tipoMovimiento: "tarjeta" 
-      }
+      NOT: [
+        { tipoMovimiento: "tarjeta" },
+        // Excluir transferencias internas (son movimientos neutros para la familia)
+        // Solo excluir si la categoría es "Transferencias" Y es transferencia interna
+        {
+          AND: [
+            { categoria: "Transferencias" },
+            {
+              OR: [
+                { concepto: { contains: "Transferencia interna:" } },
+                { concepto: { contains: "Transferencia recibida de" } }
+              ]
+            }
+          ]
+        }
+      ]
     }
     
     // Agregar condiciones de fecha si se proporcionaron
@@ -214,8 +276,20 @@ export async function GET(request: NextRequest) {
         fecha: 'desc'
       }
     })
+
+    // Determinar nivel de acceso para el response
+    const esAdministrador = permisosFamiliares.some(m => 
+      m.grupo.adminId === usuario.id ||
+      m.rol === 'administrador'
+    )
     
-    return NextResponse.json(gastos)
+    return NextResponse.json({
+      gastos,
+      permisos: {
+        nivel: esAdministrador ? 'ADMINISTRADOR_FAMILIAR' : 'MIEMBRO_COMPLETO',
+        mensaje: esAdministrador ? 'Acceso completo como administrador familiar' : 'Acceso completo a información familiar'
+      }
+    })
   } catch (error) {
     console.error('Error al obtener gastos familiares:', error)
     return NextResponse.json(

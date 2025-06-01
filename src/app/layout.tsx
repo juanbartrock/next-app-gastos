@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/providers/ThemeProvider";
 import { SidebarProvider } from "@/contexts/SidebarContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { VisibilityProvider } from "@/contexts/VisibilityContext";
+import { PermisosFamiliaresProvider } from "@/contexts/PermisosFamiliaresContext";
 import { SidebarStateManager } from "@/components/SidebarStateManager";
 
 const inter = Inter({
@@ -40,8 +41,10 @@ export default function RootLayout({
               <SidebarProvider>
                 <CurrencyProvider>
                   <VisibilityProvider>
-                    <SidebarStateManager />
-                    {children}
+                    <PermisosFamiliaresProvider>
+                      <SidebarStateManager />
+                      {children}
+                    </PermisosFamiliaresProvider>
                   </VisibilityProvider>
                 </CurrencyProvider>
               </SidebarProvider>

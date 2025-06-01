@@ -64,11 +64,13 @@ export default function SeguimientoPreciosPage() {
   const [loading, setLoading] = useState(false)
   const [resultados, setResultados] = useState<ResultadoSeguimiento | null>(null)
   const [expandedProduct, setExpandedProduct] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const { formatMoney } = useCurrency()
 
   const buscarOfertas = async () => {
     try {
       setLoading(true)
+      setError(null)
       const response = await fetch("/api/price-search", {
         method: "POST",
       })
@@ -78,6 +80,12 @@ export default function SeguimientoPreciosPage() {
       }
 
       const data = await response.json()
+      
+      // Validar que la respuesta tenga la estructura esperada
+      if (!data || !data.stats) {
+        throw new Error("Respuesta inválida del servidor")
+      }
+      
       setResultados(data)
       
       if (data.stats.mejoresPrecios > 0) {
@@ -87,7 +95,9 @@ export default function SeguimientoPreciosPage() {
       }
     } catch (error) {
       console.error("Error:", error)
-      toast.error("Error al buscar ofertas")
+      const errorMessage = error instanceof Error ? error.message : "Error desconocido"
+      setError(errorMessage)
+      toast.error("Error al buscar ofertas: " + errorMessage)
     } finally {
       setLoading(false)
     }
@@ -151,7 +161,28 @@ export default function SeguimientoPreciosPage() {
               </div>
             </CardContent>
           </Card>
-        ) : resultados ? (
+        ) : error ? (
+          <Card>
+            <CardContent className="py-10">
+              <div className="flex flex-col items-center justify-center">
+                <div className="bg-red-100 dark:bg-red-900/20 p-3 rounded-full mb-4">
+                  <ExternalLink className="h-8 w-8 text-red-600 dark:text-red-400" />
+                </div>
+                <p className="text-lg text-red-600 dark:text-red-400">Error al cargar los datos</p>
+                <p className="text-sm text-muted-foreground mt-1 text-center max-w-md">
+                  {error}
+                </p>
+                <Button 
+                  onClick={buscarOfertas} 
+                  className="mt-4"
+                  variant="outline"
+                >
+                  Intentar de nuevo
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : resultados && resultados.stats ? (
           <>
             <Card>
               <CardHeader>
@@ -161,22 +192,22 @@ export default function SeguimientoPreciosPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-muted/30 p-4 rounded-lg">
                     <p className="text-sm text-muted-foreground">Productos en seguimiento</p>
-                    <p className="text-2xl font-bold">{resultados.stats.totalProductos}</p>
+                    <p className="text-2xl font-bold">{resultados.stats?.totalProductos || 0}</p>
                   </div>
                   <div className="bg-muted/30 p-4 rounded-lg">
                     <p className="text-sm text-muted-foreground">Ofertas encontradas</p>
-                    <p className="text-2xl font-bold">{resultados.stats.mejoresPrecios}</p>
+                    <p className="text-2xl font-bold">{resultados.stats?.mejoresPrecios || 0}</p>
                   </div>
                   <div className="bg-muted/30 p-4 rounded-lg">
                     <p className="text-sm text-muted-foreground">Ahorro potencial</p>
                     <p className="text-2xl font-bold">
                       {formatMoney(
                         resultados.results
-                          .filter(oferta => oferta.resultado.foundBetterPrice)
-                          .reduce(
+                          ?.filter(oferta => oferta.resultado.foundBetterPrice)
+                          ?.reduce(
                             (total, oferta) => total + (oferta.resultado.saving || 0), 
                             0
-                          )
+                          ) || 0
                       )}
                     </p>
                   </div>
@@ -184,7 +215,7 @@ export default function SeguimientoPreciosPage() {
               </CardContent>
             </Card>
 
-            {resultados.results.length > 0 ? (
+            {resultados.results && resultados.results.length > 0 ? (
               <Card>
                 <CardHeader>
                   <CardTitle>Mejores Ofertas</CardTitle>

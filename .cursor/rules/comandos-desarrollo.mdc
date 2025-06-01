@@ -3,3 +3,113 @@ description:
 globs:
 alwaysApply: false
 ---
+# Comandos de Desarrollo y Mantenimiento
+
+## Scripts PowerShell Implementados ✅
+
+### Desarrollo Local
+- **Inicio completo**: [start-dev.ps1](mdc:start-dev.ps1)
+  ```powershell
+  ./start-dev.ps1  # Inicia con variables de entorno
+  ```
+
+- **Base de datos**: [db-push.ps1](mdc:db-push.ps1)
+  ```powershell
+  ./db-push.ps1    # Sincroniza schema de Prisma
+  ```
+
+- **Prisma Studio**: [start-studio.ps1](mdc:start-studio.ps1)
+  ```powershell
+  ./start-studio.ps1  # Abre interfaz visual de BD
+  ```
+
+### Gestión de Usuarios
+- **Crear admin**: [make-admin.ps1](mdc:make-admin.ps1)
+- **Verificar admin**: [check-admin.ps1](mdc:check-admin.ps1)
+- **Crear usuario Mateo**: [create-mateo.ps1](mdc:create-mateo.ps1)
+- **Reset password**: [reset-password-monica.ps1](mdc:reset-password-monica.ps1)
+
+## Comandos NPM Configurados ✅
+Definidos en [package.json](mdc:package.json):
+
+```bash
+# Desarrollo
+npm run dev:full        # Desarrollo con variables de entorno
+npm run dev            # Desarrollo estándar
+npm run build          # Build para producción
+npm run start          # Modo producción
+
+# Base de datos
+npm run studio         # Prisma Studio con variables
+npx prisma db push     # Sincronizar schema
+npx prisma generate    # Generar cliente tipado
+
+# Calidad de código
+npm run lint           # ESLint
+npm run type-check     # Verificación de tipos
+```
+
+## Variables de Entorno Requeridas ✅
+Configuración en [.env](mdc:.env):
+
+```bash
+# Base de datos (REQUERIDO)
+DATABASE_URL="postgresql://user:pass@host:5432/dbname"
+
+# Autenticación (REQUERIDO)
+NEXTAUTH_SECRET="tu-secreto-super-seguro"
+NEXTAUTH_URL="http://localhost:3000"
+
+# Inteligencia Artificial (REQUERIDO para FASE 3)
+OPENAI_API_KEY="sk-proj-tu-api-key-de-openai"
+
+# Notificaciones (OPCIONAL)
+TWILIO_ACCOUNT_SID="tu-sid-de-twilio"
+TWILIO_AUTH_TOKEN="tu-token-de-twilio"
+```
+
+## Scripts de Inicialización ✅
+- **Crear planes**: `node scripts/create-plans.js`
+- **Crear funcionalidades**: `node scripts/create-funcionalidades.js`
+- **Datos de prueba**: En `GeneracionDatosPrueba/`
+
+## Deployment en Vercel ✅
+Configuración en [vercel.json](mdc:vercel.json):
+
+```bash
+# Variables de entorno en Vercel
+DATABASE_URL           # PostgreSQL/Neon
+NEXTAUTH_SECRET        # Secreto de autenticación  
+NEXTAUTH_URL          # URL de producción
+OPENAI_API_KEY        # API key de OpenAI
+```
+
+**Requerimientos**:
+- **Plan Pro de Vercel** (para timeouts de IA de 30s)
+- **Base de datos Neon** configurada
+- **OpenAI API Key** activa
+
+## Testing y Verificación ✅
+
+### Páginas de Prueba Disponibles
+- **Alertas**: `/test-alertas` - [src/app/test-alertas/page.tsx](mdc:src/app/test-alertas/page.tsx)
+- **Motor automático**: `/test-fase2` - [src/app/test-fase2/page.tsx](mdc:src/app/test-fase2/page.tsx)
+- **Inteligencia artificial**: `/test-fase3` - [src/app/test-fase3/page.tsx](mdc:src/app/test-fase3/page.tsx)
+
+### APIs Verificadas ✅
+- **Alertas**: 7 endpoints funcionando
+- **IA**: 5 endpoints con OpenAI
+- **Gestión financiera**: Todas las APIs principales
+- **Autenticación**: NextAuth.js configurado
+
+## Logs y Debugging ✅
+- **Directorio de logs**: [logs/](mdc:logs/)
+- **Archivos de debug**: HTML de testing disponibles
+- **Screenshots**: Para verificación visual
+
+## Estado del Proyecto ✅
+**PROYECTO 100% COMPLETADO** - Listo para producción con:
+- 3 fases implementadas y funcionales
+- APIs completas y verificadas
+- Base de datos configurada
+- Deployment preparado para Vercel

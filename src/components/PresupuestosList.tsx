@@ -9,6 +9,7 @@ import { Trash, PencilIcon, PlusCircle, Loader2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -20,7 +21,7 @@ import { useCurrency } from '@/contexts/CurrencyContext'
 import { cn } from '@/lib/utils'
 
 interface Presupuesto {
-  id: number
+  id: string
   nombre: string
   monto: number
   categoriaId: number | null
@@ -39,8 +40,8 @@ export default function PresupuestosList() {
   const router = useRouter()
   const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([])
   const [loading, setLoading] = useState(true)
-  const [editingId, setEditingId] = useState<number | null>(null)
-  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [mesActual, setMesActual] = useState(new Date().getMonth() + 1) // 1-12
   const [añoActual, setAñoActual] = useState(new Date().getFullYear())
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -82,7 +83,7 @@ export default function PresupuestosList() {
     fetchPresupuestos()
   }, [mesActual, añoActual])
   
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!confirm('¿Está seguro de eliminar este presupuesto?')) {
       return
     }
@@ -107,7 +108,7 @@ export default function PresupuestosList() {
     }
   }
   
-  const handleEdit = (id: number) => {
+  const handleEdit = (id: string) => {
     setEditingId(id)
     setDialogOpen(true)
   }
@@ -179,6 +180,12 @@ export default function PresupuestosList() {
                 <DialogTitle>
                   {editingId ? 'Editar Presupuesto' : 'Nuevo Presupuesto'}
                 </DialogTitle>
+                <DialogDescription>
+                  {editingId 
+                    ? 'Modifica los datos del presupuesto seleccionado'
+                    : 'Crea un nuevo presupuesto mensual para controlar tus gastos'
+                  }
+                </DialogDescription>
               </DialogHeader>
               <PresupuestoForm
                 presupuestoId={editingId || undefined}

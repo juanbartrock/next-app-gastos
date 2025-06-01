@@ -69,6 +69,14 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// Roles familiares disponibles
+enum RolFamiliar {
+  ADMINISTRADOR_FAMILIAR  // Padres/tutores - acceso completo a información familiar
+  MIEMBRO_COMPLETO       // Miembros con acceso a información familiar completa
+  MIEMBRO_LIMITADO       // Hijos/dependientes - solo acceso a su propia información
+  MIEMBRO_RESTRINGIDO    // Acceso muy limitado
+}
+
 model Grupo {
   id          String         @id @default(cuid())
   nombre      String
@@ -81,13 +89,17 @@ model Grupo {
 }
 
 model GrupoMiembro {
-  id        String   @id @default(cuid())
-  grupoId   String
-  userId    String
-  rol       String   @default("miembro")
-  createdAt DateTime @default(now())
-  grupo     Grupo    @relation(fields: [grupoId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String      @id @default(cuid())
+  grupoId          String
+  userId           String
+  rol              String      @default("miembro") // Mantener para compatibilidad
+  rolFamiliar      RolFamiliar @default(MIEMBRO_LIMITADO) // Nuevo campo para roles específicos
+  puedeVerFamiliar Boolean     @default(false) // Permiso explícito para ver información familiar
+  puedeEditarGrupo Boolean     @default(false) // Permiso para editar configuración del grupo
+  fechaIncorporacion DateTime  @default(now()) // Cuándo se unió al grupo
+  createdAt        DateTime    @default(now())
+  grupo            Grupo       @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([grupoId, userId])
 }

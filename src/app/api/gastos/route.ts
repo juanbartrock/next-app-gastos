@@ -51,9 +51,22 @@ export async function GET(request: NextRequest) {
     let whereCondition: any = {
       userId: usuario.id,
       // Excluir los gastos de tipo tarjeta para que no impacten en el flujo de dinero
-      NOT: { 
-        tipoMovimiento: "tarjeta" 
-      }
+      NOT: [
+        { tipoMovimiento: "tarjeta" },
+        // Excluir transferencias internas (son movimientos neutros para el flujo de dinero)
+        // Solo excluir si la categoría es "Transferencias" Y es transferencia interna
+        {
+          AND: [
+            { categoria: "Transferencias" },
+            {
+              OR: [
+                { concepto: { contains: "Transferencia interna:" } },
+                { concepto: { contains: "Transferencia recibida de" } }
+              ]
+            }
+          ]
+        }
+      ]
     }
 
     // Filtros adicionales

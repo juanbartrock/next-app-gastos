@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { usePathname } from 'next/navigation'
 
 // Tipos de moneda y cambio disponibles
 export type CurrencyType = 'ARS' | 'USD';
@@ -27,60 +28,118 @@ interface CurrencyContextType {
 
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
+// Páginas donde NO necesitamos cargar cotizaciones
+const SKIP_FETCH_PAGES = ['/login', '/register', '/api', '/_next'];
+
 export function CurrencyProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const [currency, setCurrency] = useState<CurrencyType>('ARS');
   const [exchangeRateType, setExchangeRateType] = useState<ExchangeRateType>('oficial');
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates>({
-    oficial: 0,
-    blue: 0,
-    cripto: 0
+    oficial: 1050, // Valores por defecto realistas para Argentina
+    blue: 1200,
+    cripto: 1200
   });
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  // Verificar si debemos saltear el fetch en esta página
+  const shouldSkipFetch = SKIP_FETCH_PAGES.some(skipPath => 
+    pathname?.startsWith(skipPath)
+  );
 
   // Función para obtener las tasas de cambio desde la API
   const fetchExchangeRates = async () => {
+    // No hacer fetch en páginas donde no es necesario
+    if (shouldSkipFetch) {
+      return;
+    }
+
     try {
       setIsLoading(true);
-      const response = await fetch('/api/financial-data');
+      
+      // Agregar timeout y mejores controles de error
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos timeout
+      
+      const response = await fetch('/api/financial-data', {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
-        throw new Error('Error al obtener datos financieros');
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('La respuesta no es JSON válido');
       }
       
       const data = await response.json();
       
-      // Actualizar las tasas de cambio con los datos de la API
-      const newRates = {
-        oficial: data.dollar?.oficial?.venta || 0,
-        blue: data.dollar?.blue?.venta || 0,
-        cripto: data.dollar?.blue?.venta || 0 // Usar blue como fallback para cripto
-      };
-      
-      setExchangeRates(newRates);
+      // Validar que los datos tengan la estructura esperada
+      if (data && data.dollar && typeof data.dollar === 'object') {
+        // Actualizar las tasas de cambio con los datos de la API
+        const newRates = {
+          oficial: data.dollar?.oficial?.venta || exchangeRates.oficial,
+          blue: data.dollar?.blue?.venta || exchangeRates.blue,
+          cripto: data.dollar?.blue?.venta || exchangeRates.cripto // Usar blue como fallback para cripto
+        };
+        
+        // Solo actualizar si los valores son números válidos
+        if (newRates.oficial > 0 && newRates.blue > 0) {
+          setExchangeRates(newRates);
+        }
+      }
       
     } catch (error) {
-      console.error('Error al obtener tasas de cambio:', error);
-      // En caso de error, usar valores por defecto
-      setExchangeRates({
-        oficial: 0,
-        blue: 0,
-        cripto: 0
-      });
+      // Solo mostrar warnings en desarrollo y en páginas que necesitan las cotizaciones
+      if (process.env.NODE_ENV === 'development' && !shouldSkipFetch) {
+        // Manejo más detallado de errores
+        if (error instanceof Error) {
+          if (error.name === 'AbortError') {
+            console.warn('Timeout al obtener tasas de cambio - usando valores por defecto');
+          } else {
+            console.warn('Error al obtener tasas de cambio:', error.message, '- usando valores por defecto');
+          }
+        } else {
+          console.warn('Error desconocido al obtener tasas de cambio - usando valores por defecto');
+        }
+      }
+      
+      // Mantener los valores actuales en caso de error
+      // No sobreescribir con ceros
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Obtener tasas de cambio al montar el componente
+  // Obtener tasas de cambio solo cuando es necesario
   useEffect(() => {
-    fetchExchangeRates();
+    // No ejecutar en páginas donde no es necesario
+    if (shouldSkipFetch) {
+      return;
+    }
+
+    // Delay inicial para no bloquear la carga de la página
+    const initialDelay = setTimeout(() => {
+      fetchExchangeRates();
+    }, 3000); // 3 segundos de delay para páginas que sí necesitan cotizaciones
     
-    // Actualizar tasas cada 15 minutos
-    const interval = setInterval(fetchExchangeRates, 15 * 60 * 1000);
+    // Actualizar tasas cada 30 minutos (reducir frecuencia)
+    const interval = setInterval(fetchExchangeRates, 30 * 60 * 1000);
     
-    // Limpiar intervalo al desmontar
-    return () => clearInterval(interval);
-  }, []);
+    // Limpiar timeouts e intervalos al desmontar
+    return () => {
+      clearTimeout(initialDelay);
+      clearInterval(interval);
+    };
+  }, [pathname, shouldSkipFetch]); // Agregar pathname como dependencia
 
   // Obtener la tasa de cambio actual según el tipo seleccionado
   const getCurrentExchangeRate = (): number => {

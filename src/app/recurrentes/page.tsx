@@ -145,6 +145,16 @@ export default function RecurrentesPage() {
   const [deletingServicioId, setDeletingServicioId] = useState<number | null>(null)
   const [submittingServicio, setSubmittingServicio] = useState(false)
 
+  // Formulario para servicios
+  const [servicioNombre, setServicioNombre] = useState("")
+  const [servicioDescripcion, setServicioDescripcion] = useState("")
+  const [servicioMonto, setServicioMonto] = useState("")
+  const [servicioMedioPago, setServicioMedioPago] = useState("Tarjeta de crédito")
+  const [servicioTarjeta, setServicioTarjeta] = useState("")
+  const [servicioFechaCobro, setServicioFechaCobro] = useState<Date | undefined>(undefined)
+  const [servicioFechaCobroStr, setServicioFechaCobroStr] = useState<string>("")
+  const [generaRecurrente, setGeneraRecurrente] = useState(true)
+
   // Dialog para editar gastos
   useEffect(() => {
     if (editingGasto) {
@@ -168,15 +178,6 @@ export default function RecurrentesPage() {
     }
   }, [editingGasto])
 
-  // Formulario para servicios
-  const [servicioNombre, setServicioNombre] = useState("")
-  const [servicioDescripcion, setServicioDescripcion] = useState("")
-  const [servicioMonto, setServicioMonto] = useState("")
-  const [servicioMedioPago, setServicioMedioPago] = useState("Tarjeta de crédito")
-  const [servicioTarjeta, setServicioTarjeta] = useState("")
-  const [servicioFechaCobro, setServicioFechaCobro] = useState<Date | undefined>(undefined)
-  const [servicioFechaCobroStr, setServicioFechaCobroStr] = useState<string>("")
-
   // Resetear formulario de servicio
   const resetServicioForm = () => {
     setServicioNombre("")
@@ -187,6 +188,7 @@ export default function RecurrentesPage() {
     setServicioFechaCobro(undefined)
     setServicioFechaCobroStr("")
     setServicioActual(null)
+    setGeneraRecurrente(true)
   }
 
   // Cargar datos en el formulario cuando se edita un servicio
@@ -232,7 +234,8 @@ export default function RecurrentesPage() {
         monto: parseFloat(servicioMonto),
         medioPago: servicioMedioPago,
         tarjeta: servicioTarjeta,
-        fechaCobro: parsedDate
+        fechaCobro: parsedDate,
+        generaRecurrente: generaRecurrente
       }
       
       let exito = false
@@ -304,6 +307,34 @@ export default function RecurrentesPage() {
     }
   }
 
+  // Función para obtener el equivalente mensual de un servicio
+  const getEquivalenteMensual = (servicio: Servicio): number => {
+    const medioPago = servicio.medioPago.toLowerCase()
+    if (medioPago.includes("anual")) {
+      return servicio.monto / 12
+    } else if (medioPago.includes("trimestral")) {
+      return servicio.monto / 3
+    } else if (medioPago.includes("semestral")) {
+      return servicio.monto / 6
+    } else if (medioPago.includes("bimestral")) {
+      return servicio.monto / 2
+    }
+    return servicio.monto // Mensual por defecto
+  }
+
+  // Función para obtener la periodicidad de un servicio
+  const getPeriodicidadServicio = (medioPago: string): string => {
+    const medioLower = medioPago.toLowerCase()
+    if (medioLower.includes("anual")) return "anual"
+    if (medioLower.includes("trimestral")) return "trimestral"
+    if (medioLower.includes("semestral")) return "semestral"
+    if (medioLower.includes("bimestral")) return "bimestral"
+    return "mensual"
+  }
+
+  // Calcular total mensual equivalente de servicios
+  const totalServiciosMensual = servicios.reduce((acc, servicio) => acc + getEquivalenteMensual(servicio), 0)
+
   // Función para obtener servicios
   const fetchServicios = async () => {
     try {
@@ -312,8 +343,8 @@ export default function RecurrentesPage() {
         const datos = await response.json()
         setServicios(datos)
         
-        // Calcular total de servicios
-        const total = datos.reduce((acc: number, servicio: Servicio) => acc + servicio.monto, 0)
+        // Calcular total usando equivalentes mensuales
+        const total = datos.reduce((acc: number, servicio: Servicio) => acc + getEquivalenteMensual(servicio), 0)
         setTotalServicios(total)
       }
     } catch (error) {
@@ -327,7 +358,7 @@ export default function RecurrentesPage() {
         { id: 5, nombre: 'Spotify', monto: 1590, medioPago: 'Débito automático', fechaCobro: new Date(2024, 2, 28) }
       ]
       setServicios(datosPrueba)
-      const total = datosPrueba.reduce((acc, servicio) => acc + servicio.monto, 0)
+      const total = datosPrueba.reduce((acc, servicio) => acc + getEquivalenteMensual(servicio), 0)
       setTotalServicios(total)
     }
   }
@@ -345,8 +376,12 @@ export default function RecurrentesPage() {
       
       if (response.ok) {
         const nuevoServicio = await response.json()
-        setServicios([...servicios, nuevoServicio])
-        setTotalServicios(totalServicios + nuevoServicio.monto)
+        const serviciosActualizados = [...servicios, nuevoServicio]
+        setServicios(serviciosActualizados)
+        
+        // Calcular total usando equivalentes mensuales
+        const nuevoTotal = serviciosActualizados.reduce((acc, s) => acc + getEquivalenteMensual(s), 0)
+        setTotalServicios(nuevoTotal)
         toast.success('Servicio agregado con éxito')
         return true
       } else {
@@ -361,8 +396,13 @@ export default function RecurrentesPage() {
         id: Date.now(),
         ...servicio
       }
-      setServicios([...servicios, nuevoServicio])
-      setTotalServicios(totalServicios + nuevoServicio.monto)
+      const serviciosActualizados = [...servicios, nuevoServicio]
+      setServicios(serviciosActualizados)
+      
+      // Calcular total usando equivalentes mensuales
+      const nuevoTotal = serviciosActualizados.reduce((acc, s) => acc + getEquivalenteMensual(s), 0)
+      setTotalServicios(nuevoTotal)
+      
       toast.success('Servicio agregado con éxito (simulado)')
       return true
     }
@@ -381,12 +421,11 @@ export default function RecurrentesPage() {
       
       if (response.ok) {
         const datosActualizados = await response.json()
-        setServicios(servicios.map(s => s.id === id ? datosActualizados : s))
+        const serviciosActualizados = servicios.map(s => s.id === id ? datosActualizados : s)
+        setServicios(serviciosActualizados)
         
-        // Recalcular total
-        const nuevoTotal = servicios
-          .map(s => s.id === id ? datosActualizados : s)
-          .reduce((acc, s) => acc + s.monto, 0)
+        // Recalcular total usando equivalentes mensuales
+        const nuevoTotal = serviciosActualizados.reduce((acc, s) => acc + getEquivalenteMensual(s), 0)
         setTotalServicios(nuevoTotal)
         
         toast.success('Servicio actualizado con éxito')
@@ -409,8 +448,8 @@ export default function RecurrentesPage() {
       
       setServicios(serviciosActualizados)
       
-      // Recalcular total
-      const nuevoTotal = serviciosActualizados.reduce((acc, s) => acc + s.monto, 0)
+      // Recalcular total usando equivalentes mensuales
+      const nuevoTotal = serviciosActualizados.reduce((acc, s) => acc + getEquivalenteMensual(s), 0)
       setTotalServicios(nuevoTotal)
       
       toast.success('Servicio actualizado con éxito (simulado)')
@@ -432,11 +471,13 @@ export default function RecurrentesPage() {
       
       if (response.ok) {
         const servicioEliminado = servicios.find(s => s.id === id)
-        if (servicioEliminado) {
-          setTotalServicios(totalServicios - servicioEliminado.monto)
-        }
+        const serviciosRestantes = servicios.filter(s => s.id !== id)
         
-        setServicios(servicios.filter(s => s.id !== id))
+        // Recalcular total usando equivalentes mensuales
+        const nuevoTotal = serviciosRestantes.reduce((acc, s) => acc + getEquivalenteMensual(s), 0)
+        setTotalServicios(nuevoTotal)
+        
+        setServicios(serviciosRestantes)
         toast.success('Servicio eliminado con éxito')
       } else {
         throw new Error('Error al eliminar servicio')
@@ -446,11 +487,13 @@ export default function RecurrentesPage() {
       
       // Simular eliminación mientras no exista la API
       const servicioEliminado = servicios.find(s => s.id === id)
-      if (servicioEliminado) {
-        setTotalServicios(totalServicios - servicioEliminado.monto)
-      }
+      const serviciosRestantes = servicios.filter(s => s.id !== id)
       
-      setServicios(servicios.filter(s => s.id !== id))
+      // Recalcular total usando equivalentes mensuales
+      const nuevoTotal = serviciosRestantes.reduce((acc, s) => acc + getEquivalenteMensual(s), 0)
+      setTotalServicios(nuevoTotal)
+      
+      setServicios(serviciosRestantes)
       toast.success('Servicio eliminado con éxito (simulado)')
     } finally {
       setDeletingServicioId(null)
@@ -651,9 +694,17 @@ export default function RecurrentesPage() {
               {/* Columna derecha: Servicios contratados */}
               <div className="md:col-span-7 p-4">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">Servicios contratados</h3>
-                  <div className="text-3xl font-bold text-primary">
-                    {formatMoney(totalServicios)}
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">Servicios contratados</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Equivalente mensual</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold text-primary">
+                      {formatMoney(totalServiciosMensual)}
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {servicios.length} servicio{servicios.length !== 1 ? 's' : ''}
+                    </p>
                   </div>
                 </div>
                 
@@ -669,53 +720,92 @@ export default function RecurrentesPage() {
                           <TableHeader>
                             <TableRow>
                               <TableHead>Servicio</TableHead>
-                              <TableHead>Monto</TableHead>
-                              <TableHead>Método de Pago</TableHead>
+                              <TableHead>Monto Real</TableHead>
+                              <TableHead>Equiv. Mensual</TableHead>
+                              <TableHead>Periodicidad</TableHead>
                               <TableHead>Fecha de Cobro</TableHead>
                               <TableHead className="w-[100px]">Acciones</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {(mostrarTodosServicios ? servicios : servicios.slice(0, 3)).map((servicio) => (
-                              <TableRow key={servicio.id}>
-                                <TableCell className="font-medium">{servicio.nombre}</TableCell>
-                                <TableCell>{formatMoney(servicio.monto)}</TableCell>
-                                <TableCell>
-                                  {servicio.medioPago}
-                                  {servicio.tarjeta && <span className="text-xs text-gray-500 ml-1">({servicio.tarjeta})</span>}
-                                </TableCell>
-                                <TableCell>
-                                  {servicio.fechaCobro ? formatDateToDDMMYYYY(new Date(servicio.fechaCobro)) : 'No especificada'}
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon"
-                                      onClick={() => {
-                                        setServicioActual(servicio)
-                                        setIsServicioFormOpen(true)
-                                      }}
-                                      disabled={deletingServicioId === servicio.id || submittingServicio}
-                                    >
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon"
-                                      onClick={() => eliminarServicio(servicio.id)}
-                                      disabled={deletingServicioId === servicio.id || submittingServicio}
-                                    >
-                                      {deletingServicioId === servicio.id ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                      ) : (
-                                        <Trash2 className="h-4 w-4" />
+                            {(mostrarTodosServicios ? servicios : servicios.slice(0, 3)).map((servicio) => {
+                              const periodicidad = getPeriodicidadServicio(servicio.medioPago)
+                              const equivalenteMensual = getEquivalenteMensual(servicio)
+                              
+                              return (
+                                <TableRow key={servicio.id}>
+                                  <TableCell className="font-medium">
+                                    {servicio.nombre}
+                                    {servicio.tarjeta && (
+                                      <span className="text-xs text-gray-500 block">
+                                        {servicio.tarjeta}
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="text-right">
+                                      <div className="font-medium">{formatMoney(servicio.monto)}</div>
+                                      <div className="text-xs text-gray-500 capitalize">
+                                        {periodicidad}
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="text-right">
+                                      <div className="font-medium text-blue-600">
+                                        {formatMoney(equivalenteMensual)}
+                                      </div>
+                                      {periodicidad !== 'mensual' && (
+                                        <div className="text-xs text-gray-500">
+                                          ÷ {periodicidad === 'anual' ? '12' : periodicidad === 'trimestral' ? '3' : periodicidad === 'semestral' ? '6' : '2'}
+                                        </div>
                                       )}
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ))}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                                      periodicidad === 'anual' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
+                                      periodicidad === 'trimestral' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                                      periodicidad === 'semestral' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                                      periodicidad === 'bimestral' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                                      'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                                    }`}>
+                                      {periodicidad}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell>
+                                    {servicio.fechaCobro ? formatDateToDDMMYYYY(new Date(servicio.fechaCobro)) : 'No especificada'}
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center gap-2">
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon"
+                                        onClick={() => {
+                                          setServicioActual(servicio)
+                                          setIsServicioFormOpen(true)
+                                        }}
+                                        disabled={deletingServicioId === servicio.id || submittingServicio}
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </Button>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon"
+                                        onClick={() => eliminarServicio(servicio.id)}
+                                        disabled={deletingServicioId === servicio.id || submittingServicio}
+                                      >
+                                        {deletingServicioId === servicio.id ? (
+                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <Trash2 className="h-4 w-4" />
+                                        )}
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              )
+                            })}
                           </TableBody>
                         </Table>
                       </div>
@@ -970,7 +1060,7 @@ export default function RecurrentesPage() {
               </div>
               
               <div>
-                <Label htmlFor="monto">Monto mensual *</Label>
+                <Label htmlFor="monto">Monto *</Label>
                 <div className="relative">
                   <Input
                     id="monto"
@@ -986,7 +1076,7 @@ export default function RecurrentesPage() {
                       }
                       setServicioMonto(value);
                     }}
-                    placeholder="Importe mensual"
+                    placeholder={servicioMedioPago.toLowerCase().includes("anual") ? "Importe anual" : servicioMedioPago.toLowerCase().includes("trimestral") ? "Importe trimestral" : "Importe mensual"}
                     required
                     className="pl-8"
                   />
@@ -994,13 +1084,23 @@ export default function RecurrentesPage() {
                   {servicioMonto && (
                     <div className="mt-1 text-sm text-gray-500">
                       {formatMoney(parseFloat(servicioMonto) || 0)}
+                      {servicioMedioPago.toLowerCase().includes("anual") && (
+                        <span className="text-blue-600 ml-2">
+                          ({formatMoney((parseFloat(servicioMonto) || 0) / 12)} mensual)
+                        </span>
+                      )}
+                      {servicioMedioPago.toLowerCase().includes("trimestral") && (
+                        <span className="text-blue-600 ml-2">
+                          ({formatMoney((parseFloat(servicioMonto) || 0) / 3)} mensual)
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
               
               <div>
-                <Label htmlFor="medioPago">Medio de Pago *</Label>
+                <Label htmlFor="medioPago">Medio de Pago / Frecuencia *</Label>
                 <Select
                   value={servicioMedioPago}
                   onValueChange={(value) => {
@@ -1012,14 +1112,30 @@ export default function RecurrentesPage() {
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecciona un medio de pago" />
+                    <SelectValue placeholder="Selecciona un medio de pago y frecuencia" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Tarjeta de crédito">Tarjeta de crédito</SelectItem>
-                    <SelectItem value="Tarjeta de débito">Tarjeta de débito</SelectItem>
-                    <SelectItem value="Débito automático">Débito automático</SelectItem>
-                    <SelectItem value="Transferencia bancaria">Transferencia bancaria</SelectItem>
-                    <SelectItem value="Efectivo">Efectivo</SelectItem>
+                    {/* Opciones Mensuales */}
+                    <SelectItem value="Tarjeta de crédito">Tarjeta de crédito (mensual)</SelectItem>
+                    <SelectItem value="Tarjeta de débito">Tarjeta de débito (mensual)</SelectItem>
+                    <SelectItem value="Débito automático">Débito automático (mensual)</SelectItem>
+                    <SelectItem value="Transferencia bancaria">Transferencia bancaria (mensual)</SelectItem>
+                    <SelectItem value="Efectivo">Efectivo (mensual)</SelectItem>
+                    
+                    {/* Opciones Trimestrales */}
+                    <SelectItem value="Tarjeta de crédito trimestral">Tarjeta de crédito (trimestral)</SelectItem>
+                    <SelectItem value="Tarjeta de débito trimestral">Tarjeta de débito (trimestral)</SelectItem>
+                    <SelectItem value="Débito automático trimestral">Débito automático (trimestral)</SelectItem>
+                    <SelectItem value="Transferencia bancaria trimestral">Transferencia bancaria (trimestral)</SelectItem>
+                    <SelectItem value="Efectivo trimestral">Efectivo (trimestral)</SelectItem>
+                    
+                    {/* Opciones Anuales */}
+                    <SelectItem value="Tarjeta de crédito anual">Tarjeta de crédito (anual)</SelectItem>
+                    <SelectItem value="Tarjeta de débito anual">Tarjeta de débito (anual)</SelectItem>
+                    <SelectItem value="Débito automático anual">Débito automático (anual)</SelectItem>
+                    <SelectItem value="Transferencia bancaria anual">Transferencia bancaria (anual)</SelectItem>
+                    <SelectItem value="Efectivo anual">Efectivo (anual)</SelectItem>
+                    
                     <SelectItem value="Otro">Otro</SelectItem>
                   </SelectContent>
                 </Select>

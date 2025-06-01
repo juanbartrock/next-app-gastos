@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface PresupuestoFormProps {
-  presupuestoId?: number
+  presupuestoId?: string
   onSuccess?: () => void
 }
 

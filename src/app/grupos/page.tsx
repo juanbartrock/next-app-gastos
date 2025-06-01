@@ -470,6 +470,9 @@ export default function GruposPage() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Invitar usuario al grupo</DialogTitle>
+              <DialogDescription>
+                Invita a otros usuarios a formar parte de este grupo para compartir gastos
+              </DialogDescription>
             </DialogHeader>
             {selectedGrupoId && (
               <InvitarUsuarioForm

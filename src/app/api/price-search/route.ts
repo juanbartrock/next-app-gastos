@@ -64,9 +64,8 @@ async function logSearchResults(queryInfo: any, results: any) {
  * @returns true si el producto está habilitado
  */
 function isEnabledProduct(query: string): boolean {
-  // Por ahora, solo permitir el producto SERENITO
-  const lowercaseQuery = query.toLowerCase();
-  return lowercaseQuery.includes('serenito');
+  // Permitir todos los productos para búsqueda de precios
+  return !!(query && query.trim().length > 2); // Solo requiere que tenga al menos 3 caracteres
 }
 
 /**
@@ -232,12 +231,8 @@ export async function POST(request: NextRequest) {
         seguimiento: true,
         gasto: {
           userId: usuario.id
-        },
-        // Solo productos que contienen SERENITO por ahora
-        descripcion: {
-          contains: 'SERENITO',
-          mode: 'insensitive'
         }
+        // Permitir todos los productos marcados para seguimiento
       },
       include: {
         gasto: true
@@ -246,12 +241,21 @@ export async function POST(request: NextRequest) {
 
     if (productosParaSeguimiento.length === 0) {
       return NextResponse.json({
-        message: "No hay productos SERENITO marcados para seguimiento",
-        results: []
+        message: "No hay productos marcados para seguimiento",
+        results: [],
+        stats: {
+          totalProductos: 0,
+          busquedasRealizadas: 0,
+          alternativasUsadas: 0,
+          resultadosEncontrados: 0,
+          mejoresPrecios: 0,
+          errores: 0,
+          totalTime: 0
+        }
       });
     }
 
-    console.log(`[API] Buscando mejores precios para ${productosParaSeguimiento.length} productos SERENITO en seguimiento`);
+    console.log(`[API] Buscando mejores precios para ${productosParaSeguimiento.length} productos marcados para seguimiento`);
 
     // Estadísticas generales para el log
     const startTime = Date.now();
@@ -264,54 +268,7 @@ export async function POST(request: NextRequest) {
       errores: 0
     };
 
-    // SIMPLIFICACIÓN: Usar directamente el término SERENITO para todos los productos
-    // Realizar una sola búsqueda en lugar de una por producto
-    console.log(`[API] Realizando búsqueda única con término "SERENITO" para todos los productos`);
-    
-    let globalSearchResults: any[] = [];
-    try {
-      // Realizar una única búsqueda para SERENITO
-      const searchTerm = "SERENITO";
-      searchStats.busquedasRealizadas++;
-      
-      globalSearchResults = await ratoneandoService.search(
-        searchTerm,
-        { exactMatch: false }
-      );
-      
-      // Registrar resultados globales
-      await logSearchResults(
-        { 
-          query: "SERENITO (búsqueda global)",
-          optimizedQuery: searchTerm
-        }, 
-        globalSearchResults
-      );
-      
-      // Actualizar estadísticas
-      searchStats.resultadosEncontrados = globalSearchResults.length;
-    } catch (error) {
-      console.error("[API] Error en la búsqueda global:", error);
-      searchStats.errores++;
-    }
-
-    // NUEVO: Si tenemos resultados globales, limitarlos a los 3 mejores precios
-    if (globalSearchResults.length > 0) {
-      // Ordenar todos los resultados por precio (menor a mayor)
-      globalSearchResults.sort((a, b) => a.price - b.price);
-      
-      // Limitar a los 3 mejores precios
-      const top3Results = globalSearchResults.slice(0, 3);
-      console.log(`[API] Limitando resultados a los 3 precios más bajos (de ${globalSearchResults.length} encontrados):`);
-      top3Results.forEach((result, index) => {
-        console.log(`[API] Top #${index + 1}: "${result.productName}" - Precio: ${result.price} (${result.store})`);
-      });
-      
-      // Usar solo los 3 mejores resultados para todos los productos
-      globalSearchResults = top3Results;
-    }
-
-    // Procesamiento de productos individuales con los resultados globales
+    // Procesamiento de productos individuales
     const resultados = await Promise.all(
       productosParaSeguimiento.map(async (producto: any) => {
         const precioActual = producto.precioUnitario || (producto.subtotal / producto.cantidad);
@@ -320,11 +277,35 @@ export async function POST(request: NextRequest) {
         console.log(`[API] Analizando "${producto.descripcion}" (categoría: ${categoria}, precio: ${precioActual})`);
         
         try {
-          // Usar los resultados globales para este producto
-          if (globalSearchResults.length > 0) {
-            // Ordenar por precio
-            const sortedResults = [...globalSearchResults].sort((a, b) => a.price - b.price);
-            const bestResult = sortedResults[0];
+          // Buscar específicamente este producto
+          searchStats.busquedasRealizadas++;
+          
+          const searchResults = await ratoneandoService.search(
+            producto.descripcion,
+            { exactMatch: false }
+          );
+          
+          // Registrar resultados para este producto
+          await logSearchResults(
+            { 
+              query: producto.descripcion,
+              optimizedQuery: producto.descripcion,
+              precioActual,
+              categoria
+            }, 
+            searchResults
+          );
+          
+          // Actualizar estadísticas
+          searchStats.resultadosEncontrados += searchResults.length;
+          
+          if (searchResults.length > 0) {
+            // Ordenar por precio (menor a mayor)
+            const sortedResults = [...searchResults].sort((a, b) => a.price - b.price);
+            
+            // Limitar a los 3 mejores precios
+            const top3Results = sortedResults.slice(0, 3);
+            const bestResult = top3Results[0];
             const foundBetterPrice = bestResult.price < precioActual;
             
             if (foundBetterPrice) {
@@ -351,17 +332,16 @@ export async function POST(request: NextRequest) {
                 store: bestResult.store,
                 url: bestResult.url,
                 productCategory: categoria,
-                // Incluir solo los 3 mejores resultados
                 allResults: [{ 
                   service: 'ratoneando', 
-                  results: sortedResults,
-                  count: globalSearchResults.length,
-                  searchTerm: "SERENITO"
+                  results: top3Results,
+                  count: searchResults.length,
+                  searchTerm: producto.descripcion
                 }]
               }
             };
           } else {
-            // Si no hay resultados globales
+            // Si no hay resultados para este producto
             return {
               producto: {
                 id: producto.id,
@@ -373,7 +353,7 @@ export async function POST(request: NextRequest) {
               },
               resultado: {
                 foundBetterPrice: false,
-                message: "No se encontraron resultados para SERENITO",
+                message: `No se encontraron resultados para "${producto.descripcion}"`,
                 productCategory: categoria,
                 allResults: []
               }
@@ -394,7 +374,9 @@ export async function POST(request: NextRequest) {
             },
             resultado: {
               error: true,
-              message: error instanceof Error ? error.message : "Error desconocido"
+              message: error instanceof Error ? error.message : "Error desconocido",
+              productCategory: categoria,
+              allResults: []
             }
           };
         }

@@ -2,17 +2,34 @@
 
 import { useState, useRef, ChangeEvent, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Camera, Check, Download, Plus, Trash, Undo, Upload } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Separator } from "@/components/ui/separator"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Checkbox } from "@/components/ui/checkbox"
+import { 
+  Camera, 
+  Upload, 
+  Loader2, 
+  Eye, 
+  EyeOff, 
+  ArrowLeft, 
+  Plus, 
+  Trash,
+  Calendar,
+  AlertTriangle,
+  CheckCircle,
+  Info
+} from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import Image from "next/image"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
 import { useCurrency } from "@/contexts/CurrencyContext"
+import { format } from "date-fns"
+import Image from "next/image"
 
 // Interfaces para categorías y productos extraídos
 interface Categoria {
@@ -49,6 +66,16 @@ export default function FotoTicketPage() {
   const [productos, setProductos] = useState<ProductoDetectado[]>([])
   const [enviando, setEnviando] = useState(false)
 
+  // Estados para fecha de imputación contable
+  const [mostrarFechaImputacion, setMostrarFechaImputacion] = useState(false)
+  const [fechaImputacion, setFechaImputacion] = useState<string>("")
+  const [fechaImputacionStr, setFechaImputacionStr] = useState<string>("")
+
+  // Estados para información de validación OCR
+  const [notaValidacion, setNotaValidacion] = useState<string>("")
+  const [totalOriginalTicket, setTotalOriginalTicket] = useState<number | undefined>(undefined)
+  const [totalCalculadoProductos, setTotalCalculadoProductos] = useState<number>(0)
+
   // Estados para agregar producto manualmente
   const [mostrarFormProducto, setMostrarFormProducto] = useState(false)
   const [nuevoProducto, setNuevoProducto] = useState<{
@@ -62,6 +89,11 @@ export default function FotoTicketPage() {
     precioUnitario: "",
     subtotal: ""
   })
+
+  // Estados para edición post-OCR
+  const [mostrarEdicionOCR, setMostrarEdicionOCR] = useState(false)
+  const [conceptoOriginalOCR, setConceptoOriginalOCR] = useState<string>("")
+  const [categoriasSugeridas, setCategoriasSugeridas] = useState<Categoria[]>([])
 
   // Cargar categorías al iniciar
   useEffect(() => {
@@ -235,9 +267,40 @@ export default function FotoTicketPage() {
         });
       }
       
+      // Mostrar información de validación si está disponible
+      if (resultado.notaValidacion) {
+        setNotaValidacion(resultado.notaValidacion)
+        setTotalOriginalTicket(resultado.totalOriginalTicket)
+        setTotalCalculadoProductos(resultado.totalCalculadoProductos || resultado.total)
+        
+        // Mostrar toast informativo sobre el cálculo
+        if (resultado.notaValidacion.includes("recalculado")) {
+          toast({
+            title: "Total recalculado",
+            description: "El total se calculó automáticamente sumando los productos detectados.",
+            duration: 5000
+          });
+        } else if (resultado.notaValidacion.includes("calculado automáticamente")) {
+          toast({
+            title: "Total calculado",
+            description: "El total se calculó automáticamente ya que no se detectó en el ticket.",
+            duration: 5000
+          });
+        }
+      }
+      
       // Actualizar estado con los datos obtenidos
       setConcepto(resultado.nombreComercio || "Compra")
       setTotal(resultado.total || 0)
+      
+      // Guardar el concepto original para permitir edición
+      setConceptoOriginalOCR(resultado.nombreComercio || "Compra")
+      
+      // Aplicar sugerencia automática de categoría
+      if (resultado.nombreComercio) {
+        aplicarSugerenciasCategoria(resultado.nombreComercio)
+        setMostrarEdicionOCR(true) // Permitir edición después del OCR
+      }
       
       // Verificar que los productos tengan el formato correcto
       if (Array.isArray(resultado.productos) && resultado.productos.length > 0) {
@@ -312,21 +375,29 @@ export default function FotoTicketPage() {
     setEnviando(true)
     
     try {
+      // Preparar datos para enviar
+      const datosTransaccion = {
+        concepto,
+        monto: total,
+        fecha: new Date(fecha),
+        categoriaId: parseInt(categoriaSeleccionada),
+        categoria: categorias.find(c => c.id.toString() === categoriaSeleccionada)?.descripcion,
+        tipoTransaccion: "expense",
+        tipoMovimiento: "efectivo"
+      } as any
+
+      // Agregar fecha de imputación si está configurada
+      if (mostrarFechaImputacion && fechaImputacion) {
+        datosTransaccion.fechaImputacion = new Date(fechaImputacion)
+      }
+
       // 1. Crear el gasto principal
       const respuestaGasto = await fetch("/api/gastos", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          concepto,
-          monto: total,
-          fecha: new Date(fecha),
-          categoriaId: parseInt(categoriaSeleccionada),
-          categoria: categorias.find(c => c.id.toString() === categoriaSeleccionada)?.descripcion,
-          tipoTransaccion: "expense",
-          tipoMovimiento: "efectivo"
-        })
+        body: JSON.stringify(datosTransaccion)
       })
       
       if (!respuestaGasto.ok) {
@@ -353,10 +424,15 @@ export default function FotoTicketPage() {
           // No interrumpimos el flujo ya que el gasto principal se guardó correctamente
         }
       }
+
+      let mensajeExito = "El gasto y sus detalles se guardaron correctamente"
+      if (mostrarFechaImputacion && fechaImputacion) {
+        mensajeExito += ` con fecha de imputación: ${convertirFechaParaMostrar(fechaImputacion)}`
+      }
       
       toast({
         title: "¡Gasto registrado!",
-        description: "El gasto y sus detalles se guardaron correctamente"
+        description: mensajeExito
       })
       
       // Redirigir al dashboard
@@ -391,6 +467,78 @@ export default function FotoTicketPage() {
       title: "Modo manual activado",
       description: "Ahora puedes ingresar los detalles manualmente",
     })
+  }
+
+  // Función para sugerir categoría basada en el nombre del comercio
+  const sugerirCategoria = (nombreComercio: string): string => {
+    const nombre = nombreComercio.toLowerCase()
+    
+    // Supermercados y alimentación
+    if (nombre.includes('super') || nombre.includes('mercado') || nombre.includes('carrefour') || 
+        nombre.includes('coto') || nombre.includes('dia') || nombre.includes('disco') || 
+        nombre.includes('jumbo') || nombre.includes('vea') || nombre.includes('walmart') ||
+        nombre.includes('almacen') || nombre.includes('despensa') || nombre.includes('panaderia') ||
+        nombre.includes('carniceria') || nombre.includes('verduleria') || nombre.includes('farmacia')) {
+      return "Alimentación"
+    }
+    
+    // Transporte
+    if (nombre.includes('ypf') || nombre.includes('shell') || nombre.includes('axion') || 
+        nombre.includes('puma') || nombre.includes('estacion') || nombre.includes('combustible') ||
+        nombre.includes('subte') || nombre.includes('colectivo') || nombre.includes('taxi') ||
+        nombre.includes('uber') || nombre.includes('cabify') || nombre.includes('peaje')) {
+      return "Transporte"
+    }
+    
+    // Servicios
+    if (nombre.includes('edenor') || nombre.includes('edesur') || nombre.includes('gas') ||
+        nombre.includes('agua') || nombre.includes('telecom') || nombre.includes('fibertel') ||
+        nombre.includes('personal') || nombre.includes('movistar') || nombre.includes('claro') ||
+        nombre.includes('banco') || nombre.includes('cajero') || nombre.includes('atm')) {
+      return "Servicios"
+    }
+    
+    // Ocio
+    if (nombre.includes('cine') || nombre.includes('teatro') || nombre.includes('restaurant') ||
+        nombre.includes('bar') || nombre.includes('cafe') || nombre.includes('mcdonald') ||
+        nombre.includes('burger') || nombre.includes('pizza') || nombre.includes('helado') ||
+        nombre.includes('gym') || nombre.includes('gimnasio') || nombre.includes('club')) {
+      return "Ocio"
+    }
+    
+    // Ropa y calzado
+    if (nombre.includes('ropa') || nombre.includes('calzado') || nombre.includes('zapateria') ||
+        nombre.includes('nike') || nombre.includes('adidas') || nombre.includes('zara') ||
+        nombre.includes('h&m') || nombre.includes('gap') || nombre.includes('uniqlo')) {
+      return "Ropa y calzado"
+    }
+    
+    // Por defecto, si no se puede categorizar
+    return "Otros"
+  }
+
+  // Función para aplicar sugerencias de categoría
+  const aplicarSugerenciasCategoria = (nombreComercio: string) => {
+    const categoriaSugerida = sugerirCategoria(nombreComercio)
+    
+    // Buscar la categoría en la lista y seleccionarla automáticamente
+    const categoriaEncontrada = categorias.find(cat => 
+      cat.descripcion.toLowerCase() === categoriaSugerida.toLowerCase()
+    )
+    
+    if (categoriaEncontrada) {
+      setCategoriaSeleccionada(categoriaEncontrada.id.toString())
+      console.log(`Categoría sugerida automáticamente: ${categoriaSugerida}`)
+      
+      // Mostrar las categorías sugeridas para que el usuario pueda cambiar si quiere
+      setCategoriasSugeridas([
+        categoriaEncontrada,
+        ...categorias.filter(cat => cat.id !== categoriaEncontrada.id).slice(0, 3)
+      ])
+    } else {
+      // Si no se encuentra la categoría exacta, mostrar opciones relacionadas
+      setCategoriasSugeridas(categorias.slice(0, 4))
+    }
   }
 
   // Función para calcular el subtotal al cambiar cantidad o precio unitario
@@ -463,6 +611,51 @@ export default function FotoTicketPage() {
       title: "Producto eliminado",
       description: "El producto se ha eliminado de la lista"
     })
+  }
+
+  // Función para convertir fecha de DD/MM/YYYY a YYYY-MM-DD
+  const convertirFechaParaInput = (fechaStr: string): string => {
+    try {
+      // Si ya está en formato YYYY-MM-DD, devolverla tal como está
+      if (/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) {
+        return fechaStr
+      }
+      
+      // Si está en formato DD/MM/YYYY, convertirla
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(fechaStr)) {
+        const [dia, mes, año] = fechaStr.split('/')
+        return `${año}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`
+      }
+      
+      // Si no coincide con ningún formato, devolver fecha actual
+      return format(new Date(), "yyyy-MM-dd")
+    } catch (error) {
+      console.error("Error al convertir fecha:", error)
+      return format(new Date(), "yyyy-MM-dd")
+    }
+  }
+
+  // Función para convertir fecha de YYYY-MM-DD a DD/MM/YYYY para mostrar
+  const convertirFechaParaMostrar = (fechaStr: string): string => {
+    try {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) {
+        const [año, mes, dia] = fechaStr.split('-')
+        return `${dia}/${mes}/${año}`
+      }
+      return fechaStr
+    } catch (error) {
+      console.error("Error al convertir fecha para mostrar:", error)
+      return fechaStr
+    }
+  }
+
+  // Manejar cambio en fecha de imputación (formato DD/MM/YYYY)
+  const handleFechaImputacionChange = (valor: string) => {
+    setFechaImputacionStr(valor)
+    
+    // Convertir a formato YYYY-MM-DD para el estado interno
+    const fechaConvertida = convertirFechaParaInput(valor)
+    setFechaImputacion(fechaConvertida)
   }
 
   return (
@@ -594,10 +787,145 @@ export default function FotoTicketPage() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Sección de edición post-OCR */}
+                  {mostrarEdicionOCR && conceptoOriginalOCR && (
+                    <div className="space-y-3 p-4 border rounded-lg bg-green-50/50 dark:bg-green-900/10">
+                      <div className="flex items-center space-x-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <Label className="font-medium text-green-700 dark:text-green-300">
+                          Información detectada automáticamente
+                        </Label>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <div className="text-sm">
+                          <strong>Comercio detectado:</strong> {conceptoOriginalOCR}
+                        </div>
+                        
+                        {categoriasSugeridas.length > 0 && (
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Categorías sugeridas:</Label>
+                            <div className="flex flex-wrap gap-2">
+                              {categoriasSugeridas.map((cat) => (
+                                <Button
+                                  key={cat.id}
+                                  variant={categoriaSeleccionada === cat.id.toString() ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => setCategoriaSeleccionada(cat.id.toString())}
+                                  className="text-xs"
+                                >
+                                  {cat.descripcion}
+                                  {categoriaSeleccionada === cat.id.toString() && (
+                                    <CheckCircle className="h-3 w-3 ml-1" />
+                                  )}
+                                </Button>
+                              ))}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Selecciona una categoría sugerida o elige otra del menú desplegable
+                            </p>
+                          </div>
+                        )}
+                        
+                        <Alert>
+                          <Info className="h-4 w-4" />
+                          <AlertDescription className="text-sm">
+                            Puedes modificar el concepto arriba y seleccionar una categoría diferente si lo detectado no es correcto.
+                          </AlertDescription>
+                        </Alert>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Sección de fecha de imputación contable */}
+                  <div className="space-y-3 p-4 border rounded-lg bg-blue-50/50 dark:bg-blue-900/10">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="mostrarFechaImputacion"
+                        checked={mostrarFechaImputacion}
+                        onCheckedChange={(checked) => setMostrarFechaImputacion(checked === true)}
+                      />
+                      <Label htmlFor="mostrarFechaImputacion" className="flex items-center cursor-pointer">
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Usar fecha de imputación contable diferente
+                      </Label>
+                    </div>
+                    
+                    {mostrarFechaImputacion && (
+                      <div className="space-y-3 ml-6">
+                        <Alert>
+                          <Info className="h-4 w-4" />
+                          <AlertDescription className="text-sm">
+                            <strong>¿Cuándo usar esto?</strong><br />
+                            • Salarios pagados el último día pero correspondientes al mes siguiente<br />
+                            • Alquileres cobrados por adelantado<br />
+                            • Facturas pagadas anticipadamente
+                          </AlertDescription>
+                        </Alert>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="fechaImputacion">Fecha de imputación (DD/MM/YYYY)</Label>
+                          <Input
+                            id="fechaImputacion"
+                            value={fechaImputacionStr}
+                            onChange={(e) => handleFechaImputacionChange(e.target.value)}
+                            placeholder="DD/MM/YYYY (ej: 01/06/2024)"
+                            className="max-w-xs"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Esta transacción aparecerá en los reportes del mes correspondiente a esta fecha
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   
                   <div className="space-y-2">
                     <Label>Total</Label>
                     <div className="text-2xl font-bold">{formatMoney(total)}</div>
+                    
+                    {/* Información de validación OCR */}
+                    {notaValidacion && (
+                      <div className="mt-2">
+                        {notaValidacion.includes("recalculado") ? (
+                          <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-900/10">
+                            <AlertTriangle className="h-4 w-4 text-amber-600" />
+                            <AlertDescription className="text-sm">
+                              <strong>Total recalculado automáticamente</strong><br />
+                              {totalOriginalTicket && (
+                                <>
+                                  Total detectado en ticket: {formatMoney(totalOriginalTicket)}<br />
+                                </>
+                              )}
+                              Total calculado sumando productos: {formatMoney(totalCalculadoProductos)}<br />
+                              <span className="text-xs text-muted-foreground mt-1 block">
+                                Se usó el total calculado para mayor precisión
+                              </span>
+                            </AlertDescription>
+                          </Alert>
+                        ) : notaValidacion.includes("calculado automáticamente") ? (
+                          <Alert className="border-green-200 bg-green-50 dark:bg-green-900/10">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <AlertDescription className="text-sm">
+                              <strong>Total calculado automáticamente</strong><br />
+                              No se detectó total en el ticket, se calculó sumando todos los productos<br />
+                              <span className="text-xs text-muted-foreground mt-1 block">
+                                Total: {formatMoney(totalCalculadoProductos)}
+                              </span>
+                            </AlertDescription>
+                          </Alert>
+                        ) : (
+                          <Alert className="border-green-200 bg-green-50 dark:bg-green-900/10">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <AlertDescription className="text-sm">
+                              <strong>Total validado correctamente</strong><br />
+                              El total del ticket coincide con la suma de productos
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </div>
+                    )}
                   </div>
                   
                   {productos.length > 0 && (
@@ -714,7 +1042,7 @@ export default function FotoTicketPage() {
                   onClick={volverAVistaPrevia}
                   disabled={enviando}
                 >
-                  <Undo className="h-4 w-4 mr-2" />
+                  <ArrowLeft className="h-4 w-4 mr-2" />
                   Volver a la imagen
                 </Button>
                 <Button 
@@ -722,7 +1050,6 @@ export default function FotoTicketPage() {
                   disabled={enviando}
                 >
                   {enviando ? "Guardando..." : "Guardar transacción"}
-                  {!enviando && <Check className="h-4 w-4 ml-2" />}
                 </Button>
               </CardFooter>
             )}

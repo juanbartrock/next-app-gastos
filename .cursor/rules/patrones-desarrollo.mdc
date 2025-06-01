@@ -3,3 +3,89 @@ description:
 globs:
 alwaysApply: false
 ---
+# Patrones de Desarrollo y Código
+
+## Configuración del Proyecto ✅
+- **Configuración principal**: [package.json](mdc:package.json)
+- **TypeScript**: [tsconfig.json](mdc:tsconfig.json)
+- **TailwindCSS**: [tailwind.config.js](mdc:tailwind.config.js)
+- **Eslint**: [eslint.config.mjs](mdc:eslint.config.mjs)
+- **Componentes UI**: [components.json](mdc:components.json)
+
+## Patrones de API Routes (Next.js 15)
+Ejemplo en [src/app/api/alertas/route.ts](mdc:src/app/api/alertas/route.ts):
+```typescript
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+    // Lógica del endpoint
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error('Error:', error)
+    return NextResponse.json({ error: 'Error interno' }, { status: 500 })
+  }
+}
+```
+
+## Integración OpenAI Implementada ✅
+Motor principal en [src/lib/ai/AIAnalyzer.ts](mdc:src/lib/ai/AIAnalyzer.ts):
+- **GPT-3.5-turbo** para análisis de patrones
+- **GPT-4o-mini** para recomendaciones
+- **Prompts especializados** en finanzas en español
+- **Respuestas JSON estructuradas**
+
+## Motor de Alertas Automático ✅
+Implementado en [src/lib/alert-engine/AlertEngine.ts](mdc:src/lib/alert-engine/AlertEngine.ts):
+- **Evaluación automática** de 8 tipos de condiciones
+- **Prevención de duplicados** temporal
+- **Scheduler automático** cada 60 minutos
+- **Singleton pattern** en [src/lib/alert-engine/AlertScheduler.ts](mdc:src/lib/alert-engine/AlertScheduler.ts)
+
+## Modelos de Prisma ✅
+Schema completo en [prisma/schema.prisma](mdc:prisma/schema.prisma):
+- **30+ modelos** interconectados
+- **Relaciones complejas** entre entidades
+- **Nuevos modelos**: Alerta, ConfiguracionAlerta
+- **Enums**: TipoAlerta, PrioridadAlerta, CanalNotificacion
+
+## Componentes UI Estándar ✅
+Basados en Shadcn/ui en [src/components/ui/](mdc:src/components/ui/):
+- **Integración con VisibilityContext**
+- **Soporte para ThemeProvider**
+- **Componentes accesibles** con ARIA
+- **Estados de loading** y skeleton loaders
+
+## Contextos de React ✅
+- **VisibilityContext**: [src/contexts/VisibilityContext.tsx](mdc:src/contexts/VisibilityContext.tsx)
+- **ThemeProvider**: [src/providers/ThemeProvider.tsx](mdc:src/providers/ThemeProvider.tsx)
+- Gestión de estado global para Currency, Sidebar, Visibility, Theme
+
+## Autenticación NextAuth.js ✅
+Configuración en [src/app/api/auth/[...nextauth]/options.ts](mdc:src/app/api/auth/[...nextauth]/options.ts):
+- **JWT tokens** seguros
+- **Validación de sesiones** en API routes
+- **Middleware** de protección en [src/middleware.ts](mdc:src/middleware.ts)
+
+## Scripts de Desarrollo ✅
+- **PowerShell scripts**: [start-dev.ps1](mdc:start-dev.ps1), [db-push.ps1](mdc:db-push.ps1)
+- **Prisma Studio**: [start-studio.ps1](mdc:start-studio.ps1)
+- **Comandos principales**:
+  - `npm run dev:full` - Desarrollo con variables de entorno
+  - `npx prisma db push` - Sincronizar schema
+  - `npx prisma generate` - Generar cliente
+
+## Variables de Entorno ✅
+Configuradas en [.env](mdc:.env):
+- `DATABASE_URL` - PostgreSQL/Neon
+- `NEXTAUTH_SECRET`, `NEXTAUTH_URL` - Autenticación
+- `OPENAI_API_KEY` - **Requerido** para IA
+- `TWILIO_*` - Opcional para notificaciones
+
+## Deployment Vercel ✅
+- **Configuración**: [vercel.json](mdc:vercel.json)
+- **Timeouts configurados** para APIs de IA (30s)
+- **Plan Pro requerido** para funcionalidades de IA
+- **Base de datos Neon** configurada

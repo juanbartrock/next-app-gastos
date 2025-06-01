@@ -3,3 +3,58 @@ description:
 globs:
 alwaysApply: false
 ---
+# Arquitectura de las 3 Fases Completadas
+
+## FASE 1 - Sistema de Alertas Avanzado ✅
+
+### Modelos de Base de Datos
+- **Alerta**: [prisma/schema.prisma](mdc:prisma/schema.prisma) (líneas ~491-532)
+- **ConfiguracionAlerta**: [prisma/schema.prisma](mdc:prisma/schema.prisma) (líneas ~533-563)
+- **13 tipos de alerta** con 4 niveles de prioridad
+
+### APIs Implementadas
+- **CRUD completo**: [src/app/api/alertas/route.ts](mdc:src/app/api/alertas/route.ts)
+- **Configuración**: [src/app/api/alertas/config/route.ts](mdc:src/app/api/alertas/config/route.ts)
+- **Testing**: [src/app/api/alertas/test/route.ts](mdc:src/app/api/alertas/test/route.ts)
+
+### Componentes UI
+- **NotificationCenter**: [src/components/alertas/NotificationCenter.tsx](mdc:src/components/alertas/NotificationCenter.tsx)
+- **AlertsList**: [src/components/alertas/AlertsList.tsx](mdc:src/components/alertas/AlertsList.tsx)
+- **Página principal**: [src/app/alertas/page.tsx](mdc:src/app/alertas/page.tsx)
+
+## FASE 2 - Motor Automático de Alertas ✅
+
+### Motor Principal
+- **AlertEngine**: [src/lib/alert-engine/AlertEngine.ts](mdc:src/lib/alert-engine/AlertEngine.ts)
+- **AlertScheduler**: [src/lib/alert-engine/AlertScheduler.ts](mdc:src/lib/alert-engine/AlertScheduler.ts)
+
+### APIs de Control
+- **Evaluación automática**: [src/app/api/alertas/evaluate/route.ts](mdc:src/app/api/alertas/evaluate/route.ts)
+- **Control scheduler**: [src/app/api/alertas/scheduler/route.ts](mdc:src/app/api/alertas/scheduler/route.ts)
+
+### Panel de Administración
+- **Control del motor**: [src/app/admin/alertas/page.tsx](mdc:src/app/admin/alertas/page.tsx)
+- **Página de pruebas**: [src/app/test-fase2/page.tsx](mdc:src/app/test-fase2/page.tsx)
+
+## FASE 3 - Inteligencia Artificial Completa ✅
+
+### Motor de IA
+- **AIAnalyzer**: [src/lib/ai/AIAnalyzer.ts](mdc:src/lib/ai/AIAnalyzer.ts)
+- **Integración OpenAI** con GPT-3.5-turbo y GPT-4o-mini
+
+### APIs de IA (5 endpoints)
+- **Análisis de patrones**: [src/app/api/ai/analizar-patrones/route.ts](mdc:src/app/api/ai/analizar-patrones/route.ts)
+- **Recomendaciones**: [src/app/api/ai/recomendaciones/route.ts](mdc:src/app/api/ai/recomendaciones/route.ts)
+- **Alertas predictivas**: [src/app/api/ai/alertas-predictivas/route.ts](mdc:src/app/api/ai/alertas-predictivas/route.ts)
+- **Reportes inteligentes**: [src/app/api/ai/reporte-inteligente/route.ts](mdc:src/app/api/ai/reporte-inteligente/route.ts)
+- **Detección de anomalías**: [src/app/api/ai/detectar-anomalias/route.ts](mdc:src/app/api/ai/detectar-anomalias/route.ts)
+
+### Centro de IA
+- **Página principal**: [src/app/ai-financiero/page.tsx](mdc:src/app/ai-financiero/page.tsx)
+- **Componentes especializados**: [src/components/ai/](mdc:src/components/ai/)
+- **Página de pruebas**: [src/app/test-fase3/page.tsx](mdc:src/app/test-fase3/page.tsx)
+
+## Configuración para Deployment
+- **Vercel config**: [vercel.json](mdc:vercel.json)
+- **Package.json**: [package.json](mdc:package.json)
+- **Next.js config**: [next.config.ts](mdc:next.config.ts)

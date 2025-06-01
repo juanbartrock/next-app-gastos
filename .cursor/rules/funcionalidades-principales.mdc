@@ -3,3 +3,71 @@ description:
 globs:
 alwaysApply: false
 ---
+# Funcionalidades Principales Implementadas
+
+## Dashboard Principal ✅
+- **Página principal**: [src/app/page.tsx](mdc:src/app/page.tsx)
+- **Dashboard**: [src/app/dashboard/page.tsx](mdc:src/app/dashboard/page.tsx)
+- **Layout principal**: [src/app/layout.tsx](mdc:src/app/layout.tsx)
+- **Header inteligente** con saldo total y cotizaciones
+- **Centro de notificaciones** con badge dinámico
+
+## Gestión Financiera Completa ✅
+
+### Transacciones y Gastos
+- **API principal**: [src/app/api/gastos/route.ts](mdc:src/app/api/gastos/route.ts)
+- **Página de gestión**: [src/app/transacciones/page.tsx](mdc:src/app/transacciones/page.tsx)
+- **Formulario nuevo**: [src/app/transacciones/nuevo/page.tsx](mdc:src/app/transacciones/nuevo/page.tsx)
+- **Modelo Gasto**: [prisma/schema.prisma](mdc:prisma/schema.prisma) (líneas ~76-95)
+
+### Préstamos con Alertas Automáticas
+- **API principal**: [src/app/api/prestamos/route.ts](mdc:src/app/api/prestamos/route.ts)
+- **Gestión**: [src/app/prestamos/page.tsx](mdc:src/app/prestamos/page.tsx)
+- **Nuevo préstamo**: [src/app/prestamos/nuevo/page.tsx](mdc:src/app/prestamos/nuevo/page.tsx)
+- **Modelo Prestamo**: [prisma/schema.prisma](mdc:prisma/schema.prisma) (líneas ~202-238)
+
+### Inversiones con Seguimiento
+- **API principal**: [src/app/api/inversiones/route.ts](mdc:src/app/api/inversiones/route.ts)
+- **Gestión**: [src/app/inversiones/page.tsx](mdc:src/app/inversiones/page.tsx)
+- **Nueva inversión**: [src/app/inversiones/nueva/page.tsx](mdc:src/app/inversiones/nueva/page.tsx)
+- **Modelo Inversion**: [prisma/schema.prisma](mdc:prisma/schema.prisma) (líneas ~346-371)
+
+### Presupuestos Inteligentes
+- **API principal**: [src/app/api/presupuestos/route.ts](mdc:src/app/api/presupuestos/route.ts)
+- **Gestión**: [src/app/presupuestos/page.tsx](mdc:src/app/presupuestos/page.tsx)
+- **Nuevo presupuesto**: [src/app/presupuestos/nuevo/page.tsx](mdc:src/app/presupuestos/nuevo/page.tsx)
+- **Alertas automáticas** al 80%, 90% y 100%
+
+## Sistema de Tareas ✅
+- **API principal**: [src/app/api/tareas/route.ts](mdc:src/app/api/tareas/route.ts)
+- **Gestión**: [src/app/tareas/page.tsx](mdc:src/app/tareas/page.tsx)
+- **Nueva tarea**: [src/app/tareas/nueva/page.tsx](mdc:src/app/tareas/nueva/page.tsx)
+- **Modelo Tarea**: [prisma/schema.prisma](mdc:prisma/schema.prisma) (líneas ~413-447)
+- **Vinculación inteligente** con elementos financieros
+
+## Autenticación y Seguridad ✅
+- **NextAuth config**: [src/app/api/auth/[...nextauth]/options.ts](mdc:src/app/api/auth/[...nextauth]/options.ts)
+- **Login**: [src/app/login/page.tsx](mdc:src/app/login/page.tsx)
+- **Register**: [src/app/register/page.tsx](mdc:src/app/register/page.tsx)
+- **Middleware**: [src/middleware.ts](mdc:src/middleware.ts)
+
+## Gastos Grupales ✅
+- **API principal**: [src/app/api/grupos/route.ts](mdc:src/app/api/grupos/route.ts)
+- **Gestión**: [src/app/grupos/page.tsx](mdc:src/app/grupos/page.tsx)
+- **Modelo Grupo**: [prisma/schema.prisma](mdc:prisma/schema.prisma) (líneas ~58-65)
+
+## Panel de Administración ✅
+- **Categorías**: [src/app/admin/categorias/page.tsx](mdc:src/app/admin/categorias/page.tsx)
+- **Control de alertas**: [src/app/admin/alertas/page.tsx](mdc:src/app/admin/alertas/page.tsx)
+- **Scraping**: [src/app/admin/scraping/page.tsx](mdc:src/app/admin/scraping/page.tsx)
+- **Planes**: [src/app/admin/planes/page.tsx](mdc:src/app/admin/planes/page.tsx)
+
+## Páginas de Prueba y Testing ✅
+- **Test alertas**: [src/app/test-alertas/page.tsx](mdc:src/app/test-alertas/page.tsx)
+- **Test Fase 2**: [src/app/test-fase2/page.tsx](mdc:src/app/test-fase2/page.tsx)
+- **Test Fase 3**: [src/app/test-fase3/page.tsx](mdc:src/app/test-fase3/page.tsx)
+
+## Contextos y Providers ✅
+- **VisibilityContext**: [src/contexts/VisibilityContext.tsx](mdc:src/contexts/VisibilityContext.tsx)
+- **ThemeProvider**: [src/providers/ThemeProvider.tsx](mdc:src/providers/ThemeProvider.tsx)
+- **Sidebar**: Navegación principal integrada
