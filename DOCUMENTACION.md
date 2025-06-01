@@ -53,7 +53,7 @@ next-app-gastos/
 │   │   │   ├── inversiones/   # Portfolio de inversiones
 │   │   │   ├── tareas/        # Sistema de tareas
 │   │   │   └── ...           # Otras APIs
-│   │   ├── dashboard/         # Dashboard principal con widgets
+│   │   ├── dashboard/         # Dashboard principal con widgets inteligentes
 │   │   ├── ai-financiero/     # ✅ Centro de IA (FASE 3)
 │   │   ├── alertas/           # ✅ Gestión de alertas (FASE 1)
 │   │   ├── test-fase2/        # ✅ Pruebas motor automático (FASE 2)
@@ -727,4 +727,278 @@ Para contribuir al proyecto o reportar problemas, por favor abra un issue en el 
 
 ---
 
-**Documentación actualizada**: Enero 2025 - **Proyecto 100% Completado** 
+**Documentación actualizada**: Enero 2025 - **Proyecto 100% Completado**
+
+## 🎯 **NUEVA FUNCIONALIDAD: ASOCIACIÓN DE GASTOS RECURRENTES**
+
+### **📋 DESCRIPCIÓN GENERAL**
+El sistema permite asociar transacciones individuales a gastos recurrentes, creando relaciones padre-hijo que facilitan el seguimiento de pagos parciales y el cálculo automático de estados.
+
+### **🔗 FUNCIONALIDADES IMPLEMENTADAS**
+
+#### **1. Asociación en Creación de Transacciones**
+- **Ubicación**: `/transacciones/nuevo` - Componente `ExpenseForm`
+- **Selector dinámico** de gastos recurrentes disponibles
+- **Información visual** del impacto del pago
+- **Auto-llenado** de concepto desde el recurrente seleccionado
+- **Cálculo automático** de saldo pendiente y porcentaje pagado
+
+#### **2. Asociación en Edición de Transacciones**
+- **Ubicación**: `/transacciones/[id]/editar`
+- **Mismo selector** que en creación
+- **Manejo de cambios** de asociación (A → B, A → ninguno, ninguno → A)
+- **Recalculo automático** de estados en todos los recurrentes afectados
+- **Consistencia garantizada** por transacciones atómicas
+
+#### **3. Estados Dinámicos Automáticos**
+```typescript
+// Cálculo automático basado en pagos asociados
+'pendiente'      // Sin pagos registrados
+'pago_parcial'   // Pagos < 100% del monto total  
+'pagado'         // Pagos ≥ 100% del monto total
+```
+
+#### **4. API de Gastos Recurrentes Disponibles**
+```typescript
+GET /api/gastos/recurrentes-disponibles
+// Retorna gastos con estado 'pendiente' o 'pago_parcial'
+// Incluye información calculada: totalPagado, saldoPendiente, porcentajePagado
+```
+
+### **🔧 IMPLEMENTACIÓN TÉCNICA**
+
+#### **Base de Datos**
+```sql
+-- Relación en tabla Gasto
+ALTER TABLE Gasto ADD COLUMN gastoRecurrenteId INTEGER REFERENCES GastoRecurrente(id);
+
+-- Relación en modelo Prisma
+model Gasto {
+  gastoRecurrenteId  Int?              @map("gastoRecurrenteId")
+  gastoRecurrente    GastoRecurrente?  @relation(fields: [gastoRecurrenteId], references: [id])
+}
+
+model GastoRecurrente {
+  gastosGenerados   Gasto[]           @relation()
+}
+```
+
+#### **APIs Actualizadas**
+- ✅ `POST /api/gastos` - Soporte para `gastoRecurrenteId`
+- ✅ `PUT /api/gastos/[id]` - Manejo de cambios de asociación
+- ✅ `GET /api/gastos/recurrentes-disponibles` - Lista optimizada
+- ✅ `POST /api/recurrentes/[id]/generar-pago` - Generación automática
+
+#### **Componentes UI**
+- ✅ **ExpenseForm** (creación) - Selector con información visual
+- ✅ **EditarTransaccionPage** (edición) - Misma funcionalidad
+- ✅ **GastosRecurrentesTable** - Estados visuales mejorados
+- ✅ **NotificationCenter** - Alertas de recurrentes
+
+### **🎪 CASOS DE USO SOPORTADOS**
+
+#### **Scenario 1: Pago Completo**
+```typescript
+// Gasto recurrente: $10,000
+// Usuario crea transacción: $10,000 asociada
+// Resultado: estado = 'pagado'
+```
+
+#### **Scenario 2: Pago Parcial**
+```typescript
+// Gasto recurrente: $10,000  
+// Usuario crea transacción: $3,000 asociada
+// Resultado: estado = 'pago_parcial' (30% pagado)
+```
+
+#### **Scenario 3: Múltiples Pagos**
+```typescript
+// Gasto recurrente: $10,000
+// Pago 1: $3,000 → estado = 'pago_parcial' (30%)
+// Pago 2: $4,000 → estado = 'pago_parcial' (70%) 
+// Pago 3: $3,000 → estado = 'pagado' (100%)
+```
+
+#### **Scenario 4: Cambio de Asociación**
+```typescript
+// Transacción estaba asociada a Recurrente A
+// Se cambia a Recurrente B
+// Resultado: 
+//   - Recurrente A recalcula estado sin esta transacción
+//   - Recurrente B recalcula estado con esta transacción
+```
+
+## 🚀 **MEJORAS DE PERFORMANCE IMPLEMENTADAS**
+
+### **🔧 Next.js 15 Compatibility**
+```typescript
+// ANTES (Error)
+export async function GET(request, { params }) {
+  const id = params.id  // ❌ Error en Next.js 15
+}
+
+// DESPUÉS (Correcto)  
+export async function GET(request, { params }) {
+  const { id: idParam } = await params  // ✅ Correcto
+}
+```
+
+### **⚡ Optimización de Transacciones**
+```typescript
+// ANTES: Transacción compleja con timeout de 5s
+const resultado = await prisma.$transaction(async (tx) => {
+  // Múltiples operaciones complejas
+}, { timeout: 5000 })
+
+// DESPUÉS: Operaciones separadas, lógica simplificada
+const gastoRecurrente = await prisma.gastoRecurrente.create(data)
+// Operaciones no críticas separadas con manejo de errores
+```
+
+### **🎯 Pool de Conexiones Optimizado**
+```typescript
+// Configuración mejorada en prisma.ts
+const client = new PrismaClient({
+  log: [],
+  errorFormat: 'minimal',
+  datasourceUrl: process.env.DATABASE_URL
+});
+
+// Timeouts en queries críticas
+const resultado = await Promise.race([
+  prisma.operation(),
+  new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('Timeout')), 15000)
+  )
+]);
+```
+
+## 🔄 **FLUJO COMPLETO DE GASTOS RECURRENTES**
+
+### **1. Creación del Gasto Recurrente**
+```
+Usuario → /recurrentes → "Nuevo Gasto Recurrente"
+↓
+Formulario: concepto, monto, periodicidad, etc.
+↓  
+POST /api/recurrentes → Crea registro con estado 'pendiente'
+```
+
+### **2. Asociación en Transacción Nueva**
+```
+Usuario → /transacciones/nuevo → Selector "Asociar a Gasto Recurrente"
+↓
+Lista gastos con estado 'pendiente' o 'pago_parcial'
+↓
+Usuario selecciona recurrente + ingresa monto
+↓
+POST /api/gastos con gastoRecurrenteId
+↓
+Sistema calcula nuevo estado automáticamente
+```
+
+### **3. Asociación en Transacción Existente**
+```
+Usuario → /transacciones → Editar transacción existente
+↓
+Formulario muestra selector de gastos recurrentes  
+↓
+Usuario cambia/agrega/quita asociación
+↓
+PUT /api/gastos/[id] con gastoRecurrenteId
+↓
+Sistema recalcula TODOS los recurrentes afectados
+```
+
+### **4. Generación Automática de Pagos**
+```
+Usuario → /recurrentes → "Generar Pago" en gasto pendiente
+↓
+POST /api/recurrentes/[id]/generar-pago
+↓
+Crea transacción automática con relación padre-hijo
+↓
+Actualiza estado del recurrente automáticamente
+```
+
+## 📊 **ARQUITECTURA DE COMPONENTES**
+
+### **Frontend (React/Next.js)**
+```
+📁 src/components/
+├── 🔄 ExpenseForm.tsx (creación con selector recurrentes)
+├── 🔄 EditarTransaccionPage.tsx (edición con selector)
+├── 📋 GastosRecurrentesTable.tsx (vista con estados)
+└── 🔔 NotificationCenter.tsx (alertas automáticas)
+
+📁 src/app/
+├── 💰 /transacciones/nuevo (creación con asociación)
+├── ✏️ /transacciones/[id]/editar (edición con asociación)  
+├── 🔄 /recurrentes (gestión completa)
+└── 🤖 /ai-financiero (análisis inteligente)
+```
+
+### **Backend (API Routes)**
+```
+📁 src/app/api/
+├── 💰 /gastos/route.ts (POST con gastoRecurrenteId)
+├── ✏️ /gastos/[id]/route.ts (PUT con recálculo estados)
+├── 📋 /gastos/recurrentes-disponibles/route.ts (lista optimizada)
+├── 🔄 /recurrentes/route.ts (CRUD recurrentes)
+├── 💸 /recurrentes/[id]/generar-pago/route.ts (generación automática)
+└── 🤖 /ai/* (análisis inteligente)
+```
+
+### **Base de Datos (PostgreSQL/Prisma)**
+```sql
+📊 Tablas principales:
+├── 💰 Gasto (con gastoRecurrenteId nullable)
+├── 🔄 GastoRecurrente (con gastosGenerados relation)
+├── 📂 Categoria (compartida)
+├── 🔔 Alerta (para notificaciones automáticas)
+└── 👤 User (propietario de todos los datos)
+```
+
+## 🧪 **TESTING Y VALIDACIÓN**
+
+### **Páginas de Prueba Disponibles**
+- ✅ `/test-alertas` - Sistema de alertas
+- ✅ `/test-fase2` - Motor automático  
+- ✅ `/test-fase3` - Inteligencia artificial
+- ✅ `/recurrentes` - Funcionalidad completa implementada
+
+### **Casos de Prueba Críticos**
+1. **✅ Crear gasto recurrente** → Estado inicial 'pendiente'
+2. **✅ Asociar transacción nueva** → Cambio a 'pago_parcial'/'pagado'
+3. **✅ Editar asociación existente** → Recálculo correcto de ambos recurrentes
+4. **✅ Generar pago automático** → Creación correcta de relación
+5. **✅ Múltiples pagos parciales** → Acumulación correcta hacia 100%
+
+## 🔮 **ROADMAP Y MEJORAS FUTURAS**
+
+### **Funcionalidades Sugeridas (Opcional)**
+- [ ] **Alertas por WhatsApp/SMS** cuando se acerca vencimiento
+- [ ] **Dashboard visual** de pagos parciales con progress bars
+- [ ] **Plantillas de gastos** recurrentes comunes
+- [ ] **Importación masiva** de CSV con gastos recurrentes
+- [ ] **Gamificación** - badges por completar pagos a tiempo
+
+### **Optimizaciones Técnicas (Opcional)**
+- [ ] **Cache Redis** para gastos recurrentes frecuentes
+- [ ] **Web Workers** para cálculos pesados de estados
+- [ ] **PWA** con notificaciones push nativas
+- [ ] **GraphQL** para queries más eficientes
+- [ ] **WebSockets** para updates en tiempo real
+
+## 🎯 **CONCLUSIÓN**
+
+El sistema de gastos recurrentes está **100% completo y funcional**, proporcionando:
+
+✅ **Asociación bidireccional** entre transacciones y recurrentes
+✅ **Estados automáticos** basados en pagos reales  
+✅ **Interfaz intuitiva** para usuarios finales
+✅ **Arquitectura robusta** con manejo de errores
+✅ **Performance optimizada** para uso en producción
+✅ **Integración completa** con el resto del sistema
+
+**La aplicación está lista para producción** con todas las funcionalidades críticas implementadas y probadas. 🚀 

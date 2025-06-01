@@ -7,9 +7,9 @@
 - **Base de datos**: PostgreSQL unificada (desarrollo y producción con Neon)
 
 ## 🚀 HOJA DE RUTA DE DESARROLLO 
-> **Estado**: ✅ **PROYECTO 100% COMPLETADO** - 3 FASES IMPLEMENTADAS
+> **Estado**: ✅ **PROYECTO 100% COMPLETADO** - 3 FASES + GASTOS RECURRENTES IMPLEMENTADOS
 > 
-> **Referencia**: Ver `DOCUMENTACION.md`, `FASE_2_COMPLETADA.md` y `FASE_3_COMPLETADA.md` para información detallada
+> **Referencia**: Ver `DOCUMENTACION.md`, `GASTOS_RECURRENTES_COMPLETADO.md` y `PROYECTO_COMPLETADO_FINAL.md`
 
 ### **✅ TODAS LAS FASES COMPLETADAS - Enero 2025**
 
@@ -47,6 +47,18 @@
 - ✅ Reportes inteligentes automáticos mensuales
 - ✅ Detección de anomalías y gastos inusuales
 
+#### **✅ SISTEMA DE GASTOS RECURRENTES COMPLETADO - Enero 2025**
+- ✅ **Asociación bidireccional** entre transacciones y gastos recurrentes
+- ✅ **Estados automáticos**: pendiente → pago_parcial → pagado
+- ✅ **Selector en formularios** de creación y edición de transacciones
+- ✅ **Información visual** del impacto de pagos y saldos pendientes
+- ✅ **Generación automática** de pagos desde gastos recurrentes
+- ✅ **Relaciones padre-hijo** con campo `gastoRecurrenteId`
+- ✅ **API optimizada** `/api/gastos/recurrentes-disponibles`
+- ✅ **Transacciones atómicas** para garantizar consistencia
+- ✅ **Compatibilidad Next.js 15** con `await params`
+- ✅ **Manejo de timeouts** optimizado para Neon PostgreSQL
+
 ### **🎯 ESTADO ACTUAL: LISTO PARA PRODUCCIÓN**
 
 #### **Funcionalidades Principales Implementadas** ✅
@@ -62,6 +74,7 @@
 - ✅ **SISTEMA DE ALERTAS COMPLETO (FASE 1)**
 - ✅ **MOTOR AUTOMÁTICO DE ALERTAS (FASE 2)**
 - ✅ **INTELIGENCIA ARTIFICIAL INTEGRADA (FASE 3)**
+- ✅ **GASTOS RECURRENTES CON ASOCIACIÓN AUTOMÁTICA**
 
 #### **Próximas Expansiones Sugeridas (FASE 4+)**
 - [ ] Gamificación (badges, streaks, logros)
@@ -113,6 +126,17 @@ class AIAnalyzer {
   async generarReporte(userId: string): Promise<ReporteInteligente>
   async predecirAlertas(userId: string): Promise<AlertaPredictiva[]>
 }
+
+// Sistema de Gastos Recurrentes - IMPLEMENTADO Y FUNCIONAL
+model Gasto {
+  gastoRecurrenteId  Int?              @map("gastoRecurrenteId")
+  gastoRecurrente    GastoRecurrente?  @relation(fields: [gastoRecurrenteId], references: [id])
+}
+
+model GastoRecurrente {
+  gastosGenerados   Gasto[]           @relation()
+  estado           String            // 'pendiente', 'pago_parcial', 'pagado'
+}
 ```
 
 #### Componentes UI Estándar ✅
@@ -143,6 +167,28 @@ export function PatronesAnalisis() {
 export function RecomendacionesIA() {
   // Recomendaciones personalizadas
 }
+
+// Selector de Gastos Recurrentes - IMPLEMENTADO Y FUNCIONAL
+export function GastoRecurrenteSelector({ value, onChange, gastosRecurrentes }) {
+  return (
+    <Select value={value || "none"} onValueChange={onChange}>
+      <SelectTrigger>
+        <SelectValue placeholder="Seleccionar gasto recurrente" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="none">Sin asociar</SelectItem>
+        {gastosRecurrentes.map(recurrente => (
+          <SelectItem key={recurrente.id} value={recurrente.id.toString()}>
+            {recurrente.concepto} - ${recurrente.monto.toLocaleString()}
+            {recurrente.estado === 'pago_parcial' && 
+              ` (${recurrente.porcentajePagado.toFixed(1)}% pagado)`
+            }
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
 ```
 
 #### APIs Implementadas y Funcionales ✅
@@ -160,6 +206,10 @@ export function RecomendacionesIA() {
 - ✅ `GET /api/ai/alertas-predictivas` - Alertas predictivas
 - ✅ `GET /api/ai/reporte-inteligente` - Reportes ejecutivos con IA
 - ✅ `GET /api/ai/detectar-anomalias` - Detección de gastos anómalos
+- ✅ `POST /api/gastos` - Crear transacción con soporte para gastoRecurrenteId
+- ✅ `PUT /api/gastos/[id]` - Editar transacción con manejo de asociaciones
+- ✅ `GET /api/gastos/recurrentes-disponibles` - Lista optimizada para selector
+- ✅ `POST /api/recurrentes/[id]/generar-pago` - Generación automática
 
 ## Estructura del Proyecto
 ```
@@ -168,7 +218,11 @@ src/
 │   ├── api/               # API Routes
 │   │   ├── ai/            # ✅ APIs de Inteligencia Artificial (FASE 3)
 │   │   ├── alertas/       # ✅ Sistema de alertas completo (FASE 1+2)
-│   │   ├── gastos/        # Gestión de transacciones
+│   │   ├── gastos/        # ✅ Gestión de transacciones + gastos recurrentes
+│   │   │   ├── [id]/      # ✅ CRUD individual con asociación
+│   │   │   └── recurrentes-disponibles/ # ✅ API para selector
+│   │   ├── recurrentes/   # ✅ Gestión completa gastos recurrentes
+│   │   │   └── [id]/generar-pago/ # ✅ Generación automática
 │   │   ├── prestamos/     # Gestión de préstamos
 │   │   ├── inversiones/   # Gestión de inversiones
 │   │   ├── tareas/        # Sistema de tareas
@@ -183,7 +237,10 @@ src/
 │   ├── test-alertas/      # ✅ Página de pruebas (FASE 1)
 │   ├── test-fase2/        # ✅ Página de pruebas (FASE 2)
 │   ├── test-fase3/        # ✅ Página de pruebas (FASE 3)
-│   ├── transacciones/     # Gestión de transacciones
+│   ├── transacciones/     # ✅ Gestión con selector gastos recurrentes
+│   │   ├── nuevo/         # ✅ Formulario con asociación
+│   │   └── [id]/editar/   # ✅ Edición con manejo de cambios
+│   ├── recurrentes/       # ✅ Gestión completa implementada
 │   ├── grupos/            # Gastos grupales
 │   ├── prestamos/         # Gestión de préstamos
 │   ├── inversiones/       # Gestión de inversiones
@@ -192,10 +249,12 @@ src/
 ├── components/            # Componentes reutilizables
 │   ├── ui/               # Componentes UI de Shadcn
 │   ├── alertas/          # ✅ Componentes de alertas (FASE 1)
-│   └── ai/               # ✅ Componentes de IA (FASE 3)
+│   ├── ai/               # ✅ Componentes de IA (FASE 3)
+│   └── ExpenseForm.tsx   # ✅ Con selector gastos recurrentes
 ├── lib/                  # Utilidades y configuraciones
 │   ├── alert-engine/     # ✅ Motor de alertas automático (FASE 2)
-│   └── ai/               # ✅ Motor de inteligencia artificial (FASE 3)
+│   ├── ai/               # ✅ Motor de inteligencia artificial (FASE 3)
+│   └── prisma.ts         # ✅ Configuración optimizada Next.js 15
 ├── contexts/             # Contextos de React
 │   ├── VisibilityContext.tsx   # ✅ Implementado
 │   └── ThemeProvider.tsx       # ✅ Implementado
@@ -262,6 +321,18 @@ src/
 - Implementar categorización automática
 - Manejar diferentes tipos de movimiento (efectivo, digital, ahorro, tarjeta)
 - Soporte para gastos grupales y individuales
+- **✅ Asociación con gastos recurrentes** en creación y edición
+- **✅ Cálculo automático de estados** (pendiente/pago_parcial/pagado)
+
+#### **Sistema de Gastos Recurrentes (COMPLETADO)**
+- **✅ Relación padre-hijo** con campo `gastoRecurrenteId` en tabla Gasto
+- **✅ Estados automáticos** calculados en tiempo real basados en pagos asociados
+- **✅ Selector dinámico** en formularios de transacciones con información visual
+- **✅ API optimizada** `/api/gastos/recurrentes-disponibles` con timeouts
+- **✅ Generación automática** de transacciones desde gastos recurrentes
+- **✅ Transacciones atómicas** para garantizar consistencia de datos
+- **✅ Manejo de cambios** de asociación (A→B, A→ninguno, ninguno→A)
+- **✅ Información visual** del impacto de pagos y saldos pendientes
 
 #### Préstamos
 - Calcular cuotas usando amortización francesa
@@ -438,14 +509,198 @@ const response = await openai.chat.completions.create({
 })
 ```
 
+### **Next.js 15 API Route Pattern** ✅
+```typescript
+// CORRECTO: Uso de await params para Next.js 15
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { id: idParam } = await params  // ✅ Await params requerido
+    
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+    
+    // Resto de la lógica...
+    
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error('Error:', error)
+    return NextResponse.json({ error: 'Error interno' }, { status: 500 })
+  }
+}
+```
+
+### **Gastos Recurrentes Pattern** ✅
+```typescript
+// Crear transacción con asociación a gasto recurrente
+export async function POST(request: NextRequest) {
+  const { gastoRecurrenteId, ...datos } = await request.json()
+  
+  // Validar gasto recurrente si se proporciona
+  let gastoRecurrente = null
+  if (gastoRecurrenteId) {
+    gastoRecurrente = await prisma.gastoRecurrente.findFirst({
+      where: { id: Number(gastoRecurrenteId), userId: usuario.id }
+    })
+    
+    if (!gastoRecurrente) {
+      return NextResponse.json({ error: 'Gasto recurrente no válido' }, { status: 400 })
+    }
+  }
+  
+  // Transacción atómica para crear gasto y actualizar estado
+  const resultado = await prisma.$transaction(async (tx) => {
+    const nuevoGasto = await tx.gasto.create({
+      data: {
+        ...datos,
+        gastoRecurrenteId: gastoRecurrenteId ? Number(gastoRecurrenteId) : null
+      }
+    })
+    
+    // Recalcular estado del recurrente si está asociado
+    if (gastoRecurrente) {
+      const totalPagado = await tx.gasto.aggregate({
+        where: { gastoRecurrenteId: gastoRecurrente.id },
+        _sum: { monto: true }
+      })
+      
+      const montoPagado = totalPagado._sum.monto || 0
+      const nuevoEstado = montoPagado >= gastoRecurrente.monto 
+        ? 'pagado' 
+        : montoPagado > 0 
+          ? 'pago_parcial' 
+          : 'pendiente'
+      
+      await tx.gastoRecurrente.update({
+        where: { id: gastoRecurrente.id },
+        data: { estado: nuevoEstado, ultimoPago: new Date() }
+      })
+    }
+    
+    return nuevoGasto
+  })
+  
+  return NextResponse.json(resultado)
+}
+```
+
+### **Performance Pattern con Timeouts** ✅
+```typescript
+// Query con timeout para evitar problemas en Neon
+const gastosRecurrentes = await Promise.race([
+  prisma.gastoRecurrente.findMany({
+    where: { userId: usuario.id, estado: { in: ['pendiente', 'pago_parcial'] } },
+    include: {
+      categoria: { select: { id: true, descripcion: true } },
+      gastosGenerados: { 
+        select: { id: true, monto: true, fecha: true },
+        take: 10 // Limitar para performance
+      }
+    },
+    take: 50 // Máximo 50 resultados
+  }),
+  new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('Timeout en query')), 15000)
+  )
+]) as any
+
+// Enriquecimiento de datos con cálculos
+const gastosConInfo = gastosRecurrentes.map(recurrente => {
+  const totalPagado = recurrente.gastosGenerados.reduce((sum, pago) => sum + pago.monto, 0)
+  return {
+    ...recurrente,
+    totalPagado,
+    saldoPendiente: recurrente.monto - totalPagado,
+    porcentajePagado: (totalPagado / recurrente.monto) * 100
+  }
+})
+```
+
+### **Formulario con Selector de Gastos Recurrentes** ✅
+```typescript
+// Componente con selector de gastos recurrentes
+export function ExpenseForm() {
+  const [gastosRecurrentes, setGastosRecurrentes] = useState([])
+  const [gastoRecurrenteId, setGastoRecurrenteId] = useState("")
+  const [gastoRecurrenteSeleccionado, setGastoRecurrenteSeleccionado] = useState(null)
+  
+  // Cargar gastos recurrentes disponibles
+  useEffect(() => {
+    fetch('/api/gastos/recurrentes-disponibles')
+      .then(res => res.json())
+      .then(setGastosRecurrentes)
+      .catch(console.error)
+  }, [])
+  
+  // Auto-llenado al seleccionar recurrente
+  const handleGastoRecurrenteChange = (value: string) => {
+    setGastoRecurrenteId(value === "none" ? "" : value)
+    
+    if (value !== "none") {
+      const recurrente = gastosRecurrentes.find(g => g.id.toString() === value)
+      setGastoRecurrenteSeleccionado(recurrente)
+      if (recurrente) {
+        setConcepto(recurrente.concepto) // Auto-llenar concepto
+      }
+    } else {
+      setGastoRecurrenteSeleccionado(null)
+    }
+  }
+  
+  return (
+    <form>
+      {/* Selector de gasto recurrente */}
+      <Select value={gastoRecurrenteId || "none"} onValueChange={handleGastoRecurrenteChange}>
+        <SelectTrigger>
+          <SelectValue placeholder="Seleccionar gasto recurrente" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">Sin asociar</SelectItem>
+          {gastosRecurrentes.map(recurrente => (
+            <SelectItem key={recurrente.id} value={recurrente.id.toString()}>
+              {recurrente.concepto} - ${recurrente.monto.toLocaleString()}
+              {recurrente.estado === 'pago_parcial' && 
+                ` (${recurrente.porcentajePagado.toFixed(1)}% pagado)`
+              }
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      
+      {/* Información visual del impacto */}
+      {gastoRecurrenteSeleccionado && (
+        <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg mt-2">
+          <p className="text-sm font-medium">Impacto del pago:</p>
+          <p className="text-xs">
+            Saldo pendiente: ${gastoRecurrenteSeleccionado.saldoPendiente.toLocaleString()}
+          </p>
+          <p className="text-xs">
+            Con este pago: {calcularNuevoEstado(gastoRecurrenteSeleccionado, monto)}
+          </p>
+        </div>
+      )}
+      
+      {/* Resto del formulario... */}
+    </form>
+  )
+}
+```
+
 ## Notas Importantes
 - **NO usar datos simulados o ficticios**
 - **NO implementar reseteo automático de base de datos**
 - **Siempre validar permisos de usuario antes de operaciones**
 - **Usar PostgreSQL/Neon exclusivamente (no SQLite)**
 - **Mantener consistencia en el formato de fechas y monedas**
-- **✅ PROYECTO COMPLETADO**: Las 3 fases están implementadas y funcionando
+- **✅ PROYECTO COMPLETADO**: Las 3 fases + gastos recurrentes implementados y funcionando
 - **Usar contextos de Visibility y Theme en todos los componentes nuevos**
 - **✅ OpenAI integrado**: Usar AIAnalyzer para nuevas funcionalidades de IA
 - **✅ AlertEngine funcionando**: Usar para evaluar nuevas condiciones automáticas
-- **✅ Páginas de prueba disponibles**: `/test-alertas`, `/test-fase2`, `/test-fase3`
+- **✅ Gastos Recurrentes**: Sistema completo con asociación bidireccional implementado
+- **✅ Next.js 15**: Usar `await params` en todas las API routes nuevas
+- **✅ Performance**: Implementar timeouts en queries críticas para evitar problemas con Neon
+- **✅ Páginas de prueba disponibles**: `/test-alertas`, `/test-fase2`, `/test-fase3`, `/recurrentes`
