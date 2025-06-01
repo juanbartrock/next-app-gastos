@@ -38,6 +38,18 @@ export async function GET() {
             id: true,
             descripcion: true
           }
+        },
+        gastosGenerados: {
+          select: {
+            id: true,
+            concepto: true,
+            monto: true,
+            fecha: true,
+            tipoTransaccion: true,
+            tipoMovimiento: true
+          },
+          orderBy: { fecha: 'desc' },
+          take: 3 // Últimos 3 gastos generados para vista previa
         }
       },
       orderBy: {
@@ -90,6 +102,7 @@ export async function POST(request: Request) {
       estado, 
       categoriaId,
       proximaFecha,
+      tipoMovimiento,
       esServicio,
       medioPago
     } = await request.json()
@@ -116,27 +129,27 @@ export async function POST(request: Request) {
       }
     }
     
-    // Usar transacción para crear gasto recurrente y servicio si corresponde
-    const resultado = await prisma.$transaction(async (tx) => {
-      // Crear el gasto recurrente
-      const gastoRecurrente = await tx.gastoRecurrente.create({
-        data: {
-          concepto,
-          periodicidad,
-          monto: Number(monto),
-          comentario,
-          estado: estado || 'pendiente',
-          proximaFecha: proximaFecha ? new Date(proximaFecha) : null,
-          userId: usuario.id,
-          esServicio: esServicio || false,
-          ...(categoriaId && { categoriaId: Number(categoriaId) })
-        }
-      })
-      
-      // Si se marca como servicio, crear el servicio asociado
-      if (esServicio) {
+    // Crear el gasto recurrente directamente (sin transacción compleja para evitar timeouts)
+    const gastoRecurrente = await prisma.gastoRecurrente.create({
+      data: {
+        concepto,
+        periodicidad,
+        monto: Number(monto),
+        comentario,
+        estado: estado || 'pendiente',
+        tipoMovimiento: tipoMovimiento || 'efectivo',
+        proximaFecha: proximaFecha ? new Date(proximaFecha) : null,
+        userId: usuario.id,
+        esServicio: esServicio || false,
+        ...(categoriaId && { categoriaId: Number(categoriaId) })
+      }
+    })
+    
+    // Si se marca como servicio, crear el servicio asociado (por separado para evitar timeout)
+    if (esServicio) {
+      try {
         // Verificar si ya existe un servicio con el mismo nombre
-        const servicioExistente = await tx.servicio.findFirst({
+        const servicioExistente = await prisma.servicio.findFirst({
           where: {
             userId: usuario.id,
             nombre: concepto,
@@ -146,7 +159,7 @@ export async function POST(request: Request) {
         
         if (!servicioExistente) {
           // Crear el servicio
-          const servicio = await tx.servicio.create({
+          const servicio = await prisma.servicio.create({
             data: {
               nombre: concepto,
               descripcion: `Servicio generado automáticamente desde gasto recurrente: ${concepto}`,
@@ -159,17 +172,18 @@ export async function POST(request: Request) {
           })
           
           // Actualizar el gasto recurrente con la relación al servicio
-          await tx.gastoRecurrente.update({
+          await prisma.gastoRecurrente.update({
             where: { id: gastoRecurrente.id },
             data: { servicioId: servicio.id }
           })
         }
+      } catch (servicioError) {
+        console.error('Error al crear servicio asociado (no crítico):', servicioError)
+        // No fallar la creación del gasto recurrente por un error en el servicio
       }
-      
-      return gastoRecurrente
-    })
+    }
     
-    return NextResponse.json(resultado)
+    return NextResponse.json(gastoRecurrente)
   } catch (error) {
     console.error('Error al crear gasto recurrente:', error)
     return NextResponse.json(

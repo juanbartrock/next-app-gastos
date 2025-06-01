@@ -19,7 +19,8 @@ export async function GET(
       )
     }
     
-    const id = parseInt(params.id)
+    const { id: idParam } = await params
+    const id = parseInt(idParam)
     
     // Buscar al usuario por email
     const usuario = await prisma.user.findUnique({
@@ -81,7 +82,8 @@ export async function PUT(
       )
     }
     
-    const id = parseInt(params.id)
+    const { id: idParam } = await params
+    const id = parseInt(idParam)
     
     // Buscar al usuario por email
     const usuario = await prisma.user.findUnique({
@@ -118,6 +120,7 @@ export async function PUT(
       categoriaId,
       proximaFecha,
       ultimoPago,
+      tipoMovimiento,
       esServicio,
       medioPago
     } = await request.json()
@@ -197,6 +200,7 @@ export async function PUT(
           proximaFecha: proximaFecha ? new Date(proximaFecha) : existeGasto.proximaFecha,
           ultimoPago: ultimoPago ? new Date(ultimoPago) : existeGasto.ultimoPago,
           ...(categoriaId && { categoriaId: Number(categoriaId) }),
+          ...(tipoMovimiento && { tipoMovimiento }),
           esServicio: esServicio !== undefined ? esServicio : existeGasto.esServicio,
           updatedAt: new Date()
         },
@@ -247,7 +251,8 @@ export async function DELETE(
       )
     }
     
-    const id = parseInt(params.id)
+    const { id: idParam } = await params
+    const id = parseInt(idParam)
     
     // Buscar al usuario por email
     const usuario = await prisma.user.findUnique({

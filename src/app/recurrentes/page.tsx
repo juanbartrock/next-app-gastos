@@ -38,6 +38,7 @@ type GastoRecurrente = {
   monto: number
   comentario?: string
   estado: string
+  tipoMovimiento?: string
   proximaFecha?: Date
   ultimoPago?: Date
   categoriaId?: number
@@ -45,6 +46,14 @@ type GastoRecurrente = {
     id: number
     descripcion: string
   }
+  gastosGenerados?: {
+    id: number
+    concepto: string
+    monto: number
+    fecha: Date
+    tipoTransaccion: string
+    tipoMovimiento: string
+  }[]
 }
 
 type Servicio = {
@@ -134,6 +143,7 @@ export default function RecurrentesPage() {
   const [monto, setMonto] = useState("")
   const [comentario, setComentario] = useState("")
   const [estado, setEstado] = useState("pendiente")
+  const [tipoMovimiento, setTipoMovimiento] = useState("efectivo")
   const [categoriaId, setCategoriaId] = useState<number | undefined>(undefined)
   const [proximaFecha, setProximaFecha] = useState<Date | undefined>(undefined)
   const [proximaFechaStr, setProximaFechaStr] = useState<string>("")
@@ -144,6 +154,9 @@ export default function RecurrentesPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [deletingServicioId, setDeletingServicioId] = useState<number | null>(null)
   const [submittingServicio, setSubmittingServicio] = useState(false)
+  // NUEVOS ESTADOS para funcionalidades de pago
+  const [generandoPagoId, setGenerandoPagoId] = useState<number | null>(null)
+  const [actualizandoEstados, setActualizandoEstados] = useState(false)
 
   // Formulario para servicios
   const [servicioNombre, setServicioNombre] = useState("")
@@ -163,6 +176,7 @@ export default function RecurrentesPage() {
       setPeriodicidad(editingGasto.periodicidad || "")
       setComentario(editingGasto.comentario || "")
       setEstado(editingGasto.estado || "")
+      setTipoMovimiento(editingGasto.tipoMovimiento || "efectivo")
       setCategoriaSeleccionada(editingGasto.categoriaId?.toString() || "")
       
       if (editingGasto.proximaFecha) {
@@ -500,6 +514,106 @@ export default function RecurrentesPage() {
     }
   }
 
+  // NUEVA FUNCIÓN: Generar pago desde gasto recurrente
+  const generarPago = async (recurrenteId: number) => {
+    if (!confirm('¿Generar pago para este gasto recurrente? Esto creará un gasto real en tu lista de transacciones.')) {
+      return
+    }
+    
+    setGenerandoPagoId(recurrenteId)
+    try {
+      const response = await fetch(`/api/recurrentes/${recurrenteId}/generar-pago`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      
+      if (response.ok) {
+        const resultado = await response.json()
+        toast.success('¡Pago generado exitosamente!')
+        
+        // Actualizar la lista de gastos recurrentes
+        await fetchData()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Error al generar el pago')
+      }
+    } catch (error) {
+      console.error('Error al generar pago:', error)
+      toast.error('Error al generar el pago')
+    } finally {
+      setGenerandoPagoId(null)
+    }
+  }
+
+  // NUEVA FUNCIÓN: Actualizar estados automáticos
+  const actualizarEstadosAutomaticos = async () => {
+    setActualizandoEstados(true)
+    try {
+      const response = await fetch('/api/recurrentes/estado-automatico', {
+        method: 'GET'
+      })
+      
+      if (response.ok) {
+        const resultado = await response.json()
+        toast.success(`Estados actualizados: ${resultado.stats.actualizados} cambios realizados`)
+        
+        // Actualizar la lista de gastos recurrentes
+        await fetchData()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Error al actualizar estados')
+      }
+    } catch (error) {
+      console.error('Error al actualizar estados:', error)
+      toast.error('Error al actualizar estados automáticos')
+    } finally {
+      setActualizandoEstados(false)
+    }
+  }
+
+  // NUEVA FUNCIÓN: Calcular estado visual basado en datos locales
+  const calcularEstadoVisual = (gasto: GastoRecurrente): string => {
+    const ahora = new Date()
+    const proximaFecha = gasto.proximaFecha ? new Date(gasto.proximaFecha) : null
+    
+    // Si tiene gastos generados, calcular total pagado
+    if (gasto.gastosGenerados && gasto.gastosGenerados.length > 0) {
+      const totalPagado = gasto.gastosGenerados.reduce((sum, pago) => sum + pago.monto, 0)
+      const porcentajePagado = (totalPagado / gasto.monto) * 100
+      
+      // Si está completamente pagado
+      if (porcentajePagado >= 100) {
+        return 'pagado'
+      }
+      
+      // Si tiene pagos parciales
+      if (porcentajePagado > 0) {
+        return 'pago_parcial'
+      }
+    }
+    
+    // Si no hay fecha próxima
+    if (!proximaFecha) {
+      return gasto.estado
+    }
+    
+    // Si ya pasó la fecha y no hay pago
+    if (ahora > proximaFecha) {
+      return 'pendiente'
+    }
+    
+    // Si está próximo (próximos 7 días)
+    const diferenciaDias = Math.ceil((proximaFecha.getTime() - ahora.getTime()) / (1000 * 60 * 60 * 24))
+    if (diferenciaDias <= 7 && diferenciaDias > 0) {
+      return 'proximo'
+    }
+    
+    // Si está programado para el futuro
+    return 'programado'
+  }
+
   // Efecto para redireccionar si no está autenticado
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -516,6 +630,7 @@ export default function RecurrentesPage() {
     setMonto("")
     setComentario("")
     setEstado("pendiente")
+    setTipoMovimiento("efectivo")
     setCategoriaId(undefined)
     setCategoriaSeleccionada(undefined)
     setProximaFecha(undefined)
@@ -546,6 +661,7 @@ export default function RecurrentesPage() {
         monto: parseFloat(monto),
         comentario,
         estado,
+        tipoMovimiento,
         categoriaId,
         proximaFecha: parsedDate
       }
@@ -636,12 +752,27 @@ export default function RecurrentesPage() {
     return formatDateToDDMMYYYY(new Date(fecha))
   }
 
+  // Formatear tipo de movimiento
+  const formatTipoMovimiento = (tipo?: string) => {
+    if (!tipo) return "Efectivo"
+    switch (tipo) {
+      case 'efectivo': return 'Efectivo'
+      case 'digital': return 'Digital'
+      case 'tarjeta': return 'Tarjeta'
+      case 'debito_automatico': return 'Débito Automático'
+      case 'ahorro': return 'Ahorro/Inversión'
+      default: return tipo
+    }
+  }
+
   // Obtener estado con estilo
   const getEstadoClase = (estado: string) => {
     switch (estado) {
       case 'pagado': return 'text-green-600 dark:text-green-400 font-medium'
       case 'parcial': return 'text-yellow-600 dark:text-yellow-400 font-medium'
       case 'pendiente': return 'text-red-600 dark:text-red-400 font-medium'
+      case 'proximo': return 'text-orange-600 dark:text-orange-400 font-medium'
+      case 'programado': return 'text-blue-600 dark:text-blue-400 font-medium'
       case 'n/a': return 'text-gray-500 dark:text-gray-400'
       default: return ''
     }
@@ -653,6 +784,23 @@ export default function RecurrentesPage() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gastos Recurrentes</h1>
           <div className="flex gap-4">
+            <Button 
+              variant="secondary" 
+              onClick={actualizarEstadosAutomaticos}
+              disabled={actualizandoEstados}
+            >
+              {actualizandoEstados ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Actualizando...
+                </>
+              ) : (
+                <>
+                  <Repeat className="mr-2 h-4 w-4" />
+                  Actualizar Estados
+                </>
+              )}
+            </Button>
             <Button variant="default" onClick={() => { resetForm(); setIsFormOpen(true); }}>
               Nuevo Gasto Recurrente
             </Button>
@@ -984,6 +1132,24 @@ export default function RecurrentesPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="tipoMovimiento">Tipo de Movimiento *</Label>
+                  <Select value={tipoMovimiento} onValueChange={setTipoMovimiento} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="efectivo">Efectivo</SelectItem>
+                      <SelectItem value="digital">Digital/Transferencia</SelectItem>
+                      <SelectItem value="tarjeta">Tarjeta</SelectItem>
+                      <SelectItem value="debito_automatico">Débito Automático</SelectItem>
+                      <SelectItem value="ahorro">Ahorro/Inversión</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label htmlFor="proximaFecha">Próxima Fecha (DD/MM/YYYY)</Label>
                   <Input
                     type="text"
@@ -993,16 +1159,15 @@ export default function RecurrentesPage() {
                     placeholder="DD/MM/YYYY"
                   />
                 </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="comentario">Comentario</Label>
-                <Input 
-                  id="comentario" 
-                  value={comentario} 
-                  onChange={(e) => setComentario(e.target.value)} 
-                  placeholder="Comentario opcional" 
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="comentario">Comentario</Label>
+                  <Input 
+                    id="comentario" 
+                    value={comentario} 
+                    onChange={(e) => setComentario(e.target.value)} 
+                    placeholder="Comentario opcional" 
+                  />
+                </div>
               </div>
               
               <div className="flex justify-end gap-2 pt-4">
@@ -1218,6 +1383,8 @@ export default function RecurrentesPage() {
                       <TableHead>Concepto</TableHead>
                       <TableHead>Periodicidad</TableHead>
                       <TableHead>Monto</TableHead>
+                      <TableHead>Tipo Movimiento</TableHead>
+                      <TableHead>Pagos</TableHead>
                       <TableHead>Próximo Pago</TableHead>
                       <TableHead>Categoría</TableHead>
                       <TableHead>Estado</TableHead>
@@ -1229,50 +1396,129 @@ export default function RecurrentesPage() {
                       .filter(gasto => {
                         // Filtrar por concepto (case insensitive)
                         const conceptoMatch = !filtroConcepto || 
-                          gasto.concepto.toLowerCase().includes(filtroConcepto.toLowerCase());
+                          gasto.concepto.toLowerCase().includes(filtroConcepto.toLowerCase())
                         
                         // Filtrar por categoría
                         const categoriaMatch = !filtroCategoria || 
-                          gasto.categoriaId === filtroCategoria;
+                          gasto.categoriaId === filtroCategoria
                         
                         // Filtrar por estado
                         const estadoMatch = !filtroEstado || 
-                          gasto.estado === filtroEstado;
+                          gasto.estado === filtroEstado
                         
-                        return conceptoMatch && categoriaMatch && estadoMatch;
+                        return conceptoMatch && categoriaMatch && estadoMatch
                       })
-                      .map((gasto) => (
-                      <TableRow key={gasto.id}>
-                        <TableCell className="font-medium">{gasto.concepto}</TableCell>
-                        <TableCell>{gasto.periodicidad}</TableCell>
-                        <TableCell>
-                          {formatMoney(gasto.monto)}
-                        </TableCell>
-                        <TableCell>{formatFecha(gasto.proximaFecha)}</TableCell>
-                        <TableCell>{gasto.categoria?.descripcion || "Sin categoría"}</TableCell>
-                        <TableCell className={getEstadoClase(gasto.estado)}>
-                          {gasto.estado}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => handleEdit(gasto)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => handleDelete(gasto.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                      .map((gasto) => {
+                        const estadoVisual = calcularEstadoVisual(gasto)
+                        const puedeGenerarPago = estadoVisual === 'pendiente' || estadoVisual === 'proximo' || estadoVisual === 'programado' || estadoVisual === 'pago_parcial'
+                        
+                        return (
+                          <TableRow key={gasto.id}>
+                            <TableCell className="font-medium">
+                              {gasto.concepto}
+                              {gasto.gastosGenerados && gasto.gastosGenerados.length > 0 && (
+                                <div className="text-xs text-gray-500">
+                                  {gasto.gastosGenerados.length} pago{gasto.gastosGenerados.length !== 1 ? 's' : ''} generado{gasto.gastosGenerados.length !== 1 ? 's' : ''}
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell>{gasto.periodicidad}</TableCell>
+                            <TableCell>
+                              {formatMoney(gasto.monto)}
+                            </TableCell>
+                            <TableCell>{formatTipoMovimiento(gasto.tipoMovimiento)}</TableCell>
+                            <TableCell>
+                              {gasto.gastosGenerados && gasto.gastosGenerados.length > 0 ? (
+                                (() => {
+                                  const totalPagado = gasto.gastosGenerados.reduce((sum, pago) => sum + pago.monto, 0)
+                                  const saldoPendiente = gasto.monto - totalPagado
+                                  const porcentajePagado = (totalPagado / gasto.monto) * 100
+                                  
+                                  return (
+                                    <div className="space-y-1">
+                                      <div className="text-sm font-medium">
+                                        {formatMoney(totalPagado)} / {formatMoney(gasto.monto)}
+                                      </div>
+                                      <div className="text-xs text-gray-500">
+                                        {gasto.gastosGenerados.length} pago{gasto.gastosGenerados.length !== 1 ? 's' : ''}
+                                      </div>
+                                      {porcentajePagado > 0 && porcentajePagado < 100 && (
+                                        <div className="text-xs text-amber-600 font-medium">
+                                          {porcentajePagado.toFixed(1)}% pagado
+                                        </div>
+                                      )}
+                                      {saldoPendiente > 0 && (
+                                        <div className="text-xs text-red-600">
+                                          Resta: {formatMoney(saldoPendiente)}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                })()
+                              ) : (
+                                <div className="text-xs text-gray-400">
+                                  Sin pagos
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell>{formatFecha(gasto.proximaFecha)}</TableCell>
+                            <TableCell>{gasto.categoria?.descripcion || "Sin categoría"}</TableCell>
+                            <TableCell>
+                              <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                                estadoVisual === 'pagado' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                                estadoVisual === 'pago_parcial' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' :
+                                estadoVisual === 'pendiente' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
+                                estadoVisual === 'proximo' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' :
+                                estadoVisual === 'programado' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                                'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                              }`}>
+                                {estadoVisual === 'proximo' ? 'Próximo' :
+                                 estadoVisual === 'programado' ? 'Programado' :
+                                 estadoVisual === 'pagado' ? 'Pagado' :
+                                 estadoVisual === 'pago_parcial' ? 'Pago Parcial' :
+                                 estadoVisual === 'pendiente' ? 'Pendiente' :
+                                 estadoVisual}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                {puedeGenerarPago && (
+                                  <Button 
+                                    variant="default" 
+                                    size="sm"
+                                    onClick={() => generarPago(gasto.id)}
+                                    disabled={generandoPagoId === gasto.id}
+                                    className="text-xs"
+                                  >
+                                    {generandoPagoId === gasto.id ? (
+                                      <>
+                                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                        Generando...
+                                      </>
+                                    ) : (
+                                      'Generar Pago'
+                                    )}
+                                  </Button>
+                                )}
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => handleEdit(gasto)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => handleDelete(gasto.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
                   </TableBody>
                 </Table>
                 

@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowDown, ArrowUp, CalendarIcon, CreditCard, Loader2, ArrowLeft } from "lucide-react"
+import { ArrowDown, ArrowUp, CalendarIcon, CreditCard, Loader2, ArrowLeft, RefreshCw } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { toast } from "sonner"
 import { useCurrency } from "@/contexts/CurrencyContext"
@@ -37,6 +37,7 @@ interface GastoData {
   tipoTransaccion: string;
   tipoMovimiento: string;
   incluirEnFamilia: boolean;
+  gastoRecurrenteId?: number;
   categoriaRel?: Categoria;
 }
 
@@ -96,6 +97,12 @@ export default function EditarTransaccionPage() {
   const [loadingCategorias, setLoadingCategorias] = useState(false)
   const [error, setError] = useState<string>("")
 
+  // NUEVO: Estados para gastos recurrentes
+  const [gastosRecurrentes, setGastosRecurrentes] = useState<any[]>([])
+  const [gastoRecurrenteId, setGastoRecurrenteId] = useState<string>("")
+  const [loadingRecurrentes, setLoadingRecurrentes] = useState(false)
+  const [gastoRecurrenteSeleccionado, setGastoRecurrenteSeleccionado] = useState<any>(null)
+
   // Cargar categorías
   useEffect(() => {
     const fetchCategorias = async () => {
@@ -115,6 +122,48 @@ export default function EditarTransaccionPage() {
 
     fetchCategorias()
   }, [])
+
+  // NUEVO: Función para cargar gastos recurrentes disponibles
+  const fetchGastosRecurrentes = async () => {
+    try {
+      setLoadingRecurrentes(true)
+      const response = await fetch('/api/gastos/recurrentes-disponibles')
+      if (response.ok) {
+        const data = await response.json()
+        setGastosRecurrentes(data)
+      }
+    } catch (error) {
+      console.error('Error al cargar gastos recurrentes:', error)
+    } finally {
+      setLoadingRecurrentes(false)
+    }
+  }
+
+  // NUEVO: Cargar gastos recurrentes cuando se monta el componente
+  useEffect(() => {
+    fetchGastosRecurrentes()
+  }, [])
+
+  // NUEVO: Cargar información del gasto recurrente seleccionado cuando cambia
+  useEffect(() => {
+    if (gastoRecurrenteId && gastoRecurrenteId !== "none" && gastosRecurrentes.length > 0) {
+      const recurrente = gastosRecurrentes.find(g => g.id.toString() === gastoRecurrenteId)
+      setGastoRecurrenteSeleccionado(recurrente)
+    } else {
+      setGastoRecurrenteSeleccionado(null)
+    }
+  }, [gastoRecurrenteId, gastosRecurrentes])
+
+  // NUEVO: Manejar selección de gasto recurrente
+  const handleGastoRecurrenteChange = (value: string) => {
+    setGastoRecurrenteId(value === "none" ? "" : value)
+    if (value && value !== "none") {
+      const recurrente = gastosRecurrentes.find(g => g.id.toString() === value)
+      setGastoRecurrenteSeleccionado(recurrente)
+    } else {
+      setGastoRecurrenteSeleccionado(null)
+    }
+  }
 
   // Cargar datos del gasto
   useEffect(() => {
@@ -137,6 +186,13 @@ export default function EditarTransaccionPage() {
             setMovementType(data.tipoMovimiento as "efectivo" | "digital" | "ahorro" | "tarjeta")
             setIncluirEnFamilia(data.incluirEnFamilia)
             setCategoriaSeleccionada(data.categoriaId?.toString() || "")
+            
+            // NUEVO: Establecer gasto recurrente asociado si existe
+            if (data.gastoRecurrenteId) {
+              setGastoRecurrenteId(data.gastoRecurrenteId.toString())
+            } else {
+              setGastoRecurrenteId("")
+            }
           } else {
             toast.error("Error al cargar los datos de la transacción")
             router.push("/transacciones")
@@ -205,7 +261,8 @@ export default function EditarTransaccionPage() {
           tipoMovimiento: movementType,
           fecha: parsedDate.toISOString(),
           fechaImputacion: parsedFechaImputacion?.toISOString(),
-          incluirEnFamilia
+          incluirEnFamilia,
+          gastoRecurrenteId: gastoRecurrenteId ? parseInt(gastoRecurrenteId) : undefined
         }),
       })
 
@@ -362,6 +419,66 @@ export default function EditarTransaccionPage() {
                   )}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* NUEVO: Selector de Gasto Recurrente */}
+            <div className="space-y-2">
+              <Label htmlFor="gastoRecurrente" className="flex items-center">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Asociar a Gasto Recurrente (opcional)
+              </Label>
+              <Select value={gastoRecurrenteId || "none"} onValueChange={handleGastoRecurrenteChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar gasto recurrente..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Ninguno</SelectItem>
+                  {loadingRecurrentes ? (
+                    <SelectItem value="loading" disabled>Cargando gastos recurrentes...</SelectItem>
+                  ) : (
+                    gastosRecurrentes.map((recurrente) => (
+                      <SelectItem key={recurrente.id} value={recurrente.id.toString()}>
+                        <div className="flex flex-col">
+                          <div className="font-medium">{recurrente.concepto}</div>
+                          <div className="text-xs text-muted-foreground">
+                            ${recurrente.monto.toLocaleString()} - ${recurrente.saldoPendiente.toLocaleString()} pendiente
+                            {recurrente.porcentajePagado > 0 && (
+                              <span className="ml-1 text-amber-600">
+                                ({recurrente.porcentajePagado.toFixed(1)}% pagado)
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              
+              {/* Información del gasto recurrente seleccionado */}
+              {gastoRecurrenteSeleccionado && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-md">
+                  <div className="text-sm">
+                    <div className="font-medium text-blue-900 dark:text-blue-100">
+                      {gastoRecurrenteSeleccionado.concepto}
+                    </div>
+                    <div className="text-blue-700 dark:text-blue-300 mt-1">
+                      Monto total: ${gastoRecurrenteSeleccionado.monto.toLocaleString()}
+                    </div>
+                    <div className="text-blue-700 dark:text-blue-300">
+                      Saldo pendiente: ${gastoRecurrenteSeleccionado.saldoPendiente.toLocaleString()}
+                    </div>
+                    {gastoRecurrenteSeleccionado.porcentajePagado > 0 && (
+                      <div className="text-amber-700 dark:text-amber-300">
+                        Ya pagado: {gastoRecurrenteSeleccionado.porcentajePagado.toFixed(1)}%
+                      </div>
+                    )}
+                    <div className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                      💡 Este pago se asociará al gasto recurrente y actualizará su estado automáticamente
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Tipo de Movimiento */}

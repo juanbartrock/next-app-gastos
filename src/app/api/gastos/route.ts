@@ -239,8 +239,9 @@ export async function POST(request: Request) {
       tipoTransaccion, 
       tipoMovimiento, 
       fecha, 
-      fechaImputacion,  // Nuevo campo para imputación contable
-      incluirEnFamilia = true  // Nuevo campo con valor por defecto
+      fechaImputacion,
+      incluirEnFamilia = true,
+      gastoRecurrenteId  // NUEVO: ID del gasto recurrente a asociar
     } = await request.json()
 
     // Verificar que la categoría existe si se proporciona un ID
@@ -264,6 +265,24 @@ export async function POST(request: Request) {
       }
     }
 
+    // NUEVO: Verificar gasto recurrente si se proporciona
+    let gastoRecurrente = null;
+    if (gastoRecurrenteId) {
+      gastoRecurrente = await prisma.gastoRecurrente.findFirst({
+        where: {
+          id: Number(gastoRecurrenteId),
+          userId: usuario.id  // Verificar que pertenece al usuario
+        }
+      });
+      
+      if (!gastoRecurrente) {
+        return NextResponse.json(
+          { error: 'El gasto recurrente seleccionado no existe o no tienes permisos' },
+          { status: 400 }
+        )
+      }
+    }
+
     // Procesar fecha de imputación
     let fechaImputacionProcessed = null;
     if (fechaImputacion) {
@@ -277,23 +296,60 @@ export async function POST(request: Request) {
       }
     }
 
-    const gasto = await prisma.gasto.create({
-      data: {
-        concepto,
-        monto,
-        categoria: nombreCategoria || categoria || 'Sin categoría',
-        tipoTransaccion: tipoTransaccion || 'expense',
-        tipoMovimiento: tipoMovimiento || 'efectivo',
-        fecha: fecha || new Date(),
-        fechaImputacion: fechaImputacionProcessed,  // Fecha para imputación contable
-        updatedAt: new Date(),
-        userId: usuario.id,  // Siempre asignar al usuario logueado
-        incluirEnFamilia: Boolean(incluirEnFamilia),  // Nuevo campo
-        ...(categoriaId && { categoriaId })
-      }
-    })
+    // Usar transacción para crear gasto y actualizar recurrente
+    const resultado = await prisma.$transaction(async (tx) => {
+      // Crear el gasto
+      const gasto = await tx.gasto.create({
+        data: {
+          concepto,
+          monto,
+          categoria: nombreCategoria || categoria || 'Sin categoría',
+          tipoTransaccion: tipoTransaccion || 'expense',
+          tipoMovimiento: tipoMovimiento || 'efectivo',
+          fecha: fecha || new Date(),
+          fechaImputacion: fechaImputacionProcessed,
+          updatedAt: new Date(),
+          userId: usuario.id,
+          incluirEnFamilia: Boolean(incluirEnFamilia),
+          ...(categoriaId && { categoriaId }),
+          ...(gastoRecurrenteId && { gastoRecurrenteId: Number(gastoRecurrenteId) })
+        }
+      })
 
-    return NextResponse.json(gasto)
+      // Si está asociado a un recurrente, actualizar su estado
+      if (gastoRecurrente) {
+        // Calcular total pagado para este recurrente
+        const totalPagado = await tx.gasto.aggregate({
+          where: { gastoRecurrenteId: gastoRecurrente.id },
+          _sum: { monto: true }
+        });
+
+        const montoPagado = totalPagado._sum.monto || 0;
+        const montoTotal = gastoRecurrente.monto;
+        
+        // Determinar estado basado en el pago
+        let nuevoEstado = 'pendiente';
+        if (montoPagado >= montoTotal) {
+          nuevoEstado = 'pagado';
+        } else if (montoPagado > 0) {
+          nuevoEstado = 'pago_parcial';
+        }
+
+        // Actualizar el gasto recurrente
+        await tx.gastoRecurrente.update({
+          where: { id: gastoRecurrente.id },
+          data: {
+            estado: nuevoEstado,
+            ultimoPago: new Date(),
+            updatedAt: new Date()
+          }
+        });
+      }
+
+      return gasto;
+    });
+
+    return NextResponse.json(resultado)
   } catch (error) {
     console.error('Error al crear gasto:', error)
     return NextResponse.json(

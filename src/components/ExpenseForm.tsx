@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ArrowDown, ArrowUp, CalendarIcon, CreditCard, Plus, Loader2 } from "lucide-react"
+import { ArrowDown, ArrowUp, CalendarIcon, CreditCard, Plus, Loader2, RefreshCw } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { toast } from "sonner"
 import { useCurrency } from "@/contexts/CurrencyContext"
@@ -79,6 +79,12 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
   const [fechaPrimerPago, setFechaPrimerPago] = useState<Date | undefined>(undefined)
   const [fechaPrimerPagoStr, setFechaPrimerPagoStr] = useState<string>("")
   const [diaPago, setDiaPago] = useState<string>("")
+
+  // NUEVO: Estados para asociar a gastos recurrentes
+  const [gastosRecurrentes, setGastosRecurrentes] = useState<any[]>([])
+  const [gastoRecurrenteId, setGastoRecurrenteId] = useState<string>("")
+  const [loadingRecurrentes, setLoadingRecurrentes] = useState(false)
+  const [gastoRecurrenteSeleccionado, setGastoRecurrenteSeleccionado] = useState<any>(null)
 
   // Estado para controlar la visibilidad de opciones avanzadas
   const [showAdvancedOptions, setShowAdvancedOptions] = useState<boolean>(false)
@@ -186,9 +192,10 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
           tipoTransaccion: transactionType,
           tipoMovimiento: movementType,
           fecha: parsedDate,
-          fechaImputacion: parsedFechaImputacion,  // Nueva fecha de imputación
+          fechaImputacion: parsedFechaImputacion,
           grupoId: null,
-          incluirEnFamilia: true
+          incluirEnFamilia: true,
+          gastoRecurrenteId: gastoRecurrenteId ? parseInt(gastoRecurrenteId) : undefined
         }),
       })
 
@@ -264,6 +271,8 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
       setFechaPrimerPago(undefined)
       setFechaPrimerPagoStr("")
       setDiaPago("")
+      setGastoRecurrenteId("")
+      setGastoRecurrenteSeleccionado(null)
       setSuccess(true)
       
       onTransactionAdded()
@@ -277,6 +286,44 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
       setError("Error al crear el registro. Por favor, intenta de nuevo.")
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Función para cargar gastos recurrentes disponibles
+  const fetchGastosRecurrentes = async () => {
+    try {
+      setLoadingRecurrentes(true)
+      const response = await fetch('/api/gastos/recurrentes-disponibles')
+      if (response.ok) {
+        const data = await response.json()
+        setGastosRecurrentes(data)
+      }
+    } catch (error) {
+      console.error('Error al cargar gastos recurrentes:', error)
+    } finally {
+      setLoadingRecurrentes(false)
+    }
+  }
+
+  // Cargar gastos recurrentes cuando se monta el componente
+  useEffect(() => {
+    fetchGastosRecurrentes()
+  }, [])
+
+  // Manejar selección de gasto recurrente
+  const handleGastoRecurrenteChange = (value: string) => {
+    setGastoRecurrenteId(value === "none" ? "" : value)
+    if (value && value !== "none") {
+      const recurrente = gastosRecurrentes.find(g => g.id.toString() === value)
+      setGastoRecurrenteSeleccionado(recurrente)
+      
+      // Auto-rellenar concepto si no está lleno
+      const conceptoInput = document.getElementById('concepto') as HTMLInputElement
+      if (!conceptoInput?.value && recurrente) {
+        conceptoInput.value = recurrente.concepto
+      }
+    } else {
+      setGastoRecurrenteSeleccionado(null)
     }
   }
 
@@ -374,6 +421,66 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
               )}
             </SelectContent>
           </Select>
+        </div>
+
+        {/* NUEVO: Selector de Gasto Recurrente */}
+        <div className="space-y-2">
+          <Label htmlFor="gastoRecurrente" className="flex items-center">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Asociar a Gasto Recurrente (opcional)
+          </Label>
+          <Select value={gastoRecurrenteId || "none"} onValueChange={handleGastoRecurrenteChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar gasto recurrente..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Ninguno</SelectItem>
+              {loadingRecurrentes ? (
+                <SelectItem value="loading" disabled>Cargando gastos recurrentes...</SelectItem>
+              ) : (
+                gastosRecurrentes.map((recurrente) => (
+                  <SelectItem key={recurrente.id} value={recurrente.id.toString()}>
+                    <div className="flex flex-col">
+                      <div className="font-medium">{recurrente.concepto}</div>
+                      <div className="text-xs text-muted-foreground">
+                        ${recurrente.monto.toLocaleString()} - ${recurrente.saldoPendiente.toLocaleString()} pendiente
+                        {recurrente.porcentajePagado > 0 && (
+                          <span className="ml-1 text-amber-600">
+                            ({recurrente.porcentajePagado.toFixed(1)}% pagado)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+          
+          {/* Información del gasto recurrente seleccionado */}
+          {gastoRecurrenteSeleccionado && (
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-md">
+              <div className="text-sm">
+                <div className="font-medium text-blue-900 dark:text-blue-100">
+                  {gastoRecurrenteSeleccionado.concepto}
+                </div>
+                <div className="text-blue-700 dark:text-blue-300 mt-1">
+                  Monto total: ${gastoRecurrenteSeleccionado.monto.toLocaleString()}
+                </div>
+                <div className="text-blue-700 dark:text-blue-300">
+                  Saldo pendiente: ${gastoRecurrenteSeleccionado.saldoPendiente.toLocaleString()}
+                </div>
+                {gastoRecurrenteSeleccionado.porcentajePagado > 0 && (
+                  <div className="text-amber-700 dark:text-amber-300">
+                    Ya pagado: {gastoRecurrenteSeleccionado.porcentajePagado.toFixed(1)}%
+                  </div>
+                )}
+                <div className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                  💡 Este pago se asociará al gasto recurrente y actualizará su estado automáticamente
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">

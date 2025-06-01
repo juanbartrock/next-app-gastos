@@ -5,7 +5,7 @@ const prismaClientSingleton = () => {
   const client = new PrismaClient({
     log: [], // Desactivar logs para evitar spam
     errorFormat: 'minimal',
-    datasourceUrl: process.env.DATABASE_URL,
+    datasourceUrl: process.env.DATABASE_URL
   });
   
   // Crear un proxy que permita acceder a modelos que no sean reconocidos por TypeScript
