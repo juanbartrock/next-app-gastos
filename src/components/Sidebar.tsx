@@ -30,6 +30,10 @@ export function Sidebar() {
   const { isOpen, toggle } = useSidebar()
 
   const isActive = (path: string) => {
+    // Caso especial para transacciones: considerar activo tanto /transacciones como /transacciones/nuevo
+    if (path === "/transacciones") {
+      return pathname === "/transacciones" || pathname === "/transacciones/nuevo" || pathname.startsWith("/transacciones/")
+    }
     return pathname === path
   }
   
@@ -163,15 +167,15 @@ export function Sidebar() {
             {isOpen && <span className="ml-3">Inversiones</span>}
           </Button>
           
-          {/* Movimientos - Funcionalidad especial */}
+          {/* Transacciones - Funcionalidad principal */}
           <Button 
-            variant={isActive("/transacciones/nuevo") ? "secondary" : "ghost"}
+            variant={isActive("/transacciones") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
             style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-            onClick={() => handleNavigation('/transacciones/nuevo')}
+            onClick={() => handleNavigation('/transacciones')}
           >
             <DollarSign className="w-5 h-5 text-blue-500" />
-            {isOpen && <span className="ml-3">Movimientos</span>}
+            {isOpen && <span className="ml-3">Transacciones</span>}
           </Button>
           
           {/* Buzón de Comprobantes - Nueva funcionalidad */}

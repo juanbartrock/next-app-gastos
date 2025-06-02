@@ -277,7 +277,7 @@ export default function DetalleGastoClient({ gastoId }: { gastoId: string }) {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={() => router.push('/transacciones')}
+              onClick={() => router.push('/transacciones/nuevo')}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -308,7 +308,7 @@ export default function DetalleGastoClient({ gastoId }: { gastoId: string }) {
                 <p>{error}</p>
               </CardContent>
               <CardFooter>
-                <Button onClick={() => router.push('/transacciones')}>
+                <Button onClick={() => router.push('/transacciones/nuevo')}>
                   Volver a Transacciones
                 </Button>
               </CardFooter>

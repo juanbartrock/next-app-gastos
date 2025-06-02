@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Camera, Mic, PencilLine, History, Banknote, ArrowRightLeft, CreditCard, PiggyBank, DollarSign, Search, Filter, X } from "lucide-react"
+import { ArrowLeft, Camera, Mic, PencilLine, History, Banknote, ArrowRightLeft, CreditCard, PiggyBank, DollarSign, Search, Filter, X, Edit, Trash2, Eye, ChevronDown, ChevronUp, ExternalLink } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ExpenseForm } from "@/components/ExpenseForm"
 import { format } from "date-fns"
@@ -16,12 +16,50 @@ import { es } from "date-fns/locale"
 import { useVisibility } from "@/contexts/VisibilityContext"
 import { useCurrency } from "@/contexts/CurrencyContext"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 // Interfaces para tipos
 interface Categoria {
   id: number;
   descripcion: string;
   grupo_categoria: string | null;
+}
+
+interface GastoDetalle {
+  id: number
+  gastoId: number
+  descripcion: string
+  cantidad: number
+  precioUnitario: number | null
+  subtotal: number
+  seguimiento: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+interface Gasto {
+  id: number
+  concepto: string
+  monto: number
+  fecha: string
+  fechaImputacion?: string
+  categoria: string
+  tipoTransaccion: string
+  tipoMovimiento: string
+  incluirEnFamilia: boolean
+  createdAt: string
+  updatedAt: string
+  userId: string | null
+  grupoId: string | null
+  categoriaId: number | null
+  user?: {
+    name: string | null
+    email: string | null
+  }
+  grupo?: {
+    nombre: string
+  }
+  detalles?: GastoDetalle[]
 }
 
 interface FiltrosHistorial {
@@ -34,14 +72,15 @@ interface FiltrosHistorial {
   incluirEnFamilia: string;
 }
 
-export default function NuevoRegistroPage() {
+export default function TransaccionesPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<string>("manual")
-  const [gastosPersonales, setGastosPersonales] = useState<any[]>([])
-  const [gastosFiltrados, setGastosFiltrados] = useState<any[]>([])
+  const [gastosPersonales, setGastosPersonales] = useState<Gasto[]>([])
+  const [gastosFiltrados, setGastosFiltrados] = useState<Gasto[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingCategorias, setLoadingCategorias] = useState(true)
+  const [selectedTransaction, setSelectedTransaction] = useState<Gasto | null>(null)
   const { valuesVisible } = useVisibility()
   const { formatMoney } = useCurrency()
 
@@ -56,6 +95,9 @@ export default function NuevoRegistroPage() {
     incluirEnFamilia: ''
   })
   const [mostrarFiltros, setMostrarFiltros] = useState(false)
+
+  // Calcular número de filtros activos
+  const filtrosActivos = Object.values(filtros).filter(valor => valor !== '').length
 
   const handleTransactionAdded = () => {
     // Recargar datos después de agregar una transacción
@@ -180,6 +222,67 @@ export default function NuevoRegistroPage() {
     }))
   }
 
+  // Función para ver detalles de transacción
+  const verDetalles = async (transaction: Gasto, event: React.MouseEvent) => {
+    event.stopPropagation()
+    
+    if (selectedTransaction?.id === transaction.id) {
+      setSelectedTransaction(null)
+      return
+    }
+
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/gastos/${transaction.id}?includeDetails=true`)
+      if (response.ok) {
+        const data = await response.json()
+        setSelectedTransaction(data)
+      } else {
+        toast.error("Error al cargar los detalles")
+      }
+    } catch (error) {
+      console.error("Error fetching transaction details:", error)
+      toast.error("Error al cargar los detalles")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Función para eliminar transacción
+  const eliminarTransaccion = async (transactionId: number, event: React.MouseEvent) => {
+    event.stopPropagation()
+    
+    if (!confirm("¿Estás seguro de que deseas eliminar esta transacción?")) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/gastos/${transactionId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        toast.success("Transacción eliminada correctamente")
+        fetchGastosPersonales() // Recargar la lista
+        if (selectedTransaction?.id === transactionId) {
+          setSelectedTransaction(null) // Cerrar detalle si era la seleccionada
+        }
+      } else {
+        const errorData = await response.json()
+        toast.error(errorData.error || "Error al eliminar la transacción")
+      }
+    } catch (error) {
+      console.error("Error al eliminar transacción:", error)
+      toast.error("Error al eliminar la transacción")
+    }
+  }
+
+  // Función para ir a editar
+  const editarTransaccion = (transactionId: number, event: React.MouseEvent) => {
+    event.stopPropagation()
+    router.push(`/transacciones/${transactionId}/editar`)
+  }
+
   const getMovementIcon = (tipoMovimiento: string) => {
     switch (tipoMovimiento) {
       case 'efectivo':
@@ -199,9 +302,6 @@ export default function NuevoRegistroPage() {
     return tipoTransaccion === 'income' ? 'text-green-600' : 'text-red-600'
   }
 
-  // Contar filtros activos
-  const filtrosActivos = Object.values(filtros).filter(valor => valor.trim() !== '').length
-
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <header className="px-4 py-6 md:px-6 bg-background border-b">
@@ -214,7 +314,10 @@ export default function NuevoRegistroPage() {
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-2xl font-bold">Gestión de Movimientos</h1>
+            <div>
+              <h1 className="text-2xl font-bold">Transacciones</h1>
+              <p className="text-sm text-muted-foreground">Gestiona tus ingresos y gastos</p>
+            </div>
           </div>
         </div>
       </header>
@@ -518,39 +621,123 @@ export default function NuevoRegistroPage() {
                   ) : (
                     <div className="space-y-3">
                       {gastosFiltrados.slice(0, 50).map((movimiento) => (
-                        <div
-                          key={movimiento.id}
-                          className="flex items-center justify-between p-4 rounded-lg border bg-card hover:shadow-sm transition-shadow"
-                        >
-                          <div className="flex items-center gap-3">
-                            {getMovementIcon(movimiento.tipoMovimiento)}
-                            <div className="flex-1">
-                              <p className="font-medium">{movimiento.concepto}</p>
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <span>{format(new Date(movimiento.fecha), 'dd/MM/yyyy HH:mm', { locale: es })}</span>
-                                <Badge variant="outline" className="text-xs">
-                                  {movimiento.categoria}
-                                </Badge>
-                                {movimiento.incluirEnFamilia && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    Familiar
+                        <div key={movimiento.id}>
+                          <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:shadow-sm transition-shadow">
+                            <div className="flex items-center gap-3 flex-1">
+                              {getMovementIcon(movimiento.tipoMovimiento)}
+                              <div className="flex-1">
+                                <p className="font-medium">{movimiento.concepto}</p>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <span>{format(new Date(movimiento.fecha), 'dd/MM/yyyy HH:mm', { locale: es })}</span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {movimiento.categoria}
                                   </Badge>
-                                )}
+                                  {movimiento.incluirEnFamilia && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      Familiar
+                                    </Badge>
+                                  )}
+                                  {/* Indicador de detalles de productos */}
+                                  {movimiento.detalles && movimiento.detalles.length > 0 && (
+                                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                      {movimiento.detalles.length} {movimiento.detalles.length === 1 ? 'producto' : 'productos'}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <div className="text-right mr-4">
+                                <p className={cn(
+                                  "font-bold",
+                                  getTransactionColor(movimiento.tipoTransaccion)
+                                )}>
+                                  {movimiento.tipoTransaccion === 'income' ? '+' : '-'}
+                                  {valuesVisible ? formatMoney(movimiento.monto) : "••••••"}
+                                </p>
+                                <p className="text-sm text-muted-foreground capitalize">
+                                  {movimiento.tipoMovimiento}
+                                </p>
+                              </div>
+                              
+                              {/* Botones de acción */}
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => verDetalles(movimiento, e)}
+                                  className="h-8 w-8 p-0"
+                                  title={selectedTransaction?.id === movimiento.id ? "Ocultar resumen" : "Ver resumen rápido"}
+                                >
+                                  {selectedTransaction?.id === movimiento.id ? 
+                                    <ChevronUp className="h-4 w-4" /> : 
+                                    <Eye className="h-4 w-4" />
+                                  }
+                                </Button>
+                                {/* Nuevo botón para ver detalles completos */}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    router.push(`/transacciones/${movimiento.id}`)
+                                  }}
+                                  className="h-8 w-8 p-0 text-green-600 hover:text-green-800 hover:bg-green-50"
+                                  title="Ver detalles completos"
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => editarTransaccion(movimiento.id, e)}
+                                  className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                  title="Editar"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => eliminarTransaccion(movimiento.id, e)}
+                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
+                                  title="Eliminar"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
                               </div>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className={cn(
-                              "font-bold",
-                              getTransactionColor(movimiento.tipoTransaccion)
-                            )}>
-                              {movimiento.tipoTransaccion === 'income' ? '+' : '-'}
-                              {valuesVisible ? formatMoney(movimiento.monto) : "••••••"}
-                            </p>
-                            <p className="text-sm text-muted-foreground capitalize">
-                              {movimiento.tipoMovimiento}
-                            </p>
-                          </div>
+                          
+                          {/* Panel de detalles expandido */}
+                          {selectedTransaction?.id === movimiento.id && selectedTransaction.detalles && selectedTransaction.detalles.length > 0 && (
+                            <div className="ml-8 mr-4 mt-2 p-4 bg-muted/30 rounded-lg border-l-4 border-blue-500">
+                              <h4 className="font-semibold mb-3 text-sm">Detalles del gasto:</h4>
+                              <div className="space-y-2">
+                                {selectedTransaction.detalles.map((detalle) => (
+                                  <div key={detalle.id} className="flex justify-between items-center text-sm">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium">{detalle.descripcion}</span>
+                                      {detalle.seguimiento && (
+                                        <Badge variant="outline" className="text-xs">
+                                          En seguimiento
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="font-medium">
+                                        {detalle.cantidad} × {valuesVisible ? formatMoney(detalle.precioUnitario || 0) : "••••"}
+                                      </span>
+                                      <span className="ml-2 font-bold">
+                                        = {valuesVisible ? formatMoney(detalle.subtotal) : "••••••"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                       {gastosFiltrados.length > 50 && (

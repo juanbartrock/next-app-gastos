@@ -195,12 +195,12 @@ export default function EditarTransaccionPage() {
             }
           } else {
             toast.error("Error al cargar los datos de la transacción")
-            router.push("/transacciones")
+            router.push("/transacciones/nuevo")
           }
         } catch (error) {
           console.error("Error al cargar gasto:", error)
           toast.error("Error al cargar los datos")
-          router.push("/transacciones")
+          router.push("/transacciones/nuevo")
         } finally {
           setLoadingData(false)
         }
@@ -271,7 +271,7 @@ export default function EditarTransaccionPage() {
       }
 
       toast.success("Transacción actualizada correctamente")
-      router.push("/transacciones")
+      router.push("/transacciones/nuevo")
     } catch (error) {
       console.error('Error:', error)
       setError("Error al actualizar la transacción. Por favor, intenta de nuevo.")

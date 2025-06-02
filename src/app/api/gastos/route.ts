@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
     const soloFamiliares = url.searchParams.get('soloFamiliares') === 'true'
     const soloPersonales = url.searchParams.get('soloPersonales') === 'true'
     const usarFechaImputacion = url.searchParams.get('usarFechaImputacion') === 'true'  // Nuevo parámetro
+    const includeDetailsCount = url.searchParams.get('includeDetailsCount') === 'true'  // Nuevo parámetro para incluir conteo de detalles
     
     // Convertir fechas si fueron proporcionadas
     const fechaDesde = desde ? new Date(desde) : null
@@ -134,7 +135,18 @@ export async function GET(request: NextRequest) {
             descripcion: true,
             grupo_categoria: true
           }
-        }
+        },
+        // Incluir detalles solo si se solicita explícitamente
+        ...(includeDetailsCount && {
+          detalles: {
+            select: {
+              id: true,
+              descripcion: true,
+              cantidad: true,
+              subtotal: true
+            }
+          }
+        })
       },
       orderBy: {
         fecha: 'desc'
