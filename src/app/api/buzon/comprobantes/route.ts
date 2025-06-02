@@ -2,123 +2,137 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { options } from "@/app/api/auth/[...nextauth]/options"
 import prisma from "@/lib/prisma"
+import { executeWithRetry } from "@/lib/db-utils"
 
 export async function GET(request: NextRequest) {
   try {
-    // Verificar sesión
     const session = await getServerSession(options)
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "No autorizado" },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    const userId = session.user.id
+    // Obtener parámetros de la URL
     const { searchParams } = new URL(request.url)
-    
-    // Parámetros de filtrado
-    const estado = searchParams.get('estado') || 'pendiente'
+    const estado = searchParams.get('estado')
     const tipo = searchParams.get('tipo')
-    const limite = parseInt(searchParams.get('limite') || '50')
+    const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
-    const ordenar = searchParams.get('ordenar') || 'fechaSubida'
-    const direccion = searchParams.get('direccion') || 'desc'
-
-    console.log(`[BUZON] Listando comprobantes: estado=${estado}, tipo=${tipo}, userId=${userId}`)
 
     // Construir filtros
     const where: any = {
-      userId: userId
+      userId: session.user.id
     }
 
-    if (estado !== 'todos') {
+    if (estado) {
       where.estado = estado
     }
 
-    if (tipo && tipo !== 'todos') {
+    if (tipo) {
       where.tipoDetectado = tipo
     }
 
-    // Construir ordenamiento
-    const orderBy: any = {}
-    orderBy[ordenar] = direccion
-
-    // Consultar comprobantes con paginación
-    const [comprobantes, total] = await Promise.all([
-      prisma.comprobantePendiente.findMany({
-        where,
-        orderBy,
-        take: Math.min(limite, 100), // Máximo 100 por página
-        skip: offset,
-        select: {
-          id: true,
-          nombreArchivo: true,
-          tipoDetectado: true,
-          confianzaClasificacion: true,
-          tamaño: true,
-          estado: true,
-          metadatos: true,
-          datosExtraidos: true,
-          errorProcesamiento: true,
-          fechaSubida: true,
-          fechaProcesado: true,
-          fechaConfirmado: true,
-          fechaDescartado: true,
-          // NO incluir contenidoBase64 por default para performance
-        }
-      }),
-      prisma.comprobantePendiente.count({ where })
-    ])
-
-    // Estadísticas por tipo y estado
-    const estadisticas = await prisma.comprobantePendiente.groupBy({
-      by: ['tipoDetectado', 'estado'],
-      where: { userId },
-      _count: {
-        id: true
-      }
+    // Consultar comprobantes pendientes y sus gastos asociados
+    const comprobantes = await prisma.comprobantePendiente.findMany({
+      where,
+      orderBy: { fechaSubida: 'desc' },
+      take: limit,
+      skip: offset,
     })
 
-    // Organizar estadísticas
-    const estadisticasOrganizadas = {
-      porTipo: {} as Record<string, number>,
-      porEstado: {} as Record<string, number>,
-      total: total
+    // Transformar datos para la interfaz
+    const comprobantesTransformados = comprobantes.map(comprobante => ({
+      id: comprobante.id,
+      nombreArchivo: comprobante.nombreArchivo,
+      tipoDetectado: comprobante.tipoDetectado,
+      estado: mapearEstado(comprobante.estado),
+      fechaSubida: comprobante.fechaSubida.toISOString(),
+      datosExtraidos: comprobante.datosExtraidos,
+      error: comprobante.errorProcesamiento,
+      gastosCreados: obtenerGastosCreados(comprobante.datosExtraidos)
+    }))
+
+    return NextResponse.json(comprobantesTransformados)
+
+  } catch (error) {
+    console.error('[API-COMPROBANTES] Error:', error)
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 }
+    )
+  }
+}
+
+// Mapear estados de BD a estados de interfaz
+function mapearEstado(estadoBD: string): 'pendiente' | 'procesado' | 'error' {
+  switch (estadoBD) {
+    case 'confirmado':
+      return 'procesado'
+    case 'pendiente':
+    case 'procesando':
+      return 'pendiente'
+    default:
+      return 'error'
+  }
+}
+
+// Extraer información de gastos creados desde datosExtraidos
+function obtenerGastosCreados(datosExtraidos: any): any[] | undefined {
+  if (!datosExtraidos) return undefined
+
+  // Si hay información de gastos creados en los metadatos
+  if (datosExtraidos.gastosCreados) {
+    return datosExtraidos.gastosCreados
+  }
+
+  // Si hay un monto, inferir que se creó al menos un gasto
+  if (datosExtraidos.monto || datosExtraidos.importe || datosExtraidos.pagoMinimo) {
+    return [{ id: 'inferred', monto: datosExtraidos.monto || datosExtraidos.importe || datosExtraidos.pagoMinimo }]
+  }
+
+  return undefined
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(options)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    estadisticas.forEach((stat: any) => {
-      // Por tipo
-      if (!estadisticasOrganizadas.porTipo[stat.tipoDetectado]) {
-        estadisticasOrganizadas.porTipo[stat.tipoDetectado] = 0
-      }
-      estadisticasOrganizadas.porTipo[stat.tipoDetectado] += stat._count.id
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
 
-      // Por estado
-      if (!estadisticasOrganizadas.porEstado[stat.estado]) {
-        estadisticasOrganizadas.porEstado[stat.estado] = 0
-      }
-      estadisticasOrganizadas.porEstado[stat.estado] += stat._count.id
+    if (!id) {
+      return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
+    }
+
+    // Verificar que el comprobante pertenece al usuario
+    const comprobante = await executeWithRetry(async () => {
+      return await prisma.comprobantePendiente.findUnique({
+        where: { id }
+      })
     })
 
-    console.log(`[BUZON] Encontrados ${comprobantes.length} comprobantes de ${total} total`)
+    if (!comprobante || comprobante.userId !== session.user.id) {
+      return NextResponse.json({ error: 'Comprobante no encontrado' }, { status: 404 })
+    }
 
-    return NextResponse.json({
-      comprobantes,
-      estadisticas: estadisticasOrganizadas,
-      paginacion: {
-        total,
-        limite,
-        offset,
-        tieneAnterior: offset > 0,
-        tieneSiguiente: offset + limite < total
-      }
+    // Eliminar comprobante
+    await executeWithRetry(async () => {
+      return await prisma.comprobantePendiente.delete({
+        where: { id }
+      })
+    })
+
+    return NextResponse.json({ 
+      message: 'Comprobante eliminado exitosamente',
+      id 
     })
 
   } catch (error) {
-    console.error("Error listando comprobantes:", error)
+    console.error('Error al eliminar comprobante:', error)
     return NextResponse.json(
-      { error: "Error interno del servidor" },
+      { error: 'Error interno del servidor' },
       { status: 500 }
     )
   }

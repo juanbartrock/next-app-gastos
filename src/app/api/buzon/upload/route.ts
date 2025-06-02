@@ -3,14 +3,12 @@ import { getServerSession } from "next-auth"
 import { options } from "@/app/api/auth/[...nextauth]/options"
 import OpenAI from "openai"
 import prisma from "@/lib/prisma"
+import { executeWithRetry } from "@/lib/db-utils"
 
 // Configurar cliente de OpenAI
-let openai: OpenAI | null = null
-if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim() !== "") {
-  openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
-  })
-}
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+})
 
 // Tipos de comprobantes soportados
 const TIPOS_COMPROBANTES = {
@@ -53,81 +51,243 @@ async function clasificarComprobante(
   nombreArchivo: string
 ): Promise<{ tipo: TipoComprobante, confianza: number, metadatos?: Record<string, any> }> {
   
-  // Clasificación inicial por nombre de archivo
+  // Detectar tipo de archivo primero
+  const tipoArchivo = detectarTipoArchivo(contenidoBase64)
+  
+  // Clasificación inicial por nombre de archivo (más específica)
   const nombreLower = nombreArchivo.toLowerCase()
   
-  // Patrones para identificación rápida
-  if (nombreLower.includes('transferencia') || nombreLower.includes('comprobante')) {
+  // Patrones específicos para servicios (PRIORIDAD ALTA)
+  const serviciosConocidos = ['metrogas', 'edenor', 'edelap', 'naturgy', 'telecom', 'claro', 'movistar', 'personal', 'aysa', 'aba']
+  const esServicio = serviciosConocidos.some(servicio => nombreLower.includes(servicio))
+  
+  if (esServicio || nombreLower.includes('pago') && (nombreLower.includes('servicio') || nombreLower.includes('factura'))) {
+    return { tipo: TIPOS_COMPROBANTES.SERVICIO, confianza: 95 }
+  }
+  
+  // Transferencias específicas
+  if ((nombreLower.includes('transferencia') && !nombreLower.includes('pago')) || 
+      nombreLower.includes('envio') || nombreLower.includes('envío')) {
+    return { tipo: TIPOS_COMPROBANTES.TRANSFERENCIA, confianza: 85 }
+  }
+  
+  // Comprobantes bancarios (solo si no son de servicios)
+  if (nombreLower.includes('comprobante') && 
+      (nombreLower.includes('banco') || nombreLower.includes('transferencia'))) {
     return { tipo: TIPOS_COMPROBANTES.TRANSFERENCIA, confianza: 80 }
   }
   
-  if (nombreLower.includes('ticket') || nombreLower.includes('recibo') || nombreLower.includes('compra')) {
-    return { tipo: TIPOS_COMPROBANTES.TICKET, confianza: 70 }
+  // Tickets de compra
+  if (nombreLower.includes('ticket') || nombreLower.includes('recibo') || 
+      nombreLower.includes('compra') || nombreLower.includes('super')) {
+    return { tipo: TIPOS_COMPROBANTES.TICKET, confianza: 75 }
   }
   
-  if (nombreLower.includes('servicio') || nombreLower.includes('factura')) {
-    return { tipo: TIPOS_COMPROBANTES.SERVICIO, confianza: 75 }
-  }
-  
-  if (nombreLower.includes('resumen') || nombreLower.includes('tarjeta')) {
+  // Resúmenes de tarjeta
+  if (nombreLower.includes('resumen') || nombreLower.includes('tarjeta') || 
+      nombreLower.includes('visa') || nombreLower.includes('mastercard')) {
     return { tipo: TIPOS_COMPROBANTES.RESUMEN_TARJETA, confianza: 80 }
   }
 
   // Si OpenAI está disponible, usar clasificación inteligente
   if (openai) {
     try {
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini", // Modelo más rápido para clasificación
-        messages: [
-          {
-            role: "system",
-            content: `Eres un clasificador especializado en documentos financieros argentinos. 
-            Analiza la imagen y determina qué tipo de comprobante es:
-            - transferencia: Comprobantes de transferencias bancarias (Banco Ciudad, Macro, etc.)
-            - ticket: Tickets de compra de supermercados/comercios
-            - servicio: Facturas de servicios (luz, gas, agua, internet, etc.)
-            - resumen_tarjeta: Resúmenes de tarjetas de crédito
-            - desconocido: Si no puedes determinar el tipo
-            
-            Responde en JSON con: {"tipo": "...", "confianza": numero_0_100, "razon": "explicacion"}`
-          },
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: "Clasifica este documento financiero:"
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:image/jpeg;base64,${contenidoBase64}`,
-                },
-              },
-            ],
-          },
-        ],
-        max_tokens: 200,
-        temperature: 0.1,
-        response_format: { type: "json_object" }
-      })
+      console.log(`[BUZON-AI] Clasificando con IA: ${nombreArchivo} (${tipoArchivo})`)
+      
+      if (tipoArchivo === 'pdf') {
+        // Para PDFs, extraer texto primero y usar análisis de texto
+        const textoPDF = extraerTextoPDF(contenidoBase64)
+        console.log(`[BUZON-AI] Texto extraído para clasificación: ${textoPDF.substring(0, 100)}...`)
+        
+        const completion = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content: `Eres un clasificador especializado en documentos financieros argentinos. 
+              Analiza el texto extraído y determina qué tipo de comprobante es:
+              
+              - servicio: Facturas y comprobantes de pago de servicios públicos (Metrogas, Edenor, Edelap, Naturgy, Telecom, Claro, Movistar, Personal, AYSA, ABA, etc.) o privados (Netflix, Spotify, etc.)
+              - transferencia: Comprobantes de transferencias bancarias entre cuentas
+              - ticket: Tickets de compra de supermercados, farmacias, comercios
+              - resumen_tarjeta: Resúmenes mensuales de tarjetas de crédito
+              - desconocido: Si no puedes determinar el tipo claramente
+              
+              IMPORTANTE: Si ves nombres de empresas de servicios o conceptos como "CUOTA", "VENCIMIENTO", "PAGO DE SERVICIO", clasifica como "servicio".
+              
+              Responde en JSON con: {"tipo": "...", "confianza": numero_0_100, "razon": "explicacion_detallada"}`
+            },
+            {
+              role: "user",
+              content: `Clasifica este documento PDF. 
+              Nombre del archivo: "${nombreArchivo}"
+              Texto extraído: "${textoPDF}"`
+            },
+          ],
+          max_tokens: 300,
+          temperature: 0.1,
+          response_format: { type: "json_object" }
+        })
 
-      const respuesta = completion.choices[0].message.content
-      if (respuesta) {
-        const clasificacion = JSON.parse(respuesta)
-        return {
-          tipo: clasificacion.tipo as TipoComprobante,
-          confianza: Math.min(100, Math.max(0, clasificacion.confianza || 50)),
-          metadatos: { razon: clasificacion.razon }
+        const respuesta = completion.choices[0].message.content
+        if (respuesta) {
+          const clasificacion = JSON.parse(respuesta)
+          console.log(`[BUZON-AI] Resultado IA PDF: ${clasificacion.tipo} (${clasificacion.confianza}%) - ${clasificacion.razon}`)
+          
+          return {
+            tipo: clasificacion.tipo as TipoComprobante,
+            confianza: Math.min(100, Math.max(0, clasificacion.confianza || 50)),
+            metadatos: { 
+              razon: clasificacion.razon,
+              clasificadoPorIA: true,
+              tipoArchivo: 'pdf'
+            }
+          }
+        }
+        
+      } else {
+        // Para imágenes, usar Vision API como antes
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content: `Eres un clasificador especializado en documentos financieros argentinos. 
+              Analiza la imagen y determina qué tipo de comprobante es:
+              
+              - servicio: Facturas y comprobantes de pago de servicios públicos (Metrogas, Edenor, Edelap, Naturgy, Telecom, Claro, Movistar, Personal, AYSA, ABA, etc.) o privados (Netflix, Spotify, etc.)
+              - transferencia: Comprobantes de transferencias bancarias entre cuentas
+              - ticket: Tickets de compra de supermercados, farmacias, comercios
+              - resumen_tarjeta: Resúmenes mensuales de tarjetas de crédito
+              - desconocido: Si no puedes determinar el tipo claramente
+              
+              IMPORTANTE: Si ves logos de empresas de servicios (gas, electricidad, telecomunicaciones) o conceptos como "CUOTA", "VENCIMIENTO", "PAGO DE SERVICIO", clasifica como "servicio".
+              
+              Responde en JSON con: {"tipo": "...", "confianza": numero_0_100, "razon": "explicacion_detallada"}`
+            },
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: `Clasifica este documento. El nombre del archivo es: "${nombreArchivo}"`
+                },
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: `data:image/jpeg;base64,${contenidoBase64}`,
+                  },
+                },
+              ],
+            },
+          ],
+          max_tokens: 300,
+          temperature: 0.1,
+          response_format: { type: "json_object" }
+        })
+
+        const respuesta = completion.choices[0].message.content
+        if (respuesta) {
+          const clasificacion = JSON.parse(respuesta)
+          console.log(`[BUZON-AI] Resultado IA imagen: ${clasificacion.tipo} (${clasificacion.confianza}%) - ${clasificacion.razon}`)
+          
+          return {
+            tipo: clasificacion.tipo as TipoComprobante,
+            confianza: Math.min(100, Math.max(0, clasificacion.confianza || 50)),
+            metadatos: { 
+              razon: clasificacion.razon,
+              clasificadoPorIA: true,
+              tipoArchivo: 'imagen'
+            }
+          }
         }
       }
     } catch (error) {
-      console.error("Error en clasificación con OpenAI:", error)
+      console.error("[BUZON-AI] Error en clasificación con OpenAI:", error)
     }
   }
 
-  // Fallback: clasificación por defecto
-  return { tipo: TIPOS_COMPROBANTES.DESCONOCIDO, confianza: 30 }
+  // Fallback: análisis más detallado del nombre
+  if (nombreLower.includes('pago') || nombreLower.includes('factura')) {
+    return { tipo: TIPOS_COMPROBANTES.SERVICIO, confianza: 60 }
+  }
+  
+  if (nombreLower.includes('comprobante')) {
+    return { tipo: TIPOS_COMPROBANTES.TRANSFERENCIA, confianza: 50 }
+  }
+
+  // Último fallback
+  return { 
+    tipo: TIPOS_COMPROBANTES.DESCONOCIDO, 
+    confianza: 30,
+    metadatos: { razon: 'No se pudo determinar el tipo' }
+  }
+}
+
+// Función auxiliar para detectar el tipo de archivo desde base64
+function detectarTipoArchivo(contenidoBase64: string): 'pdf' | 'imagen' {
+  // Remover el prefijo data:...;base64, si existe
+  const base64Data = contenidoBase64.includes(',') ? contenidoBase64.split(',')[1] : contenidoBase64
+  
+  try {
+    // Convertir base64 a buffer para leer los primeros bytes
+    const buffer = Buffer.from(base64Data, 'base64')
+    
+    // Verificar magic numbers
+    if (buffer.length >= 4) {
+      // PDF: %PDF (0x25504446)
+      if (buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46) {
+        return 'pdf'
+      }
+      
+      // JPEG: FF D8 FF
+      if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+        return 'imagen'
+      }
+      
+      // PNG: 89 50 4E 47
+      if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+        return 'imagen'
+      }
+    }
+    
+    // Fallback: si tiene datos válidos pero no detectamos el tipo, asumimos imagen
+    return 'imagen'
+  } catch (error) {
+    console.error('[BUZON] Error detectando tipo de archivo:', error)
+    return 'imagen' // Fallback seguro
+  }
+}
+
+// Función para extraer texto de PDF usando parsing básico
+function extraerTextoPDF(contenidoBase64: string): string {
+  try {
+    // Remover el prefijo data:...;base64, si existe
+    const base64Data = contenidoBase64.includes(',') ? contenidoBase64.split(',')[1] : contenidoBase64
+    const buffer = Buffer.from(base64Data, 'base64')
+    
+    // Conversión básica de PDF a texto (para PDFs simples)
+    const pdfString = buffer.toString('latin1')
+    
+    // Buscar texto entre objetos de PDF (muy básico)
+    const textMatches = pdfString.match(/\(([^)]+)\)/g) || []
+    const extractedText = textMatches
+      .map(match => match.slice(1, -1)) // Remover paréntesis
+      .filter(text => text.length > 2) // Filtrar texto muy corto
+      .join(' ')
+    
+    // También buscar texto directo (sin paréntesis)
+    const directTextMatches = pdfString.match(/[A-Za-z0-9\s$.,:-]{10,}/g) || []
+    const combinedText = (extractedText + ' ' + directTextMatches.join(' '))
+      .replace(/[^\w\s$.,:-]/g, ' ') // Limpiar caracteres especiales
+      .replace(/\s+/g, ' ') // Normalizar espacios
+      .trim()
+    
+    return combinedText
+  } catch (error) {
+    console.error('[BUZON] Error extrayendo texto de PDF:', error)
+    return ''
+  }
 }
 
 // Función para validar formato de archivo
@@ -230,27 +390,31 @@ export async function POST(request: NextRequest) {
         // Clasificar automáticamente
         const clasificacion = await clasificarComprobante(base64Data, archivo.nombre)
         
-        // Crear registro en BD (ComprobantePendiente)
-        const comprobantePendiente = await prisma.comprobantePendiente.create({
-          data: {
-            userId: userId,
-            nombreArchivo: archivo.nombre,
-            tipoDetectado: clasificacion.tipo,
-            confianzaClasificacion: clasificacion.confianza,
-            contenidoBase64: base64Data,
-            tamaño: archivo.tamaño || 0,
-            metadatos: clasificacion.metadatos || {},
-            estado: 'pendiente',
-            fechaSubida: new Date()
-          }
-        })
+        // Crear registro en BD (ComprobantePendiente) con retry
+        const comprobantePendiente = await executeWithRetry(async () => {
+          return await prisma.comprobantePendiente.create({
+            data: {
+              userId: userId,
+              nombreArchivo: archivo.nombre,
+              tipoDetectado: clasificacion.tipo,
+              confianzaClasificacion: clasificacion.confianza,
+              contenidoBase64: base64Data,
+              tamaño: archivo.tamaño,
+              metadatos: {
+                tipoArchivo: archivo.tipo,
+                fechaClasificacion: new Date().toISOString(),
+                versionClasificador: 'v1.0'
+              }
+            }
+          })
+        }, 3, 2000) // 3 intentos, 2 segundos base de delay
 
         const archivoClasificado: ArchivoClasificado = {
           archivoId: comprobantePendiente.id,
           nombre: archivo.nombre,
           tipo: clasificacion.tipo,
           contenidoBase64: base64Data,
-          tamaño: archivo.tamaño || 0,
+          tamaño: archivo.tamaño,
           confianza: clasificacion.confianza,
           metadatos: clasificacion.metadatos
         }

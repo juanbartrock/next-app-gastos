@@ -10,6 +10,63 @@ export default function TestRecurrentesPage() {
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState<any>(null)
 
+  const gastosRecurrentesPrueba = [
+    {
+      concepto: "Alquiler - MARTA BEATRIZ BUFFA",
+      monto: 757500,
+      periodicidad: "mensual",
+      comentario: "Alquiler mensual",
+      tipoMovimiento: "digital",
+      proximaFecha: "2025-02-01"
+    },
+    {
+      concepto: "Pago a CEREZO HERNAN JOSE",
+      monto: 757500,
+      periodicidad: "mensual", 
+      comentario: "Pago mensual",
+      tipoMovimiento: "digital",
+      proximaFecha: "2025-02-01"
+    },
+    {
+      concepto: "Transferencia a GUZMAN BRENDA ANTONELA",
+      monto: 140352,
+      periodicidad: "mensual",
+      comentario: "Pago mensual",
+      tipoMovimiento: "digital", 
+      proximaFecha: "2025-02-01"
+    }
+  ]
+
+  const crearTodos = async () => {
+    setLoading(true)
+    
+    try {
+      for (const gasto of gastosRecurrentesPrueba) {
+        const response = await fetch('/api/recurrentes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(gasto)
+        })
+        
+        if (!response.ok) {
+          throw new Error(`Error creando ${gasto.concepto}`)
+        }
+        
+        console.log(`✅ Creado: ${gasto.concepto}`)
+      }
+      
+      toast.success("✅ Todos los gastos recurrentes creados correctamente")
+      
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error(`❌ Error: ${error}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const testGenerarPago = async () => {
     setLoading(true)
     try {
@@ -253,6 +310,40 @@ export default function TestRecurrentesPage() {
                 </ul>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="w-full mt-6">
+          <CardHeader>
+            <CardTitle>🧪 Crear Gastos Recurrentes de Prueba</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-muted-foreground">
+              Esto creará gastos recurrentes que coinciden con los comprobantes que procesaste:
+            </p>
+            
+            <div className="space-y-2">
+              {gastosRecurrentesPrueba.map((gasto, index) => (
+                <div key={index} className="p-3 border rounded-lg">
+                  <p className="font-medium">{gasto.concepto}</p>
+                  <p className="text-sm text-muted-foreground">
+                    ${gasto.monto.toLocaleString()} • {gasto.periodicidad}
+                  </p>
+                </div>
+              ))}
+            </div>
+            
+            <Button 
+              onClick={crearTodos} 
+              disabled={loading}
+              className="w-full"
+            >
+              {loading ? "Creando..." : "✨ Crear Todos los Gastos Recurrentes"}
+            </Button>
+            
+            <p className="text-xs text-muted-foreground">
+              Después de esto, ve al buzón y procesa los comprobantes de nuevo para ver las sugerencias.
+            </p>
           </CardContent>
         </Card>
       </div>

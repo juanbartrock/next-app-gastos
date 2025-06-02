@@ -1,12 +1,11 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { useDropzone } from "react-dropzone"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
 import { 
@@ -22,7 +21,14 @@ import {
   CreditCard,
   Receipt,
   FileText,
-  HelpCircle
+  HelpCircle,
+  Zap,
+  Clock,
+  DollarSign,
+  CheckCircle2,
+  XCircle,
+  RefreshCw,
+  Sparkles
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -34,13 +40,6 @@ const TIPOS_COMPROBANTES = {
     color: "bg-blue-500",
     bgColor: "bg-blue-50 dark:bg-blue-950",
     textColor: "text-blue-700 dark:text-blue-300"
-  },
-  ticket: {
-    label: "Ticket",
-    icon: Receipt,
-    color: "bg-green-500",
-    bgColor: "bg-green-50 dark:bg-green-950",
-    textColor: "text-green-700 dark:text-green-300"
   },
   servicio: {
     label: "Servicio",
@@ -55,6 +54,13 @@ const TIPOS_COMPROBANTES = {
     color: "bg-purple-500",
     bgColor: "bg-purple-50 dark:bg-purple-950",
     textColor: "text-purple-700 dark:text-purple-300"
+  },
+  ticket: {
+    label: "Ticket",
+    icon: Receipt,
+    color: "bg-green-500",
+    bgColor: "bg-green-50 dark:bg-green-950",
+    textColor: "text-green-700 dark:text-green-300"
   },
   desconocido: {
     label: "Desconocido",
@@ -82,13 +88,42 @@ interface EstadisticasUpload {
   tiposDetectados: Record<string, number>
 }
 
+interface ComprobanteListItem {
+  id: string
+  nombreArchivo: string
+  tipoDetectado: string
+  estado: 'pendiente' | 'procesado' | 'error'
+  fechaSubida: string
+  datosExtraidos?: any
+  gastosCreados?: any[]
+  error?: string
+}
+
 export default function BuzonPage() {
   const [archivosClasificados, setArchivosClasificados] = useState<ArchivoClasificado[]>([])
+  const [comprobantes, setComprobantes] = useState<ComprobanteListItem[]>([])
   const [archivosSeleccionados, setArchivosSeleccionados] = useState<Set<string>>(new Set())
   const [uploadInProgress, setUploadInProgress] = useState(false)
   const [procesamientoInProgress, setProcesamientoInProgress] = useState(false)
   const [estadisticas, setEstadisticas] = useState<EstadisticasUpload | null>(null)
-  const [archivosPrevisualizando, setArchivosPrevisualizando] = useState<Set<string>>(new Set())
+  const [tabActiva, setTabActiva] = useState("subir")
+
+  // Cargar comprobantes existentes
+  const cargarComprobantes = async () => {
+    try {
+      const response = await fetch('/api/buzon/comprobantes')
+      if (response.ok) {
+        const datos = await response.json()
+        setComprobantes(datos)
+      }
+    } catch (error) {
+      console.error('Error cargando comprobantes:', error)
+    }
+  }
+
+  useEffect(() => {
+    cargarComprobantes()
+  }, [])
 
   // Función para convertir archivo a base64
   const fileToBase64 = (file: File): Promise<string> => {
@@ -139,20 +174,19 @@ export default function BuzonPage() {
       setArchivosClasificados(prev => [...prev, ...resultado.exitosos])
       setEstadisticas(resultado.estadisticas)
 
-      // Mostrar resultados
-      if (resultado.estadisticas.exitosos > 0) {
-        toast.success(`${resultado.estadisticas.exitosos} archivos clasificados correctamente`)
-      }
+      // Mostrar resultado
+      toast.success(`${resultado.exitosos.length} archivos clasificados correctamente`)
       
-      if (resultado.fallidos.length > 0) {
-        toast.error(`${resultado.fallidos.length} archivos fallaron: ${resultado.fallidos[0]?.error}`)
+      if (resultado.fallidos?.length > 0) {
+        toast.error(`${resultado.fallidos.length} archivos fallaron`)
       }
 
-      console.log(`[BUZON-UI] Upload completado: ${resultado.estadisticas.exitosos} exitosos`)
+      // Recargar lista de comprobantes
+      cargarComprobantes()
 
     } catch (error) {
       console.error('[BUZON-UI] Error en upload:', error)
-      toast.error(`Error al procesar archivos: ${error}`)
+      toast.error('Error procesando archivos')
     } finally {
       setUploadInProgress(false)
     }
@@ -161,82 +195,28 @@ export default function BuzonPage() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'image/*': ['.jpeg', '.jpg', '.png', '.pdf']
+      'image/*': ['.png', '.jpg', '.jpeg'],
+      'application/pdf': ['.pdf']
     },
-    maxFiles: 20,
+    maxFiles: 10,
     maxSize: 10 * 1024 * 1024, // 10MB
-    disabled: uploadInProgress || procesamientoInProgress
+    disabled: uploadInProgress
   })
 
-  // Seleccionar/deseleccionar archivo
-  const toggleSeleccion = (archivoId: string) => {
-    const nuevaSeleccion = new Set(archivosSeleccionados)
-    if (nuevaSeleccion.has(archivoId)) {
-      nuevaSeleccion.delete(archivoId)
-    } else {
-      nuevaSeleccion.add(archivoId)
-    }
-    setArchivosSeleccionados(nuevaSeleccion)
-  }
-
-  // Seleccionar todos los archivos
-  const seleccionarTodos = () => {
-    if (archivosSeleccionados.size === archivosClasificados.length) {
-      setArchivosSeleccionados(new Set())
-    } else {
-      setArchivosSeleccionados(new Set(archivosClasificados.map(a => a.archivoId)))
-    }
-  }
-
-  // Previsualizar archivo
-  const previsualizarArchivo = (archivo: ArchivoClasificado) => {
-    setArchivosPrevisualizando(prev => new Set(prev).add(archivo.archivoId))
-    
-    // Crear modal o ventana para mostrar la imagen
-    const ventana = window.open('', '_blank', 'width=800,height=600')
-    if (ventana) {
-      ventana.document.write(`
-        <html>
-          <head><title>Previsualización: ${archivo.nombre}</title></head>
-          <body style="margin:0;padding:20px;background:#f5f5f5;">
-            <div style="text-align:center;">
-              <h3>${archivo.nombre}</h3>
-              <p>Tipo: ${TIPOS_COMPROBANTES[archivo.tipo].label} (${archivo.confianza}% confianza)</p>
-              <img src="${archivo.contenidoBase64}" style="max-width:100%;max-height:80vh;border:1px solid #ccc;border-radius:8px;" />
-            </div>
-          </body>
-        </html>
-      `)
-      ventana.document.close()
-    }
-    
-    setTimeout(() => {
-      setArchivosPrevisualizando(prev => {
-        const nuevos = new Set(prev)
-        nuevos.delete(archivo.archivoId)
-        return nuevos
-      })
-    }, 500)
-  }
-
-  // Procesar archivos seleccionados
-  const procesarSeleccionados = async () => {
-    if (archivosSeleccionados.size === 0) {
-      toast.error("Selecciona al menos un archivo para procesar")
-      return
-    }
-
-    setProcesamientoInProgress(true)
-
+  // Procesar comprobante individual con nuevo sistema
+  const procesarComprobante = async (archivo: ArchivoClasificado) => {
     try {
-      const response = await fetch('/api/buzon/confirmar-lote', {
+      setProcesamientoInProgress(true)
+
+      const response = await fetch('/api/buzon/procesar-comprobante', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          comprobantesIds: Array.from(archivosSeleccionados),
-          accion: 'procesar_lote'
+          comprobanteId: archivo.archivoId,
+          tipoComprobante: archivo.tipo,
+          contenidoBase64: archivo.contenidoBase64
         })
       })
 
@@ -245,286 +225,326 @@ export default function BuzonPage() {
       }
 
       const resultado = await response.json()
-      
-      // Remover archivos procesados exitosamente
-      const procesadosIds = new Set(resultado.exitosos.map((r: any) => r.comprobanteId))
-      setArchivosClasificados(prev => prev.filter(a => !procesadosIds.has(a.archivoId)))
-      setArchivosSeleccionados(new Set())
 
-      // Mostrar resultados
-      if (resultado.estadisticas.exitosos > 0) {
-        toast.success(`${resultado.estadisticas.exitosos} comprobantes procesados correctamente`)
-        toast.success(`${resultado.estadisticas.gastosCreados} gastos creados`)
+      if (resultado.success) {
+        toast.success(`Comprobante procesado: ${resultado.gastosCreados?.length || 0} gastos creados`)
+        
+        // Actualizar lista de comprobantes
+        cargarComprobantes()
+        
+        // Remover de archivos clasificados
+        setArchivosClasificados(prev => 
+          prev.filter(a => a.archivoId !== archivo.archivoId)
+        )
+      } else {
+        throw new Error(resultado.error || 'Error desconocido')
       }
-      
-      if (resultado.estadisticas.fallidos > 0) {
-        toast.error(`${resultado.estadisticas.fallidos} comprobantes fallaron`)
-      }
-
-      console.log(`[BUZON-UI] Procesamiento completado:`, resultado.estadisticas)
 
     } catch (error) {
-      console.error('[BUZON-UI] Error en procesamiento:', error)
-      toast.error(`Error al procesar: ${error}`)
+      console.error('[BUZON-UI] Error procesando comprobante:', error)
+      toast.error(`Error: ${error instanceof Error ? error.message : 'Error desconocido'}`)
     } finally {
       setProcesamientoInProgress(false)
     }
   }
 
-  // Descartar archivos seleccionados
-  const descartarSeleccionados = async () => {
-    if (archivosSeleccionados.size === 0) {
-      toast.error("Selecciona al menos un archivo para descartar")
-      return
-    }
+  // Procesar todos los archivos clasificados
+  const procesarTodos = async () => {
+    if (archivosClasificados.length === 0) return
 
-    try {
-      const response = await fetch('/api/buzon/descartar', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          comprobantesIds: Array.from(archivosSeleccionados),
-          motivo: 'Descartado desde interfaz'
-        })
-      })
+    setProcesamientoInProgress(true)
 
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`)
+    let exitosos = 0
+    let fallidos = 0
+
+    for (const archivo of archivosClasificados) {
+      try {
+        await procesarComprobante(archivo)
+        exitosos++
+      } catch (error) {
+        fallidos++
+        console.error(`Error procesando ${archivo.nombre}:`, error)
       }
-
-      const resultado = await response.json()
-      
-      // Remover archivos descartados
-      const descartadosIds = new Set(resultado.exitosos)
-      setArchivosClasificados(prev => prev.filter(a => !descartadosIds.has(a.archivoId)))
-      setArchivosSeleccionados(new Set())
-
-      toast.success(`${resultado.estadisticas.exitosos} archivos descartados`)
-
-    } catch (error) {
-      console.error('[BUZON-UI] Error descartando:', error)
-      toast.error(`Error al descartar: ${error}`)
     }
+
+    toast.success(`Procesamiento completado: ${exitosos} exitosos, ${fallidos} fallidos`)
+    setProcesamientoInProgress(false)
   }
 
+  // Formatear tamaño de archivo
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes'
     const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const sizes = ['Bytes', 'KB', 'MB']
     const i = Math.floor(Math.log(bytes) / Math.log(k))
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
+  // Obtener ícono del tipo
+  const getIconoTipo = (tipo: keyof typeof TIPOS_COMPROBANTES) => {
+    const IconComponent = TIPOS_COMPROBANTES[tipo]?.icon || HelpCircle
+    return <IconComponent className="h-4 w-4" />
+  }
+
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">📄 Buzón de Comprobantes</h1>
-          <p className="text-muted-foreground">
-            Arrastra y suelta comprobantes de transferencias, tickets, servicios y más
-          </p>
-        </div>
-        
-        {estadisticas && (
-          <div className="text-right text-sm text-muted-foreground">
-            <div>Total procesados: {estadisticas.total}</div>
-            <div className="text-green-600">Exitosos: {estadisticas.exitosos}</div>
-            {estadisticas.fallidos > 0 && (
-              <div className="text-red-600">Fallidos: {estadisticas.fallidos}</div>
-            )}
-          </div>
-        )}
+    <div className="container mx-auto p-6 max-w-7xl">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          <FileCheck className="h-8 w-8 text-primary" />
+          Buzón de Comprobantes
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          Sube comprobantes de transferencias, servicios y resúmenes de tarjeta para procesamiento automático con IA
+        </p>
       </div>
 
-      {/* Drop Zone */}
-      <Card>
-        <CardContent className="p-6">
-          <div
-            {...getRootProps()}
-            className={`
-              border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-              ${isDragActive 
-                ? 'border-primary bg-primary/5' 
-                : 'border-gray-300 hover:border-gray-400'
-              }
-              ${uploadInProgress ? 'opacity-50 cursor-not-allowed' : ''}
-            `}
-          >
-            <input {...getInputProps()} />
-            
-            {uploadInProgress ? (
-              <div className="space-y-4">
-                <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
-                <div>
-                  <p className="text-lg font-medium">Clasificando archivos...</p>
-                  <p className="text-sm text-muted-foreground">
-                    Usando inteligencia artificial para detectar tipos de comprobantes
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <Upload className="h-12 w-12 mx-auto text-gray-400" />
-                <div>
-                  <p className="text-lg font-medium">
-                    {isDragActive 
-                      ? "Suelta los archivos aquí..." 
-                      : "Arrastra archivos aquí o haz clic para seleccionar"
-                    }
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Máximo 20 archivos, 10MB cada uno. Formatos: JPG, PNG, PDF
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs value={tabActiva} onValueChange={setTabActiva} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="subir">Subir Archivos</TabsTrigger>
+          <TabsTrigger value="clasificados">
+            Clasificados ({archivosClasificados.length})
+          </TabsTrigger>
+          <TabsTrigger value="procesados">
+            Procesados ({comprobantes.filter(c => c.estado === 'procesado').length})
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Lista de Archivos Clasificados */}
-      {archivosClasificados.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Archivos Clasificados ({archivosClasificados.length})</CardTitle>
-                <CardDescription>
-                  Revisa la clasificación automática y procesa los comprobantes
-                </CardDescription>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={seleccionarTodos}
-                >
-                  {archivosSeleccionados.size === archivosClasificados.length ? 'Deseleccionar todo' : 'Seleccionar todo'}
-                </Button>
+        {/* Tab: Subir Archivos */}
+        <TabsContent value="subir" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Upload className="h-5 w-5" />
+                Subir Comprobantes
+              </CardTitle>
+              <CardDescription>
+                Arrastra archivos aquí o haz clic para seleccionar. Formatos soportados: JPG, PNG, PDF
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div
+                {...getRootProps()}
+                className={`
+                  border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
+                  ${isDragActive 
+                    ? 'border-primary bg-primary/5' 
+                    : 'border-muted-foreground/25 hover:border-primary/50'
+                  }
+                  ${uploadInProgress ? 'pointer-events-none opacity-50' : ''}
+                `}
+              >
+                <input {...getInputProps()} />
                 
-                {archivosSeleccionados.size > 0 && (
-                  <>
-                    <Button 
-                      size="sm" 
-                      onClick={procesarSeleccionados}
-                      disabled={procesamientoInProgress}
-                    >
-                      {procesamientoInProgress ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          Procesando...
-                        </>
-                      ) : (
-                        <>
-                          <FileCheck className="h-4 w-4 mr-2" />
-                          Procesar ({archivosSeleccionados.size})
-                        </>
-                      )}
-                    </Button>
-                    
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={descartarSeleccionados}
-                      disabled={procesamientoInProgress}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Descartar ({archivosSeleccionados.size})
-                    </Button>
-                  </>
+                {uploadInProgress ? (
+                  <div className="space-y-4">
+                    <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary" />
+                    <p className="text-lg font-medium">Procesando archivos...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <Upload className="h-12 w-12 mx-auto text-muted-foreground" />
+                    <div className="space-y-2">
+                      <p className="text-lg font-medium">
+                        {isDragActive ? 'Suelta los archivos aquí' : 'Arrastra archivos aquí'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        o haz clic para seleccionar archivos
+                      </p>
+                    </div>
+                  </div>
                 )}
               </div>
+
+              {estadisticas && (
+                <div className="mt-4 p-4 bg-muted rounded-lg">
+                  <h3 className="font-medium mb-2">Estadísticas del último upload:</h3>
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Total:</span>
+                      <span className="ml-2 font-medium">{estadisticas.total}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Exitosos:</span>
+                      <span className="ml-2 font-medium text-green-600">{estadisticas.exitosos}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Fallidos:</span>
+                      <span className="ml-2 font-medium text-red-600">{estadisticas.fallidos}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab: Archivos Clasificados */}
+        <TabsContent value="clasificados" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-semibold">Archivos Clasificados</h2>
+            <div className="space-x-2">
+              <Button
+                onClick={procesarTodos}
+                disabled={archivosClasificados.length === 0 || procesamientoInProgress}
+                className="flex items-center gap-2"
+              >
+                {procesamientoInProgress ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                Procesar Todos
+              </Button>
             </div>
-          </CardHeader>
-          
-          <CardContent>
-            <ScrollArea className="h-96">
-              <div className="space-y-3">
-                {archivosClasificados.map((archivo) => {
-                  const tipoInfo = TIPOS_COMPROBANTES[archivo.tipo]
-                  const TipoIcon = tipoInfo.icon
-                  const isSeleccionado = archivosSeleccionados.has(archivo.archivoId)
-                  const isPrevisualizando = archivosPrevisualizando.has(archivo.archivoId)
-                  
-                  return (
-                    <div
-                      key={archivo.archivoId}
-                      className={`
-                        flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors
-                        ${isSeleccionado ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'}
-                      `}
-                      onClick={() => toggleSeleccion(archivo.archivoId)}
-                    >
-                      {/* Checkbox visual */}
-                      <div className={`
-                        w-5 h-5 border-2 rounded flex items-center justify-center
-                        ${isSeleccionado ? 'border-primary bg-primary' : 'border-gray-300'}
-                      `}>
-                        {isSeleccionado && <Check className="h-3 w-3 text-white" />}
-                      </div>
+          </div>
 
-                      {/* Icono del tipo */}
-                      <div className={`p-2 rounded-full ${tipoInfo.bgColor}`}>
-                        <TipoIcon className={`h-5 w-5 ${tipoInfo.textColor}`} />
-                      </div>
-
-                      {/* Información del archivo */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium truncate">{archivo.nombre}</p>
-                          <Badge variant="secondary" className={tipoInfo.bgColor}>
-                            {tipoInfo.label}
-                          </Badge>
-                          <Badge variant="outline">
-                            {archivo.confianza}% confianza
-                          </Badge>
+          {archivosClasificados.length === 0 ? (
+            <Card>
+              <CardContent className="text-center py-8">
+                <FileImage className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">No hay archivos clasificados pendientes</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {archivosClasificados.map((archivo) => (
+                <Card key={archivo.archivoId}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className={`p-2 rounded-lg ${TIPOS_COMPROBANTES[archivo.tipo]?.bgColor}`}>
+                          {getIconoTipo(archivo.tipo)}
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {formatFileSize(archivo.tamaño)}
-                          {archivo.metadatos?.razon && ` • ${archivo.metadatos.razon}`}
-                        </p>
+                        
+                        <div>
+                          <h3 className="font-medium">{archivo.nombre}</h3>
+                          <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                            <Badge variant="secondary">
+                              {TIPOS_COMPROBANTES[archivo.tipo]?.label || archivo.tipo}
+                            </Badge>
+                            <span>{formatFileSize(archivo.tamaño)}</span>
+                            <span>Confianza: {archivo.confianza}%</span>
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Acciones */}
-                      <div className="flex items-center gap-2">
+                      <div className="flex space-x-2">
                         <Button
-                          variant="ghost"
                           size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            previsualizarArchivo(archivo)
-                          }}
-                          disabled={isPrevisualizando}
+                          onClick={() => procesarComprobante(archivo)}
+                          disabled={procesamientoInProgress}
+                          className="flex items-center gap-2"
                         >
-                          {isPrevisualizando ? (
+                          {procesamientoInProgress ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
-                            <Eye className="h-4 w-4" />
+                            <Zap className="h-4 w-4" />
                           )}
+                          Procesar
                         </Button>
                       </div>
                     </div>
-                  )
-                })}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
 
-      {/* Estado vacío */}
-      {archivosClasificados.length === 0 && !uploadInProgress && (
-        <Alert>
-          <FileImage className="h-4 w-4" />
-          <AlertDescription>
-            No hay archivos en el buzón. Arrastra algunos comprobantes para comenzar.
-          </AlertDescription>
-        </Alert>
-      )}
+        {/* Tab: Comprobantes Procesados */}
+        <TabsContent value="procesados" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-semibold">Comprobantes Procesados</h2>
+            <Button
+              onClick={cargarComprobantes}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Actualizar
+            </Button>
+          </div>
+
+          {comprobantes.length === 0 ? (
+            <Card>
+              <CardContent className="text-center py-8">
+                <CheckCircle2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">No hay comprobantes procesados</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {comprobantes.map((comprobante) => (
+                <Card key={comprobante.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className={`p-2 rounded-lg ${
+                          comprobante.estado === 'procesado' 
+                            ? 'bg-green-50 dark:bg-green-950'
+                            : comprobante.estado === 'error'
+                              ? 'bg-red-50 dark:bg-red-950'
+                              : 'bg-yellow-50 dark:bg-yellow-950'
+                        }`}>
+                          {comprobante.estado === 'procesado' ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          ) : comprobante.estado === 'error' ? (
+                            <XCircle className="h-4 w-4 text-red-600" />
+                          ) : (
+                            <Clock className="h-4 w-4 text-yellow-600" />
+                          )}
+                        </div>
+                        
+                        <div>
+                          <h3 className="font-medium">{comprobante.nombreArchivo}</h3>
+                          <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                            <Badge variant="secondary">
+                              {TIPOS_COMPROBANTES[comprobante.tipoDetectado as keyof typeof TIPOS_COMPROBANTES]?.label || comprobante.tipoDetectado}
+                            </Badge>
+                            <span>{new Date(comprobante.fechaSubida).toLocaleDateString()}</span>
+                            {comprobante.gastosCreados && (
+                              <span className="text-green-600">
+                                {comprobante.gastosCreados.length} gastos creados
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        {comprobante.datosExtraidos && (
+                          <Badge variant="outline" className="flex items-center gap-1">
+                            <DollarSign className="h-3 w-3" />
+                            ${comprobante.datosExtraidos.monto?.toLocaleString() || 
+                              comprobante.datosExtraidos.importe?.toLocaleString() ||
+                              comprobante.datosExtraidos.pagoMinimo?.toLocaleString() || '0'}
+                          </Badge>
+                        )}
+                        
+                        {comprobante.error && (
+                          <Badge variant="destructive">
+                            Error
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    {comprobante.error && (
+                      <Alert className="mt-4">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          {comprobante.error}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   )
 } 
