@@ -386,6 +386,35 @@ export default function DashboardRedesigned() {
   const [balanceIndex, setBalanceIndex] = useState(0)
   const [signingOut, setSigningOut] = useState(false)
 
+  // Función para ejecutar Smart Trigger en background
+  const executeSmartTrigger = async () => {
+    try {
+      console.log('🎯 Ejecutando Smart Trigger desde Dashboard...')
+      
+      // Llamada asíncrona que no bloquea la UI
+      fetch('/api/alertas/smart-trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: 'dashboard' })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success && data.result.executed) {
+          console.log(`✅ Smart Trigger: ${data.result.alertasCreadas} alertas creadas`)
+        } else {
+          console.log(`ℹ️ Smart Trigger: ${data.result.reason}`)
+        }
+      })
+      .catch(error => {
+        // Error silencioso - no afecta la experiencia del usuario
+        console.log('Smart Trigger ejecutado en background:', error.message)
+      })
+    } catch (error) {
+      // Fallo silencioso
+      console.log('Smart Trigger no disponible')
+    }
+  }
+
   // Función para cargar gastos personales
   const fetchGastosPersonales = async () => {
     try {
@@ -442,10 +471,14 @@ export default function DashboardRedesigned() {
     }
   }, [status, router])
 
-  // Efecto para cargar datos iniciales
+  // Efecto para cargar datos iniciales y ejecutar Smart Trigger
   useEffect(() => {
     if (status === "authenticated") {
       reloadData()
+      
+      // Ejecutar Smart Trigger después de cargar datos principales
+      // Se ejecuta en paralelo sin bloquear la UI
+      executeSmartTrigger()
     }
   }, [status])
 

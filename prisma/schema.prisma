@@ -610,3 +610,15 @@ model ComprobantePendiente {
   @@index([userId, fechaSubida])
   @@index([estado, fechaSubida])
 }
+
+model AlertaExecution {
+  id          String   @id @default(cuid())
+  type        String   // 'SMART_TRIGGER', 'CRON_JOB', 'MANUAL'
+  executedAt  DateTime
+  metadata    Json?    // Configuración y datos adicionales
+  createdAt   DateTime @default(now())
+
+  @@map("alerta_executions")
+  @@index([type, executedAt])
+  @@index([executedAt])
+}

@@ -2,6 +2,12 @@
   "functions": {
     "src/app/api/**/*.ts": {
       "maxDuration": 25
+    },
+    "src/app/api/alertas/cron/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/alertas/smart-trigger/route.ts": {
+      "maxDuration": 20
     }
   },
   "regions": ["iad1"],
@@ -25,6 +31,18 @@
       "source": "/api/ai/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "s-maxage=300, stale-while-revalidate=600" }
+      ]
+    },
+    {
+      "source": "/api/alertas/cron",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/api/alertas/smart-trigger",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]
     }
   ],
