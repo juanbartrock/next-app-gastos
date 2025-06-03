@@ -107,6 +107,57 @@ function processSimpleBold(text: string): JSX.Element {
   );
 }
 
+// Constantes para el caché
+const CACHE_KEY_PREFIX = "financial_summary_cache"
+const CACHE_DURATION_HOURS = 24
+
+// Funciones para manejo del caché
+const getCacheKey = (context: string) => `${CACHE_KEY_PREFIX}_${context}`
+
+const getCachedData = (context: string) => {
+  try {
+    const cacheKey = getCacheKey(context)
+    const cached = localStorage.getItem(cacheKey)
+    if (!cached) return null
+    
+    const { data, timestamp } = JSON.parse(cached)
+    const now = new Date().getTime()
+    const cacheTime = new Date(timestamp).getTime()
+    const hoursDiff = (now - cacheTime) / (1000 * 60 * 60)
+    
+    // Si han pasado más de 24 horas, el caché está vencido
+    if (hoursDiff > CACHE_DURATION_HOURS) {
+      localStorage.removeItem(cacheKey)
+      return null
+    }
+    
+    return { data, timestamp: new Date(timestamp) }
+  } catch (error) {
+    console.error('Error al leer caché:', error)
+    return null
+  }
+}
+
+const setCachedData = (context: string, data: string) => {
+  try {
+    const cacheKey = getCacheKey(context)
+    const cacheData = {
+      data,
+      timestamp: new Date().toISOString()
+    }
+    localStorage.setItem(cacheKey, JSON.stringify(cacheData))
+  } catch (error) {
+    console.error('Error al guardar caché:', error)
+  }
+}
+
+const isDataFresh = (timestamp: Date): boolean => {
+  const now = new Date().getTime()
+  const cacheTime = timestamp.getTime()
+  const hoursDiff = (now - cacheTime) / (1000 * 60 * 60)
+  return hoursDiff < CACHE_DURATION_HOURS
+}
+
 interface FinancialSummaryProps {
   className?: string
   context?: "dashboard" | "recurrentes" | "general"
@@ -117,13 +168,27 @@ export function FinancialSummary({ className, context = "dashboard" }: Financial
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [isFromCache, setIsFromCache] = useState(false)
 
-  const fetchSummary = async () => {
+  const fetchSummary = async (forceRefresh = false) => {
     setLoading(true)
     setError(null)
     
     try {
-      // Enviar una consulta predefinida al asistente financiero
+      // Verificar caché primero (solo si no es un refresh forzado)
+      if (!forceRefresh) {
+        const cached = getCachedData(context)
+        if (cached) {
+          setSummary(cached.data)
+          setLastUpdated(cached.timestamp)
+          setIsFromCache(true)
+          setLoading(false)
+          return
+        }
+      }
+      
+      // Si no hay caché o es un refresh forzado, hacer petición a la API
+      setIsFromCache(false)
       const response = await fetch("/api/financial-advisor", {
         method: "POST",
         headers: {
@@ -153,6 +218,9 @@ export function FinancialSummary({ className, context = "dashboard" }: Financial
         responseContent += "\n\n---\n\n*Nota: El asistente IA avanzado no está configurado. Este análisis se basa en respuestas predefinidas usando tus datos financieros reales.*";
       }
       
+      // Guardar en caché
+      setCachedData(context, responseContent)
+      
       setSummary(responseContent)
       setLastUpdated(new Date())
     } catch (error) {
@@ -163,9 +231,13 @@ export function FinancialSummary({ className, context = "dashboard" }: Financial
     }
   }
 
+  const handleRefresh = () => {
+    fetchSummary(true) // Forzar actualización
+  }
+
   useEffect(() => {
-    fetchSummary()
-  }, [])
+    fetchSummary(false) // Cargar desde caché si está disponible
+  }, [context])
 
   return (
     <Card className={cn("w-full h-full border-0 shadow-none", className)}>
@@ -176,16 +248,28 @@ export function FinancialSummary({ className, context = "dashboard" }: Financial
           </CardTitle>
           <div className="flex items-center gap-2">
             {lastUpdated && (
-              <span className="text-xs text-muted-foreground">
-                Actualizado: {lastUpdated.toLocaleTimeString()}
-              </span>
+              <div className="text-xs text-muted-foreground text-right">
+                <div>
+                  {isFromCache ? "Desde caché:" : "Actualizado:"} {lastUpdated.toLocaleTimeString()}
+                </div>
+                {isFromCache && (
+                  <div className="text-xs">
+                    {isDataFresh(lastUpdated) ? (
+                      `Válido por ${Math.ceil(CACHE_DURATION_HOURS - (new Date().getTime() - lastUpdated.getTime()) / (1000 * 60 * 60))}h más`
+                    ) : (
+                      "Caché vencido"
+                    )}
+                  </div>
+                )}
+              </div>
             )}
             <Button 
               variant="ghost" 
               size="icon" 
               className="h-7 w-7" 
-              onClick={fetchSummary} 
+              onClick={handleRefresh} 
               disabled={loading}
+              title={isFromCache ? "Actualizar análisis (forzar nueva consulta a IA)" : "Actualizar análisis"}
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -212,7 +296,7 @@ export function FinancialSummary({ className, context = "dashboard" }: Financial
             <Button 
               variant="outline" 
               size="sm"
-              onClick={fetchSummary}
+              onClick={handleRefresh}
               className="flex items-center"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
@@ -220,9 +304,19 @@ export function FinancialSummary({ className, context = "dashboard" }: Financial
             </Button>
           </div>
         ) : (
-          <div className="text-sm">
-            {renderMarkdown(summary)}
-          </div>
+          <>
+            {isFromCache && (
+              <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-950/30 rounded-md border border-blue-200 dark:border-blue-800">
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  ℹ️ Análisis en caché (actualizado hace {Math.floor((new Date().getTime() - lastUpdated!.getTime()) / (1000 * 60 * 60))}h). 
+                  Presiona el botón de actualizar para obtener un análisis nuevo.
+                </p>
+              </div>
+            )}
+            <div className="text-sm">
+              {renderMarkdown(summary)}
+            </div>
+          </>
         )}
       </CardContent>
     </Card>
