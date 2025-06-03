@@ -115,7 +115,10 @@ next-app-gastos/
 - `/perfil`: Gestión del perfil de usuario y planes
 - `/configuracion`: Configuración de la aplicación
 - `/recomendaciones-ahorro`: Sugerencias para ahorrar dinero
-- `/informes`: Informes detallados y análisis financiero
+- `/informes`: ❌ **TEMPORALMENTE DESACTIVADO** - Módulo de informes completo
+  - **Motivo**: Problemas de rendimiento y diseño excesivamente ambicioso
+  - **Ver**: `INFORMES_DESACTIVADOS_ENERO_2025.md` para detalles completos
+  - **Alternativas**: Dashboard principal, transacciones, recurrentes, préstamos
 - `/financial-advisor`: Asistente financiero inteligente
 - `/admin`: Panel de administración
   - `/admin/categorias`: Gestión de categorías

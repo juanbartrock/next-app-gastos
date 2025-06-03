@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
+import prisma, { executeWithTimeout } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { options } from '@/app/api/auth/[...nextauth]/options'
 
@@ -16,10 +16,12 @@ export async function GET() {
       )
     }
     
-    // Buscar al usuario por email
-    const usuario = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    })
+    // Buscar al usuario por email con timeout
+    const usuario = await executeWithTimeout(async () => {
+      return await prisma.user.findUnique({
+        where: { email: session.user.email! }
+      })
+    }, 10000, 3)
     
     // Si no se encuentra al usuario, devolver error
     if (!usuario) {
@@ -29,33 +31,36 @@ export async function GET() {
       )
     }
     
-    // Obtener los gastos recurrentes del usuario
-    const gastosRecurrentes = await prisma.gastoRecurrente.findMany({
-      where: { userId: usuario.id },
-      include: {
-        categoria: {
-          select: {
-            id: true,
-            descripcion: true
+    // Obtener los gastos recurrentes del usuario con timeout
+    const gastosRecurrentes = await executeWithTimeout(async () => {
+      return await prisma.gastoRecurrente.findMany({
+        where: { userId: usuario.id },
+        include: {
+          categoria: {
+            select: {
+              id: true,
+              descripcion: true
+            }
+          },
+          gastosGenerados: {
+            select: {
+              id: true,
+              concepto: true,
+              monto: true,
+              fecha: true,
+              tipoTransaccion: true,
+              tipoMovimiento: true
+            },
+            orderBy: { fecha: 'desc' },
+            take: 3 // Últimos 3 gastos generados para vista previa
           }
         },
-        gastosGenerados: {
-          select: {
-            id: true,
-            concepto: true,
-            monto: true,
-            fecha: true,
-            tipoTransaccion: true,
-            tipoMovimiento: true
-          },
-          orderBy: { fecha: 'desc' },
-          take: 3 // Últimos 3 gastos generados para vista previa
-        }
-      },
-      orderBy: {
-        proximaFecha: 'asc'
-      }
-    })
+        orderBy: {
+          proximaFecha: 'asc'
+        },
+        take: 100 // Límite de seguridad
+      })
+    }, 15000, 3)
     
     return NextResponse.json(gastosRecurrentes)
   } catch (error) {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { options } from "@/app/api/auth/[...nextauth]/options"
-import prisma from "@/lib/prisma"
+import prisma, { executeWithTimeout } from "@/lib/prisma"
 
 // GET - Obtener todos los préstamos del usuario autenticado
 export async function GET() {
@@ -15,10 +15,12 @@ export async function GET() {
       )
     }
 
-    // Buscar al usuario por email
-    const usuario = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    })
+    // Buscar al usuario por email con timeout
+    const usuario = await executeWithTimeout(async () => {
+      return await prisma.user.findUnique({
+        where: { email: session.user.email! }
+      })
+    }, 10000, 3)
 
     if (!usuario) {
       return NextResponse.json(
@@ -27,16 +29,19 @@ export async function GET() {
       )
     }
 
-    // Obtener todos los préstamos del usuario con sus pagos
-    const prestamos = await prisma.prestamo.findMany({
-      where: { userId: usuario.id },
-      include: {
-        pagos: {
-          orderBy: { numeroCuota: 'asc' }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    })
+    // Obtener todos los préstamos del usuario con sus pagos usando timeout
+    const prestamos = await executeWithTimeout(async () => {
+      return await prisma.prestamo.findMany({
+        where: { userId: usuario.id },
+        include: {
+          pagos: {
+            orderBy: { numeroCuota: 'asc' },
+            take: 50 // Limitar para performance
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      })
+    }, 15000, 3)
 
     return NextResponse.json(prestamos)
   } catch (error) {

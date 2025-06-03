@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
-import prisma from "@/lib/prisma"
+import prisma, { executeWithTimeout } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { options } from "@/app/api/auth/[...nextauth]/options"
 import { createInitialCategories } from "@/lib/dbSetup";
+import { z } from "zod"
 
 // Remover la llamada automática para evitar creaciones duplicadas
 // createInitialCategories().catch(error => {
@@ -12,21 +13,27 @@ import { createInitialCategories } from "@/lib/dbSetup";
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(options)
+    
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: 'No autorizado' },
+        { status: 401 }
+      )
+    }
 
-    // Obtener parámetros de fecha de la URL
     const url = new URL(request.url)
     const desde = url.searchParams.get('desde')
     const hasta = url.searchParams.get('hasta')
     const soloFamiliares = url.searchParams.get('soloFamiliares') === 'true'
     const soloPersonales = url.searchParams.get('soloPersonales') === 'true'
-    const usarFechaImputacion = url.searchParams.get('usarFechaImputacion') === 'true'  // Nuevo parámetro
-    const includeDetailsCount = url.searchParams.get('includeDetailsCount') === 'true'  // Nuevo parámetro para incluir conteo de detalles
-    
-    // Convertir fechas si fueron proporcionadas
+    const includeDetailsCount = url.searchParams.get('includeDetails') === 'true'
+    const usarFechaImputacion = url.searchParams.get('usarFechaImputacion') === 'true'
+
+    // Parsear fechas si se proporcionaron
     const fechaDesde = desde ? new Date(desde) : null
     const fechaHasta = hasta ? new Date(hasta) : null
-    
-    // Verificar que las fechas sean válidas si se proporcionaron
+
+    // Validar fechas
     if ((desde && isNaN(fechaDesde?.getTime() || 0)) || (hasta && isNaN(fechaHasta?.getTime() || 0))) {
       return NextResponse.json(
         { error: 'Formato de fecha inválido' },
@@ -34,12 +41,14 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    // Buscar usuario por email
-    const usuario = session?.user?.email 
-      ? await prisma.user.findUnique({
-          where: { email: session.user.email }
-        })
-      : null
+    // Buscar usuario por email con timeout
+    const usuario = await executeWithTimeout(async () => {
+      return session?.user?.email 
+        ? await prisma.user.findUnique({
+            where: { email: session.user.email }
+          })
+        : null
+    }, 15000, 3)
 
     if (!usuario) {
       return NextResponse.json(
@@ -118,40 +127,44 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // Obtener gastos del usuario
-    const gastos = await prisma.gasto.findMany({
-      where: whereCondition,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        categoriaRel: {
-          select: {
-            id: true,
-            descripcion: true,
-            grupo_categoria: true
-          }
-        },
-        // Incluir detalles solo si se solicita explícitamente
-        ...(includeDetailsCount && {
-          detalles: {
+    // Obtener gastos del usuario con timeout optimizado
+    const gastos = await executeWithTimeout(async () => {
+      return await prisma.gasto.findMany({
+        where: whereCondition,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          },
+          categoriaRel: {
             select: {
               id: true,
               descripcion: true,
-              cantidad: true,
-              subtotal: true
+              grupo_categoria: true
             }
-          }
-        })
-      },
-      orderBy: {
-        fecha: 'desc'
-      }
-    })
+          },
+          // Incluir detalles solo si se solicita explícitamente
+          ...(includeDetailsCount && {
+            detalles: {
+              select: {
+                id: true,
+                descripcion: true,
+                cantidad: true,
+                subtotal: true
+              },
+              take: 10 // Limitar para performance
+            }
+          })
+        },
+        orderBy: {
+          fecha: 'desc'
+        },
+        take: 1000 // Límite de seguridad
+      })
+    }, 20000, 3) // Timeout más largo para consultas complejas
     
     return NextResponse.json(gastos)
   } catch (error) {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { options as authOptions } from '@/app/api/auth/[...nextauth]/options';
-import prisma from '@/lib/prisma';
+import prisma, { executeWithTimeout } from '@/lib/prisma';
 
 // GET /api/inversiones - Obtener todas las inversiones del usuario
 export async function GET(req: NextRequest) {
@@ -12,18 +12,21 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    // Obtener todas las inversiones del usuario con su tipo
-    const inversiones = await prisma.inversion.findMany({
-      where: {
-        userId: session.user.id as string,
-      },
-      include: {
-        tipo: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    // Obtener todas las inversiones del usuario con su tipo usando timeout
+    const inversiones = await executeWithTimeout(async () => {
+      return await prisma.inversion.findMany({
+        where: {
+          userId: session.user.id as string,
+        },
+        include: {
+          tipo: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 100 // Límite de seguridad
+      })
+    }, 15000, 3)
 
     return NextResponse.json({ inversiones });
   } catch (error) {

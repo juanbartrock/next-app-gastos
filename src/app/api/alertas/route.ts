@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { options } from "@/app/api/auth/[...nextauth]/options"
-import prisma from "@/lib/prisma"
+import prisma, { executeWithTimeout } from "@/lib/prisma"
 import { z } from "zod"
 
 // Esquema de validación para crear alertas
@@ -65,46 +65,62 @@ export async function GET(request: NextRequest) {
     }
 
     // Paginación
-    const limiteParsed = limite ? parseInt(limite) : 50
+    const limiteParsed = limite ? Math.min(parseInt(limite), 100) : 50 // Limitar máximo
     const paginaParsed = pagina ? parseInt(pagina) : 1
     const skip = (paginaParsed - 1) * limiteParsed
 
-    // Obtener alertas con relaciones
-    const alertas = await prisma.alerta.findMany({
-      where,
-      include: {
-        gastoRecurrente: {
-          include: {
-            categoria: true
+    // Obtener alertas con relaciones usando timeout
+    const alertas = await executeWithTimeout(async () => {
+      return await prisma.alerta.findMany({
+        where,
+        include: {
+          gastoRecurrente: {
+            include: {
+              categoria: true
+            }
+          },
+          prestamo: true,
+          inversion: {
+            include: {
+              tipo: true
+            }
+          },
+          presupuesto: {
+            include: {
+              categoria: true
+            }
+          },
+          tarea: true,
+          promocion: {
+            include: {
+              servicio: true
+            }
           }
         },
-        prestamo: true,
-        inversion: {
-          include: {
-            tipo: true
-          }
+        orderBy: {
+          fechaCreacion: "desc"
         },
-        presupuesto: {
-          include: {
-            categoria: true
-          }
-        },
-        tarea: true,
-        promocion: {
-          include: {
-            servicio: true
-          }
-        }
-      },
-      orderBy: {
-        fechaCreacion: "desc"
-      },
-      take: limiteParsed,
-      skip
-    })
+        take: limiteParsed,
+        skip
+      })
+    }, 15000, 3)
 
-    // Contar total para paginación
-    const total = await prisma.alerta.count({ where })
+    // Contar total para paginación con timeout
+    const [total, noLeidas, totalGeneral] = await Promise.all([
+      executeWithTimeout(async () => {
+        return await prisma.alerta.count({ where })
+      }, 10000, 2),
+      executeWithTimeout(async () => {
+        return await prisma.alerta.count({
+          where: { userId: session.user.id, leida: false }
+        })
+      }, 10000, 2),
+      executeWithTimeout(async () => {
+        return await prisma.alerta.count({
+          where: { userId: session.user.id }
+        })
+      }, 10000, 2)
+    ])
 
     return NextResponse.json({
       alertas,
@@ -115,12 +131,8 @@ export async function GET(request: NextRequest) {
         totalPaginas: Math.ceil(total / limiteParsed)
       },
       stats: {
-        noLeidas: await prisma.alerta.count({
-          where: { userId: session.user.id, leida: false }
-        }),
-        total: await prisma.alerta.count({
-          where: { userId: session.user.id }
-        })
+        noLeidas,
+        total: totalGeneral
       }
     })
 
@@ -144,9 +156,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const datosValidados = crearAlertaSchema.parse(body)
 
-    // Crear la alerta
-    const nuevaAlerta = await prisma.alerta.create({
-      data: {
+    // Crear la alerta con timeout
+    const nuevaAlerta = await executeWithTimeout(async () => {
+      // Preparar datos eliminando propiedades undefined
+      const datosAlerta: any = {
         userId: session.user.id,
         tipo: datosValidados.tipo,
         prioridad: datosValidados.prioridad,
@@ -157,24 +170,41 @@ export async function POST(request: NextRequest) {
           ? new Date(datosValidados.fechaExpiracion) 
           : null,
         canales: datosValidados.canales || ["IN_APP"],
-        accionesDisponibles: datosValidados.accionesDisponibles || {},
-        // Relaciones opcionales
-        gastoRecurrenteId: datosValidados.gastoRecurrenteId,
-        prestamoId: datosValidados.prestamoId,
-        inversionId: datosValidados.inversionId,
-        presupuestoId: datosValidados.presupuestoId,
-        tareaId: datosValidados.tareaId,
-        promocionId: datosValidados.promocionId
-      },
-      include: {
-        gastoRecurrente: true,
-        prestamo: true,
-        inversion: true,
-        presupuesto: true,
-        tarea: true,
-        promocion: true
+        accionesDisponibles: datosValidados.accionesDisponibles || {}
       }
-    })
+
+      // Agregar relaciones opcionales solo si están definidas
+      if (datosValidados.gastoRecurrenteId !== undefined) {
+        datosAlerta.gastoRecurrenteId = datosValidados.gastoRecurrenteId
+      }
+      if (datosValidados.prestamoId !== undefined) {
+        datosAlerta.prestamoId = datosValidados.prestamoId
+      }
+      if (datosValidados.inversionId !== undefined) {
+        datosAlerta.inversionId = datosValidados.inversionId
+      }
+      if (datosValidados.presupuestoId !== undefined) {
+        datosAlerta.presupuestoId = datosValidados.presupuestoId
+      }
+      if (datosValidados.tareaId !== undefined) {
+        datosAlerta.tareaId = datosValidados.tareaId
+      }
+      if (datosValidados.promocionId !== undefined) {
+        datosAlerta.promocionId = datosValidados.promocionId
+      }
+
+      return await prisma.alerta.create({
+        data: datosAlerta,
+        include: {
+          gastoRecurrente: true,
+          prestamo: true,
+          inversion: true,
+          presupuesto: true,
+          tarea: true,
+          promocion: true
+        }
+      })
+    }, 15000, 3)
 
     return NextResponse.json(nuevaAlerta, { status: 201 })
 

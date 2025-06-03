@@ -1,9 +1,9 @@
 import { PrismaClient } from '@prisma/client'
 
-// Configuración mejorada para manejar conexiones intermitentes de Neon
+// Configuración optimizada para Neon PostgreSQL con timeouts
 const prismaClientSingleton = () => {
   const client = new PrismaClient({
-    log: [], // Desactivar logs para evitar spam
+    log: process.env.NODE_ENV === 'development' ? ['error'] : [],
     errorFormat: 'minimal',
     datasourceUrl: process.env.DATABASE_URL
   });
@@ -27,6 +27,36 @@ const prismaClientSingleton = () => {
     }
   });
 };
+
+// Función helper para ejecutar consultas con timeout
+export async function executeWithTimeout<T>(
+  operation: () => Promise<T>,
+  timeoutMs: number = 15000,
+  retries: number = 3
+): Promise<T> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await Promise.race([
+        operation(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`Timeout después de ${timeoutMs}ms`)), timeoutMs)
+        )
+      ]);
+    } catch (error) {
+      console.log(`❌ Intento ${attempt}/${retries} falló:`, error);
+      
+      if (attempt === retries) {
+        throw error;
+      }
+      
+      // Esperar antes del próximo intento (exponential backoff)
+      const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw new Error('Todos los intentos fallaron');
+}
 
 // Función para conectar con reintentos
 async function connectWithRetry(client: any, maxRetries = 3) {

@@ -52,12 +52,9 @@ export async function GET() {
       lastUpdated: new Date().toISOString()
     };
     
-    // Validar que tenemos datos válidos antes de cachear
-    if (financialData.dollar && financialData.dollar.oficial && financialData.dollar.blue) {
-      // Actualizar caché solo si los datos son válidos
-      cachedData = financialData;
-      cachedTime = now;
-    }
+    // Actualizar caché
+    cachedData = financialData;
+    cachedTime = now;
     
     return NextResponse.json(financialData, {
       headers: {
@@ -80,7 +77,7 @@ export async function GET() {
     }
     
     // Si no hay caché, usar valores por defecto
-    console.warn('Usando valores por defecto debido a error en API externa');
+    console.warn('Usando valores por defecto debido a error en API externa:', (error as Error).message);
     return NextResponse.json(DEFAULT_RATES, {
       headers: {
         'Content-Type': 'application/json',
@@ -93,52 +90,46 @@ export async function GET() {
 // Función para obtener cotizaciones del dólar
 async function fetchDollarData() {
   try {
-    // Crear AbortController para timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 segundos timeout
-    
-    // Para demostración, usaremos la API del dólar de Argentina
-    const response = await fetch('https://api.bluelytics.com.ar/v2/latest', {
-      signal: controller.signal,
+    // Usar Promise.race para implementar timeout más robusto
+    const fetchPromise = fetch('https://api.bluelytics.com.ar/v2/latest', {
       headers: {
         'Accept': 'application/json',
         'User-Agent': 'FinancialApp/1.0'
       }
     });
-    
-    clearTimeout(timeoutId);
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout')), 5000) // 5 segundos timeout
+    );
+
+    const response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     
-    // Verificar que la respuesta sea JSON válido
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      throw new Error('La respuesta de la API externa no es JSON válido');
-    }
-    
     const data = await response.json();
     
-    // Validar estructura de datos
-    if (!data || !data.oficial || !data.blue) {
-      throw new Error('Estructura de datos inválida de la API externa');
+    // Validar y transformar datos
+    if (data && (data.oficial || data.blue)) {
+      return {
+        oficial: {
+          compra: data.oficial?.value_buy || DEFAULT_RATES.dollar.oficial.compra,
+          venta: data.oficial?.value_sell || DEFAULT_RATES.dollar.oficial.venta,
+          variacion: (data.oficial?.value_sell || DEFAULT_RATES.dollar.oficial.venta) - (data.oficial?.value_buy || DEFAULT_RATES.dollar.oficial.compra)
+        },
+        blue: {
+          compra: data.blue?.value_buy || DEFAULT_RATES.dollar.blue.compra,
+          venta: data.blue?.value_sell || DEFAULT_RATES.dollar.blue.venta,
+          variacion: (data.blue?.value_sell || DEFAULT_RATES.dollar.blue.venta) - (data.blue?.value_buy || DEFAULT_RATES.dollar.blue.compra)
+        }
+      };
     }
     
-    return {
-      oficial: {
-        compra: data.oficial.value_buy || DEFAULT_RATES.dollar.oficial.compra,
-        venta: data.oficial.value_sell || DEFAULT_RATES.dollar.oficial.venta,
-        variacion: (data.oficial.value_sell || 0) - (data.oficial.value_buy || 0)
-      },
-      blue: {
-        compra: data.blue.value_buy || DEFAULT_RATES.dollar.blue.compra,
-        venta: data.blue.value_sell || DEFAULT_RATES.dollar.blue.venta,
-        variacion: (data.blue.value_sell || 0) - (data.blue.value_buy || 0)
-      }
-    };
+    throw new Error('Datos inválidos de la API externa');
+    
   } catch (error) {
-    console.error('Error al obtener cotización del dólar:', error);
+    console.warn('API externa no disponible, usando valores por defecto:', (error as Error).message);
     
     // Retornar datos por defecto en caso de error
     return DEFAULT_RATES.dollar;
@@ -148,8 +139,7 @@ async function fetchDollarData() {
 // Función para obtener índices financieros
 async function fetchFinancialIndices() {
   try {
-    // TODO: Implementar llamada a API real para obtener índices financieros
-    // Por ahora, retornar datos por defecto
+    // Por ahora, retornar datos por defecto (se puede implementar API real después)
     return DEFAULT_RATES.indices;
   } catch (error) {
     console.error('Error al obtener índices financieros:', error);
