@@ -112,7 +112,8 @@ export function Sidebar() {
               scrollbar-color: rgba(75, 85, 99, 0.4) transparent;
             }
           `}</style>
-          {/* Dashboard - Más usado */}
+          
+          {/* 1. Dashboard */}
           <Button 
             variant={isActive("/") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
@@ -123,51 +124,7 @@ export function Sidebar() {
             {isOpen && <span className="ml-3">Dashboard</span>}
           </Button>
           
-          {/* Alertas - Importante para seguimiento */}
-          <Button 
-            variant={isActive("/alertas") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-            onClick={() => handleNavigation('/alertas')}
-          >
-            <Bell className="w-5 h-5 text-amber-500" />
-            {isOpen && <span className="ml-3">Alertas</span>}
-          </Button>
-          
-          {/* Tareas - Gestión diaria */}
-          <Button 
-            variant={isActive("/tareas") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-            onClick={() => handleNavigation('/tareas')}
-          >
-            <CheckSquare2 className="w-5 h-5 text-purple-500" />
-            {isOpen && <span className="ml-3">Tareas</span>}
-          </Button>
-          
-          {/* Presupuestos - Control frecuente */}
-          <Button 
-            variant={isActive("/presupuestos") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-            onClick={() => handleNavigation('/presupuestos')}
-          >
-            <PieChart className="w-5 h-5" />
-            {isOpen && <span className="ml-3">Presupuestos</span>}
-          </Button>
-          
-          {/* Inversiones - Seguimiento importante */}
-          <Button 
-            variant={isActive("/inversiones") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-            onClick={() => handleNavigation('/inversiones')}
-          >
-            <TrendingUp className="w-5 h-5 text-green-500" />
-            {isOpen && <span className="ml-3">Inversiones</span>}
-          </Button>
-          
-          {/* Transacciones - Funcionalidad principal */}
+          {/* 2. Transacciones */}
           <Button 
             variant={isActive("/transacciones") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
@@ -178,18 +135,7 @@ export function Sidebar() {
             {isOpen && <span className="ml-3">Transacciones</span>}
           </Button>
           
-          {/* Buzón de Comprobantes - Nueva funcionalidad */}
-          <Button 
-            variant={isActive("/buzon") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-            onClick={() => handleNavigation('/buzon')}
-          >
-            <Archive className="w-5 h-5 text-indigo-500" />
-            {isOpen && <span className="ml-3">Buzón Comprobantes</span>}
-          </Button>
-          
-          {/* Recurrentes - Gestión periódica */}
+          {/* 3. Recurrentes */}
           <Button 
             variant={isActive("/recurrentes") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
@@ -200,7 +146,7 @@ export function Sidebar() {
             {isOpen && <span className="ml-3">Recurrentes</span>}
           </Button>
           
-          {/* Financiación */}
+          {/* 4. Financiación */}
           <Button 
             variant={isActive("/financiacion") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
@@ -211,7 +157,7 @@ export function Sidebar() {
             {isOpen && <span className="ml-3">Financiación</span>}
           </Button>
           
-          {/* Préstamos */}
+          {/* 5. Préstamos */}
           <Button 
             variant={isActive("/prestamos") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
@@ -222,7 +168,7 @@ export function Sidebar() {
             {isOpen && <span className="ml-3">Préstamos</span>}
           </Button>
           
-          {/* Informes - Revisión periódica */}
+          {/* 6. Informes */}
           <Button 
             variant={isActive("/informes") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
@@ -233,7 +179,7 @@ export function Sidebar() {
             {isOpen && <span className="ml-3">Informes</span>}
           </Button>
           
-          {/* Grupos - Funcionalidad colaborativa */}
+          {/* 7. Grupos */}
           <Button 
             variant={isActive("/grupos") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
@@ -244,7 +190,62 @@ export function Sidebar() {
             {isOpen && <span className="ml-3">Grupos</span>}
           </Button>
           
-          {/* Recomendaciones - Funcionalidad de ayuda */}
+          {/* 8. Alertas */}
+          <Button 
+            variant={isActive("/alertas") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/alertas')}
+          >
+            <Bell className="w-5 h-5 text-amber-500" />
+            {isOpen && <span className="ml-3">Alertas</span>}
+          </Button>
+          
+          {/* 9. Tareas */}
+          <Button 
+            variant={isActive("/tareas") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/tareas')}
+          >
+            <CheckSquare2 className="w-5 h-5 text-purple-500" />
+            {isOpen && <span className="ml-3">Tareas</span>}
+          </Button>
+          
+          {/* 10. Presupuestos */}
+          <Button 
+            variant={isActive("/presupuestos") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/presupuestos')}
+          >
+            <PieChart className="w-5 h-5" />
+            {isOpen && <span className="ml-3">Presupuestos</span>}
+          </Button>
+          
+          {/* 11. Inversiones */}
+          <Button 
+            variant={isActive("/inversiones") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/inversiones')}
+          >
+            <TrendingUp className="w-5 h-5 text-green-500" />
+            {isOpen && <span className="ml-3">Inversiones</span>}
+          </Button>
+          
+          {/* 12. Buzón de Comprobantes */}
+          <Button 
+            variant={isActive("/buzon") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/buzon')}
+          >
+            <Archive className="w-5 h-5 text-indigo-500" />
+            {isOpen && <span className="ml-3">Buzón Comprobantes</span>}
+          </Button>
+          
+          {/* 13. Recomendaciones */}
           <Button 
             variant={isActive("/recomendaciones-ahorro") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
@@ -255,7 +256,7 @@ export function Sidebar() {
             {isOpen && <span className="ml-3">Recomendaciones</span>}
           </Button>
           
-          {/* Seguimiento Precios - Funcionalidad especial */}
+          {/* 14. Seguimiento Precios */}
           <Button 
             variant={isActive("/seguimiento-precios") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
@@ -275,7 +276,7 @@ export function Sidebar() {
             </div>
           )}
           
-          {/* Importar Datos - Funcionalidad de setup inicial (al final) */}
+          {/* 15. Importar Datos */}
           <Button 
             variant={isActive("/importar-datos") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
