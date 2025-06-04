@@ -142,18 +142,7 @@ export async function GET(request: NextRequest) {
           }
         ],
         NOT: [
-          { tipoMovimiento: "tarjeta" },
-          {
-            AND: [
-              { categoria: "Transferencias" },
-              {
-                OR: [
-                  { concepto: { contains: "Transferencia interna:" } },
-                  { concepto: { contains: "Transferencia recibida de" } }
-                ]
-              }
-            ]
-          }
+          { tipoMovimiento: "tarjeta" }
         ]
       },
       include: {
@@ -252,18 +241,7 @@ export async function GET(request: NextRequest) {
           }
         ],
         NOT: [
-          { tipoMovimiento: "tarjeta" },
-          {
-            AND: [
-              { categoria: "Transferencias" },
-              {
-                OR: [
-                  { concepto: { contains: "Transferencia interna:" } },
-                  { concepto: { contains: "Transferencia recibida de" } }
-                ]
-              }
-            ]
-          }
+          { tipoMovimiento: "tarjeta" }
         ]
       },
       select: {

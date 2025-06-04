@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Camera, Mic, PencilLine, History, Banknote, ArrowRightLeft, CreditCard, PiggyBank, DollarSign, Search, Filter, X, Edit, Trash2, Eye, ChevronDown, ChevronUp, ExternalLink } from "lucide-react"
+import { ArrowLeft, Camera, Mic, PencilLine, History, Banknote, ArrowRightLeft, CreditCard, PiggyBank, DollarSign, Search, Filter, X, Edit, Trash2, Eye, ChevronDown, ChevronUp, ExternalLink, Download } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ExpenseForm } from "@/components/ExpenseForm"
 import { format } from "date-fns"
@@ -89,15 +89,20 @@ export default function TransaccionesPage() {
     busqueda: '',
     fechaDesde: '',
     fechaHasta: '',
-    categoria: '',
-    tipoMovimiento: '',
-    tipoTransaccion: '',
-    incluirEnFamilia: ''
+    categoria: 'all',
+    tipoMovimiento: 'all',
+    tipoTransaccion: 'all',
+    incluirEnFamilia: 'all'
   })
   const [mostrarFiltros, setMostrarFiltros] = useState(false)
 
-  // Calcular número de filtros activos
-  const filtrosActivos = Object.values(filtros).filter(valor => valor !== '').length
+  // Calcular número de filtros activos (excluyendo los valores por defecto)
+  const filtrosActivos = Object.entries(filtros).filter(([key, valor]) => {
+    if (key === 'busqueda' || key === 'fechaDesde' || key === 'fechaHasta') {
+      return valor !== ''
+    }
+    return valor !== 'all'
+  }).length
 
   const handleTransactionAdded = () => {
     // Recargar datos después de agregar una transacción
@@ -167,28 +172,28 @@ export default function TransaccionesPage() {
     }
 
     // Filtro por categoría
-    if (filtros.categoria) {
+    if (filtros.categoria && filtros.categoria !== 'all') {
       resultados = resultados.filter(gasto => 
         gasto.categoria === filtros.categoria
       )
     }
 
     // Filtro por tipo de movimiento
-    if (filtros.tipoMovimiento) {
+    if (filtros.tipoMovimiento && filtros.tipoMovimiento !== 'all') {
       resultados = resultados.filter(gasto => 
         gasto.tipoMovimiento === filtros.tipoMovimiento
       )
     }
 
     // Filtro por tipo de transacción
-    if (filtros.tipoTransaccion) {
+    if (filtros.tipoTransaccion && filtros.tipoTransaccion !== 'all') {
       resultados = resultados.filter(gasto => 
         gasto.tipoTransaccion === filtros.tipoTransaccion
       )
     }
 
     // Filtro por incluir en familia
-    if (filtros.incluirEnFamilia) {
+    if (filtros.incluirEnFamilia && filtros.incluirEnFamilia !== 'all') {
       const incluir = filtros.incluirEnFamilia === 'true'
       resultados = resultados.filter(gasto => 
         gasto.incluirEnFamilia === incluir
@@ -208,10 +213,10 @@ export default function TransaccionesPage() {
       busqueda: '',
       fechaDesde: '',
       fechaHasta: '',
-      categoria: '',
-      tipoMovimiento: '',
-      tipoTransaccion: '',
-      incluirEnFamilia: ''
+      categoria: 'all',
+      tipoMovimiento: 'all',
+      tipoTransaccion: 'all',
+      incluirEnFamilia: 'all'
     })
   }
 
@@ -300,6 +305,60 @@ export default function TransaccionesPage() {
 
   const getTransactionColor = (tipoTransaccion: string) => {
     return tipoTransaccion === 'income' ? 'text-green-600' : 'text-red-600'
+  }
+
+  // Función para exportar a CSV
+  const exportarCSV = () => {
+    if (gastosFiltrados.length === 0) {
+      toast.error("No hay datos para exportar")
+      return
+    }
+
+    // Encabezados del CSV
+    const headers = ['Fecha', 'Concepto', 'Categoría', 'Tipo Movimiento', 'Tipo Transacción', 'Monto']
+    
+    // Convertir datos a formato CSV
+    const csvData = gastosFiltrados.map(gasto => [
+      format(new Date(gasto.fecha), 'dd/MM/yyyy HH:mm', { locale: es }),
+      `"${gasto.concepto.replace(/"/g, '""')}"`, // Escapar comillas dobles
+      `"${gasto.categoria}"`,
+      gasto.tipoMovimiento,
+      gasto.tipoTransaccion === 'income' ? 'Ingreso' : 'Gasto',
+      gasto.monto.toString().replace('.', ',') // Usar coma decimal para Argentina
+    ])
+
+    // Crear contenido CSV con punto y coma como separador
+    const csvContent = [
+      headers.join(';'),
+      ...csvData.map(row => row.join(';'))
+    ].join('\n')
+
+    // Crear y descargar archivo
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      
+      // Nombre del archivo con fecha actual
+      const fechaActual = new Date().toISOString().slice(0, 10)
+      const nombreArchivo = `transacciones_${fechaActual}.csv`
+      link.setAttribute('download', nombreArchivo)
+      
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      // Mostrar mensaje de éxito
+      const totalTransacciones = gastosFiltrados.length
+      const mensaje = filtrosActivos > 0 
+        ? `${totalTransacciones} transacciones filtradas exportadas correctamente`
+        : `${totalTransacciones} transacciones exportadas correctamente`
+      
+      toast.success(mensaje)
+    }
   }
 
   return (
@@ -491,6 +550,21 @@ export default function TransaccionesPage() {
                           Limpiar
                         </Button>
                       )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={exportarCSV}
+                        className="gap-2 text-green-600 border-green-500 hover:bg-green-50 dark:hover:bg-green-950"
+                        disabled={gastosFiltrados.length === 0}
+                      >
+                        <Download className="h-4 w-4" />
+                        Exportar CSV
+                        {gastosFiltrados.length > 0 && (
+                          <Badge variant="secondary" className="ml-1">
+                            {gastosFiltrados.length}
+                          </Badge>
+                        )}
+                      </Button>
                     </div>
                   </div>
                 </CardHeader>
@@ -544,7 +618,7 @@ export default function TransaccionesPage() {
                               <SelectValue placeholder="Todas las categorías" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">Todas las categorías</SelectItem>
+                              <SelectItem value="all">Todas las categorías</SelectItem>
                               {categorias.map((categoria) => (
                                 <SelectItem key={categoria.id} value={categoria.descripcion}>
                                   {categoria.descripcion}
@@ -562,7 +636,7 @@ export default function TransaccionesPage() {
                               <SelectValue placeholder="Todos los tipos" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">Todos los tipos</SelectItem>
+                              <SelectItem value="all">Todos los tipos</SelectItem>
                               <SelectItem value="efectivo">Efectivo</SelectItem>
                               <SelectItem value="digital">Digital</SelectItem>
                               <SelectItem value="ahorro">Ahorro</SelectItem>
@@ -579,7 +653,7 @@ export default function TransaccionesPage() {
                               <SelectValue placeholder="Ingresos y gastos" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">Ingresos y gastos</SelectItem>
+                              <SelectItem value="all">Ingresos y gastos</SelectItem>
                               <SelectItem value="income">Solo ingresos</SelectItem>
                               <SelectItem value="expense">Solo gastos</SelectItem>
                             </SelectContent>
@@ -594,7 +668,7 @@ export default function TransaccionesPage() {
                               <SelectValue placeholder="Personales y familiares" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">Personales y familiares</SelectItem>
+                              <SelectItem value="all">Personales y familiares</SelectItem>
                               <SelectItem value="true">Solo familiares</SelectItem>
                               <SelectItem value="false">Solo personales</SelectItem>
                             </SelectContent>

@@ -70,20 +70,7 @@ export async function GET(request: NextRequest) {
         userId: usuario.id,
         incluirEnFamilia: true,
         NOT: [
-          { tipoMovimiento: "tarjeta" },
-          // Excluir transferencias internas (son movimientos neutros para la familia)
-          // Solo excluir si la categoría es "Transferencias" Y es transferencia interna
-          {
-            AND: [
-              { categoria: "Transferencias" },
-              {
-                OR: [
-                  { concepto: { contains: "Transferencia interna:" } },
-                  { concepto: { contains: "Transferencia recibida de" } }
-                ]
-              }
-            ]
-          }
+          { tipoMovimiento: "tarjeta" }
         ]
       }
 
@@ -195,20 +182,7 @@ export async function GET(request: NextRequest) {
       },
       incluirEnFamilia: true,  // Solo gastos marcados como familiares
       NOT: [
-        { tipoMovimiento: "tarjeta" },
-        // Excluir transferencias internas (son movimientos neutros para la familia)
-        // Solo excluir si la categoría es "Transferencias" Y es transferencia interna
-        {
-          AND: [
-            { categoria: "Transferencias" },
-            {
-              OR: [
-                { concepto: { contains: "Transferencia interna:" } },
-                { concepto: { contains: "Transferencia recibida de" } }
-              ]
-            }
-          ]
-        }
+        { tipoMovimiento: "tarjeta" }
       ]
     }
     
