@@ -83,7 +83,7 @@ export class AIAnalyzer {
           categoriaRel: true,
         },
         orderBy: {
-          fecha: 'desc',
+          createdAt: 'desc',
         },
       })
 
@@ -485,7 +485,7 @@ Considera anómalos gastos que:
         tipoTransaccion: 'gasto',
       },
       include: { categoriaRel: true },
-      orderBy: { fecha: 'desc' },
+      orderBy: { createdAt: 'desc' },
       take: 100,
     })
 

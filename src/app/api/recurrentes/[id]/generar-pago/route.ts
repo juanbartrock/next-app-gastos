@@ -100,7 +100,7 @@ export async function POST(
         include: {
           categoria: true,
           gastosGenerados: {
-            orderBy: { fecha: 'desc' },
+            orderBy: { createdAt: 'desc' },
             take: 5 // Últimos 5 pagos generados
           }
         }

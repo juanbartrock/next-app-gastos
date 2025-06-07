@@ -64,7 +64,7 @@ async function buscarGastosRecurrentesCoincidentes(
         categoria: { select: { descripcion: true } },
         gastosGenerados: { 
           select: { monto: true, fecha: true },
-          orderBy: { fecha: 'desc' },
+          orderBy: { createdAt: 'desc' },
           take: 5 // Últimos 5 pagos para análisis
         }
       }

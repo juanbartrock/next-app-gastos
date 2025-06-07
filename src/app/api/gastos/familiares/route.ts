@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
           }
         },
         orderBy: {
-          fecha: 'desc'
+          createdAt: 'desc'
         }
       })
 
@@ -247,7 +247,7 @@ export async function GET(request: NextRequest) {
         }
       },
       orderBy: {
-        fecha: 'desc'
+        createdAt: 'desc'
       }
     })
 

@@ -172,7 +172,7 @@ async function obtenerContextoCompleto(userId: string, inversionId?: string, con
         include: { 
           categoriaRel: true 
         },
-        orderBy: { fecha: 'desc' },
+        orderBy: { createdAt: 'desc' },
         take: 50 // Reducir a 50 gastos más recientes
       }),
 
@@ -185,7 +185,7 @@ async function obtenerContextoCompleto(userId: string, inversionId?: string, con
             gte: primerDiaMesAnterior
           }
         },
-        orderBy: { fecha: 'desc' },
+        orderBy: { createdAt: 'desc' },
         take: 20 // Máximo 20 ingresos
       }),
 

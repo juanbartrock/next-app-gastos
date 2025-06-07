@@ -165,7 +165,7 @@ function UltimosMovimientos({ gastos }: { gastos: any[] }) {
   const cantidadMostrar = expandido ? 20 : 5
   const ultimosMovimientos = gastos
     .slice(0, expandido ? 50 : 15)  // Obtener más datos cuando esté expandido
-    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
   // Filtrar movimientos por tipo
   const ingresos = ultimosMovimientos.filter(m => m.tipoTransaccion === 'income').slice(0, cantidadMostrar)

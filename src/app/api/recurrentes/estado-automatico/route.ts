@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       include: {
         categoria: true,
         gastosGenerados: {
-          orderBy: { fecha: 'desc' }
+          orderBy: { createdAt: 'desc' }
         }
       }
     })
@@ -172,7 +172,7 @@ export async function POST(request: NextRequest) {
       },
       include: {
         gastosGenerados: {
-          orderBy: { fecha: 'desc' }
+          orderBy: { createdAt: 'desc' }
         }
       }
     })

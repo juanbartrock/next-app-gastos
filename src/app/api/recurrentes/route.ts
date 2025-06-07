@@ -51,7 +51,7 @@ export async function GET() {
               tipoTransaccion: true,
               tipoMovimiento: true
             },
-            orderBy: { fecha: 'desc' },
+            orderBy: { createdAt: 'desc' },
             take: 3 // Últimos 3 gastos generados para vista previa
           }
         },

@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
           })
         },
         orderBy: {
-          fecha: 'desc'
+          createdAt: 'desc'
         },
         take: 1000 // Límite de seguridad
       })

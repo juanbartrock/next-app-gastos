@@ -37,6 +37,7 @@ import {
 import { format, addMonths, subMonths } from "date-fns"
 import { es } from "date-fns/locale"
 import { toast } from "sonner"
+import { GraficoGastosCategoriaFamiliar } from "@/components/GraficoGastosCategoriaFamiliar"
 import { 
   Popover,
   PopoverContent,
@@ -622,13 +623,20 @@ export default function InformesPage() {
         {/* Contenido principal con tabs mejorados */}
         <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-xl">
           <Tabs defaultValue="movimientos" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 p-1 rounded-xl">
+            <TabsList className="grid w-full grid-cols-4 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 p-1 rounded-xl">
               <TabsTrigger 
                 value="movimientos" 
                 className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-md rounded-lg transition-all duration-200"
               >
                 <Users className="h-4 w-4" />
-                Movimientos Familiares
+                Movimientos
+              </TabsTrigger>
+              <TabsTrigger 
+                value="gastos-categorias"
+                className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-green-600 data-[state=active]:shadow-md rounded-lg transition-all duration-200"
+              >
+                <PieChart className="h-4 w-4" />
+                Por Categorías
               </TabsTrigger>
               <TabsTrigger 
                 value="gastos-diarios"
@@ -997,7 +1005,27 @@ export default function InformesPage() {
               </Card>
             </TabsContent>
 
-            {/* 2. GASTOS DIARIOS */}
+            {/* 2. GASTOS POR CATEGORÍAS */}
+            <TabsContent value="gastos-categorias" className="space-y-6">
+              <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 border-green-200 dark:border-green-800">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-3 text-xl">
+                    <div className="h-10 w-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                      <PieChart className="h-5 w-5 text-white" />
+                    </div>
+                    Gastos Familiares por Categoría
+                  </CardTitle>
+                  <CardDescription className="text-base">
+                    Análisis detallado de gastos por categoría en <span className="font-semibold text-green-600 dark:text-green-400">{data.resumen.mes}</span>
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <GraficoGastosCategoriaFamiliar mesSeleccionado={mesSeleccionado} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* 3. GASTOS DIARIOS */}
             <TabsContent value="gastos-diarios" className="space-y-6">
               <Card className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950 border-purple-200 dark:border-purple-800">
                 <CardHeader>
@@ -1150,7 +1178,7 @@ export default function InformesPage() {
               </Card>
             </TabsContent>
 
-            {/* 3. PRÓXIMOS PAGOS */}
+            {/* 4. PRÓXIMOS PAGOS */}
             <TabsContent value="proximos-pagos" className="space-y-6">
               <Card className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950 dark:to-red-950 border-orange-200 dark:border-orange-800">
                 <CardHeader>
