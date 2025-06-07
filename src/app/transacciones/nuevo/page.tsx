@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,13 +8,14 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Camera, Mic, PencilLine, History, Banknote, ArrowRightLeft, CreditCard, PiggyBank, DollarSign, Search, Filter, X, Edit, Trash2, Eye, ChevronDown, ChevronUp, ExternalLink, Download } from "lucide-react"
+import { ArrowLeft, Camera, Mic, PencilLine, History, Banknote, ArrowRightLeft, CreditCard, PiggyBank, DollarSign, Search, Filter, X, Edit, Trash2, Eye, ChevronDown, ChevronUp, ExternalLink, Download, ChevronLeft, ChevronRight, Calendar, Users, User } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ExpenseForm } from "@/components/ExpenseForm"
-import { format } from "date-fns"
+import { format, startOfMonth, endOfMonth, addMonths, subMonths, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
 import { useVisibility } from "@/contexts/VisibilityContext"
 import { useCurrency } from "@/contexts/CurrencyContext"
+import { usePermisosFamiliares } from "@/contexts/PermisosFamiliaresContext"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
@@ -64,8 +65,6 @@ interface Gasto {
 
 interface FiltrosHistorial {
   busqueda: string;
-  fechaDesde: string;
-  fechaHasta: string;
   categoria: string;
   tipoMovimiento: string;
   tipoTransaccion: string;
@@ -76,19 +75,23 @@ export default function TransaccionesPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<string>("manual")
   const [gastosPersonales, setGastosPersonales] = useState<Gasto[]>([])
-  const [gastosFiltrados, setGastosFiltrados] = useState<Gasto[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingCategorias, setLoadingCategorias] = useState(true)
   const [selectedTransaction, setSelectedTransaction] = useState<Gasto | null>(null)
   const { valuesVisible } = useVisibility()
   const { formatMoney } = useCurrency()
+  const { esAdministradorFamiliar, loading: loadingPermisos } = usePermisosFamiliares()
+
+  // Estados para paginación por mes
+  const [mesActual, setMesActual] = useState(new Date())
+  
+  // Estado para modo familiar
+  const [modoFamiliar, setModoFamiliar] = useState(false)
 
   // Estados para filtros
   const [filtros, setFiltros] = useState<FiltrosHistorial>({
     busqueda: '',
-    fechaDesde: '',
-    fechaHasta: '',
     categoria: 'all',
     tipoMovimiento: 'all',
     tipoTransaccion: 'all',
@@ -96,78 +99,52 @@ export default function TransaccionesPage() {
   })
   const [mostrarFiltros, setMostrarFiltros] = useState(false)
 
-  // Calcular número de filtros activos (excluyendo los valores por defecto)
-  const filtrosActivos = Object.entries(filtros).filter(([key, valor]) => {
-    if (key === 'busqueda' || key === 'fechaDesde' || key === 'fechaHasta') {
-      return valor !== ''
-    }
-    return valor !== 'all'
-  }).length
-
-  const handleTransactionAdded = () => {
-    // Recargar datos después de agregar una transacción
-    fetchGastosPersonales()
+  // Función para obtener fecha de imputación o fecha normal
+  const getFechaImputacion = (gasto: Gasto) => {
+    return gasto.fechaImputacion ? parseISO(gasto.fechaImputacion) : parseISO(gasto.fecha)
   }
 
-  const fetchGastosPersonales = async () => {
-    try {
-      const response = await fetch('/api/gastos')
-      if (response.ok) {
-        const data = await response.json()
-        setGastosPersonales(data)
-        setGastosFiltrados(data)
+  // Organizar gastos por mes de imputación
+  const organizarGastosPorMes = (gastos: Gasto[]) => {
+    const gastosOrganizados: {[key: string]: Gasto[]} = {}
+    
+    gastos.forEach(gasto => {
+      const fechaImputacion = getFechaImputacion(gasto)
+      const keyMes = format(fechaImputacion, 'yyyy-MM')
+      
+      if (!gastosOrganizados[keyMes]) {
+        gastosOrganizados[keyMes] = []
       }
-    } catch (error) {
-      console.error('Error al cargar gastos:', error)
-    } finally {
-      setLoading(false)
-    }
+      gastosOrganizados[keyMes].push(gasto)
+    })
+
+    // Ordenar los gastos dentro de cada mes por fecha descendente
+    Object.keys(gastosOrganizados).forEach(mes => {
+      gastosOrganizados[mes].sort((a, b) => {
+        const fechaA = getFechaImputacion(a)
+        const fechaB = getFechaImputacion(b)
+        return fechaB.getTime() - fechaA.getTime()
+      })
+    })
+
+    return gastosOrganizados
   }
 
-  const fetchCategorias = async () => {
-    try {
-      const response = await fetch('/api/categorias')
-      if (response.ok) {
-        const data = await response.json()
-        setCategorias(data)
-      }
-    } catch (error) {
-      console.error('Error al cargar categorías:', error)
-    } finally {
-      setLoadingCategorias(false)
-    }
-  }
+  // Obtener gastos del mes actual
+  const gastosDelMesActual = useMemo(() => {
+    const gastosOrganizados = organizarGastosPorMes(gastosPersonales)
+    const keyMes = format(mesActual, 'yyyy-MM')
+    return gastosOrganizados[keyMes] || []
+  }, [gastosPersonales, mesActual])
 
-  useEffect(() => {
-    fetchGastosPersonales()
-    fetchCategorias()
-  }, [])
-
-  // Función para aplicar filtros
-  const aplicarFiltros = () => {
-    let resultados = [...gastosPersonales]
+  // Función para aplicar filtros al mes actual
+  const gastosFiltrados = useMemo(() => {
+    let resultados = [...gastosDelMesActual]
 
     // Filtro por búsqueda (concepto)
     if (filtros.busqueda.trim()) {
       resultados = resultados.filter(gasto => 
         gasto.concepto.toLowerCase().includes(filtros.busqueda.toLowerCase())
-      )
-    }
-
-    // Filtro por fecha desde
-    if (filtros.fechaDesde) {
-      const fechaDesde = new Date(filtros.fechaDesde)
-      resultados = resultados.filter(gasto => 
-        new Date(gasto.fecha) >= fechaDesde
-      )
-    }
-
-    // Filtro por fecha hasta
-    if (filtros.fechaHasta) {
-      const fechaHasta = new Date(filtros.fechaHasta)
-      fechaHasta.setHours(23, 59, 59, 999) // Incluir todo el día
-      resultados = resultados.filter(gasto => 
-        new Date(gasto.fecha) <= fechaHasta
       )
     }
 
@@ -200,19 +177,109 @@ export default function TransaccionesPage() {
       )
     }
 
-    setGastosFiltrados(resultados)
+    return resultados
+  }, [filtros, gastosDelMesActual])
+
+  // Calcular totales
+  const totales = useMemo(() => {
+    // Total de ingresos del mes (solo ingresos)
+    const totalIngresosMes = gastosDelMesActual.reduce((suma, gasto) => {
+      return suma + (gasto.tipoTransaccion === 'income' ? gasto.monto : 0)
+    }, 0)
+
+    // Total filtrado (puede incluir ingresos y gastos según el filtro)
+    const totalFiltrado = gastosFiltrados.reduce((suma, gasto) => {
+      return suma + (gasto.tipoTransaccion === 'income' ? gasto.monto : -gasto.monto)
+    }, 0)
+
+    // Porcentaje basado en los ingresos totales del mes
+    const porcentajeFiltrado = totalIngresosMes !== 0 ? Math.abs((totalFiltrado / totalIngresosMes) * 100) : 0
+
+    return { totalIngresosMes, totalFiltrado, porcentajeFiltrado }
+  }, [gastosDelMesActual, gastosFiltrados])
+
+  // Calcular número de filtros activos
+  const filtrosActivos = Object.entries(filtros).filter(([key, valor]) => {
+    if (key === 'busqueda') {
+      return valor !== ''
+    }
+    return valor !== 'all'
+  }).length
+
+  // Funciones de navegación por mes
+  const irMesAnterior = () => {
+    setMesActual(prev => subMonths(prev, 1))
   }
 
-  // Aplicar filtros cuando cambien
+  const irMesSiguiente = () => {
+    setMesActual(prev => addMonths(prev, 1))
+  }
+
+  const irMesHoy = () => {
+    setMesActual(new Date())
+  }
+
+  const handleTransactionAdded = () => {
+    fetchGastosPersonales()
+  }
+
+  const fetchGastosPersonales = async () => {
+    try {
+      setLoading(true)
+      
+      // Usar API familiar si está en modo familiar y es administrador
+      const endpoint = (modoFamiliar && esAdministradorFamiliar) 
+        ? '/api/gastos/familiares' 
+        : '/api/gastos'
+      
+      const response = await fetch(endpoint)
+      if (response.ok) {
+        const data = await response.json()
+        
+        // La API familiar devuelve un objeto con gastos y permisos
+        if (modoFamiliar && data.gastos) {
+          setGastosPersonales(data.gastos)
+        } else {
+          setGastosPersonales(data)
+        }
+      }
+    } catch (error) {
+      console.error('Error al cargar gastos:', error)
+      toast.error('Error al cargar transacciones')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchCategorias = async () => {
+    try {
+      const response = await fetch('/api/categorias')
+      if (response.ok) {
+        const data = await response.json()
+        setCategorias(data)
+      }
+    } catch (error) {
+      console.error('Error al cargar categorías:', error)
+    } finally {
+      setLoadingCategorias(false)
+    }
+  }
+
   useEffect(() => {
-    aplicarFiltros()
-  }, [filtros, gastosPersonales])
+    fetchGastosPersonales()
+    fetchCategorias()
+  }, [])
+
+  // Refrescar datos cuando cambie el modo familiar
+  useEffect(() => {
+    if (!loadingPermisos) {
+      fetchGastosPersonales()
+    }
+  }, [modoFamiliar, esAdministradorFamiliar, loadingPermisos])
 
   const limpiarFiltros = () => {
     setFiltros({
       busqueda: '',
-      fechaDesde: '',
-      fechaHasta: '',
       categoria: 'all',
       tipoMovimiento: 'all',
       tipoTransaccion: 'all',
@@ -227,7 +294,6 @@ export default function TransaccionesPage() {
     }))
   }
 
-  // Función para ver detalles de transacción
   const verDetalles = async (transaction: Gasto, event: React.MouseEvent) => {
     event.stopPropagation()
     
@@ -235,29 +301,25 @@ export default function TransaccionesPage() {
       setSelectedTransaction(null)
       return
     }
-
+    
     try {
-      setLoading(true)
-      const response = await fetch(`/api/gastos/${transaction.id}?includeDetails=true`)
+      const response = await fetch(`/api/gastos/detalles/${transaction.id}`)
       if (response.ok) {
-        const data = await response.json()
-        setSelectedTransaction(data)
+        const transactionWithDetails = await response.json()
+        setSelectedTransaction(transactionWithDetails)
       } else {
-        toast.error("Error al cargar los detalles")
+        setSelectedTransaction(transaction)
       }
     } catch (error) {
-      console.error("Error fetching transaction details:", error)
-      toast.error("Error al cargar los detalles")
-    } finally {
-      setLoading(false)
+      console.error('Error al cargar detalles:', error)
+      setSelectedTransaction(transaction)
     }
   }
 
-  // Función para eliminar transacción
   const eliminarTransaccion = async (transactionId: number, event: React.MouseEvent) => {
     event.stopPropagation()
     
-    if (!confirm("¿Estás seguro de que deseas eliminar esta transacción?")) {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta transacción?')) {
       return
     }
 
@@ -267,22 +329,17 @@ export default function TransaccionesPage() {
       })
 
       if (response.ok) {
-        toast.success("Transacción eliminada correctamente")
-        fetchGastosPersonales() // Recargar la lista
-        if (selectedTransaction?.id === transactionId) {
-          setSelectedTransaction(null) // Cerrar detalle si era la seleccionada
-        }
+        toast.success('Transacción eliminada correctamente')
+        fetchGastosPersonales()
       } else {
-        const errorData = await response.json()
-        toast.error(errorData.error || "Error al eliminar la transacción")
+        toast.error('Error al eliminar la transacción')
       }
     } catch (error) {
-      console.error("Error al eliminar transacción:", error)
-      toast.error("Error al eliminar la transacción")
+      console.error('Error al eliminar:', error)
+      toast.error('Error al eliminar la transacción')
     }
   }
 
-  // Función para ir a editar
   const editarTransaccion = (transactionId: number, event: React.MouseEvent) => {
     event.stopPropagation()
     router.push(`/transacciones/${transactionId}/editar`)
@@ -307,84 +364,51 @@ export default function TransaccionesPage() {
     return tipoTransaccion === 'income' ? 'text-green-600' : 'text-red-600'
   }
 
-  // Función para exportar a CSV
   const exportarCSV = () => {
     if (gastosFiltrados.length === 0) {
       toast.error("No hay datos para exportar")
       return
     }
 
-    // Encabezados del CSV
     const headers = ['Fecha', 'Concepto', 'Categoría', 'Tipo Movimiento', 'Tipo Transacción', 'Monto']
-    
-    // Convertir datos a formato CSV
     const csvData = gastosFiltrados.map(gasto => [
       format(new Date(gasto.fecha), 'dd/MM/yyyy HH:mm', { locale: es }),
-      `"${gasto.concepto.replace(/"/g, '""')}"`, // Escapar comillas dobles
+      `"${gasto.concepto.replace(/"/g, '""')}"`,
       `"${gasto.categoria}"`,
       gasto.tipoMovimiento,
       gasto.tipoTransaccion === 'income' ? 'Ingreso' : 'Gasto',
-      gasto.monto.toString().replace('.', ',') // Usar coma decimal para Argentina
+      gasto.monto.toString().replace('.', ',')
     ])
 
-    // Crear contenido CSV con punto y coma como separador
-    const csvContent = [
-      headers.join(';'),
-      ...csvData.map(row => row.join(';'))
-    ].join('\n')
-
-    // Crear y descargar archivo
+    const csvContent = [headers, ...csvData].map(row => row.join(';')).join('\n')
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
+    const link = document.createElement("a")
     
     if (link.download !== undefined) {
       const url = URL.createObjectURL(blob)
-      link.setAttribute('href', url)
-      
-      // Nombre del archivo con fecha actual
-      const fechaActual = new Date().toISOString().slice(0, 10)
-      const nombreArchivo = `transacciones_${fechaActual}.csv`
-      link.setAttribute('download', nombreArchivo)
-      
+      link.setAttribute("href", url)
+      link.setAttribute("download", `transacciones_${format(mesActual, 'yyyy-MM', { locale: es })}.csv`)
       link.style.visibility = 'hidden'
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      
-      // Mostrar mensaje de éxito
-      const totalTransacciones = gastosFiltrados.length
-      const mensaje = filtrosActivos > 0 
-        ? `${totalTransacciones} transacciones filtradas exportadas correctamente`
-        : `${totalTransacciones} transacciones exportadas correctamente`
-      
-      toast.success(mensaje)
+      toast.success("CSV exportado correctamente")
     }
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <header className="px-4 py-6 md:px-6 bg-background border-b">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => router.push('/?dashboard=true')}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">Transacciones</h1>
-              <p className="text-sm text-muted-foreground">Gestiona tus ingresos y gastos</p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-background">
+      <main className="container mx-auto p-4 space-y-6">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => router.back()}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-2xl font-bold">Transacciones</h1>
         </div>
-      </header>
-      
-      <main className="flex-1 p-4 md:p-6">
-        <div className="max-w-6xl mx-auto">
-          <Tabs defaultValue="manual" className="w-full" onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-6 mb-8">
+
+        <div className="space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="manual" className="flex items-center gap-2">
                 <PencilLine className="h-4 w-4" />
                 <span>Manual</span>
@@ -518,7 +542,7 @@ export default function TransaccionesPage() {
                     <div>
                       <CardTitle>Historial de Movimientos</CardTitle>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {gastosFiltrados.length} de {gastosPersonales.length} movimientos
+                        {gastosFiltrados.length} de {gastosDelMesActual.length} movimientos
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -569,6 +593,70 @@ export default function TransaccionesPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
+                  {/* Toggle modo familiar */}
+                  {esAdministradorFamiliar && (
+                    <div className="mb-4 p-3 border rounded-lg bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2">
+                            {modoFamiliar ? (
+                              <Users className="h-4 w-4 text-blue-600" />
+                            ) : (
+                              <User className="h-4 w-4 text-gray-600" />
+                            )}
+                            <span className="text-sm font-medium">
+                              {modoFamiliar ? 'Ver transacciones familiares' : 'Ver mis transacciones'}
+                            </span>
+                          </div>
+                          <Button
+                            variant={modoFamiliar ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setModoFamiliar(!modoFamiliar)}
+                            className="ml-auto gap-2"
+                          >
+                            {modoFamiliar ? (
+                              <>
+                                <User className="h-4 w-4" />
+                                Cambiar a Personal
+                              </>
+                            ) : (
+                              <>
+                                <Users className="h-4 w-4" />
+                                Ver Familia
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                      {modoFamiliar && (
+                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                          Mostrando transacciones de todos los miembros de la familia
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Navegación por mes */}
+                  <div className="mb-6 p-4 border rounded-lg bg-muted/30">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Mes de imputación:</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={irMesAnterior}>
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={irMesHoy}>
+                          {format(mesActual, 'MMMM yyyy', { locale: es })}
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={irMesSiguiente}>
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Panel de filtros */}
                   {mostrarFiltros && (
                     <div className="mb-6 p-4 border rounded-lg bg-muted/30">
@@ -586,28 +674,6 @@ export default function TransaccionesPage() {
                               className="pl-10"
                             />
                           </div>
-                        </div>
-
-                        {/* Fecha desde */}
-                        <div className="space-y-2">
-                          <Label htmlFor="fechaDesde">Fecha desde</Label>
-                          <Input
-                            id="fechaDesde"
-                            type="date"
-                            value={filtros.fechaDesde}
-                            onChange={(e) => actualizarFiltro('fechaDesde', e.target.value)}
-                          />
-                        </div>
-
-                        {/* Fecha hasta */}
-                        <div className="space-y-2">
-                          <Label htmlFor="fechaHasta">Fecha hasta</Label>
-                          <Input
-                            id="fechaHasta"
-                            type="date"
-                            value={filtros.fechaHasta}
-                            onChange={(e) => actualizarFiltro('fechaHasta', e.target.value)}
-                          />
                         </div>
 
                         {/* Categoría */}
@@ -661,7 +727,7 @@ export default function TransaccionesPage() {
                         </div>
 
                         {/* Incluir en familia */}
-                        <div className="space-y-2 md:col-span-3">
+                        <div className="space-y-2 md:col-span-2">
                           <Label>Incluir en familia</Label>
                           <Select value={filtros.incluirEnFamilia} onValueChange={(value) => actualizarFiltro('incluirEnFamilia', value)}>
                             <SelectTrigger>
@@ -688,13 +754,13 @@ export default function TransaccionesPage() {
                       <p>
                         {filtrosActivos > 0 
                           ? "No hay movimientos que coincidan con los filtros" 
-                          : "No hay movimientos registrados"
+                          : `No hay movimientos registrados en ${format(mesActual, 'MMMM yyyy', { locale: es })}`
                         }
                       </p>
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {gastosFiltrados.slice(0, 50).map((movimiento) => (
+                      {gastosFiltrados.map((movimiento) => (
                         <div key={movimiento.id}>
                           <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:shadow-sm transition-shadow">
                             <div className="flex items-center gap-3 flex-1">
@@ -702,16 +768,20 @@ export default function TransaccionesPage() {
                               <div className="flex-1">
                                 <p className="font-medium">{movimiento.concepto}</p>
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                  <span>{format(new Date(movimiento.fecha), 'dd/MM/yyyy HH:mm', { locale: es })}</span>
+                                  <span>{format(getFechaImputacion(movimiento), 'dd/MM/yyyy HH:mm', { locale: es })}</span>
                                   <Badge variant="outline" className="text-xs">
                                     {movimiento.categoria}
                                   </Badge>
+                                  {modoFamiliar && movimiento.user?.name && (
+                                    <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                                      {movimiento.user.name}
+                                    </Badge>
+                                  )}
                                   {movimiento.incluirEnFamilia && (
                                     <Badge variant="secondary" className="text-xs">
                                       Familiar
                                     </Badge>
                                   )}
-                                  {/* Indicador de detalles de productos */}
                                   {movimiento.detalles && movimiento.detalles.length > 0 && (
                                     <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
                                       {movimiento.detalles.length} {movimiento.detalles.length === 1 ? 'producto' : 'productos'}
@@ -735,7 +805,6 @@ export default function TransaccionesPage() {
                                 </p>
                               </div>
                               
-                              {/* Botones de acción */}
                               <div className="flex items-center gap-1">
                                 <Button
                                   variant="ghost"
@@ -749,7 +818,6 @@ export default function TransaccionesPage() {
                                     <Eye className="h-4 w-4" />
                                   }
                                 </Button>
-                                {/* Nuevo botón para ver detalles completos */}
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -784,7 +852,6 @@ export default function TransaccionesPage() {
                             </div>
                           </div>
                           
-                          {/* Panel de detalles expandido */}
                           {selectedTransaction?.id === movimiento.id && selectedTransaction.detalles && selectedTransaction.detalles.length > 0 && (
                             <div className="ml-8 mr-4 mt-2 p-4 bg-muted/30 rounded-lg border-l-4 border-blue-500">
                               <h4 className="font-semibold mb-3 text-sm">Detalles del gasto:</h4>
@@ -814,13 +881,39 @@ export default function TransaccionesPage() {
                           )}
                         </div>
                       ))}
-                      {gastosFiltrados.length > 50 && (
-                        <div className="text-center pt-4">
-                          <p className="text-sm text-muted-foreground">
-                            Mostrando los primeros 50 resultados de {gastosFiltrados.length}
-                          </p>
+                    </div>
+                  )}
+
+                  {/* Panel de totales */}
+                  {gastosDelMesActual.length > 0 && (
+                    <div className="mt-6 p-4 border-t bg-muted/10">
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium">Total ingresos del mes ({format(mesActual, 'MMMM yyyy', { locale: es })}):</span>
+                          <span className="font-bold text-green-600">
+                            +{valuesVisible ? formatMoney(totales.totalIngresosMes) : "••••••"}
+                          </span>
                         </div>
-                      )}
+                        
+                        {filtrosActivos > 0 && (
+                          <>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-medium">Total filtrado:</span>
+                              <span className={cn(
+                                "font-bold",
+                                totales.totalFiltrado >= 0 ? 'text-green-600' : 'text-red-600'
+                              )}>
+                                {totales.totalFiltrado >= 0 ? '+' : ''}
+                                {valuesVisible ? formatMoney(Math.abs(totales.totalFiltrado)) : "••••••"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm text-muted-foreground">
+                              <span>Porcentaje de los ingresos del mes:</span>
+                              <span>{totales.porcentajeFiltrado.toFixed(1)}%</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
                   )}
                 </CardContent>
