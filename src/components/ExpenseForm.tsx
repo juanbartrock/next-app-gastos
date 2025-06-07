@@ -79,6 +79,7 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
   const [fechaPrimerPago, setFechaPrimerPago] = useState<Date | undefined>(undefined)
   const [fechaPrimerPagoStr, setFechaPrimerPagoStr] = useState<string>("")
   const [diaPago, setDiaPago] = useState<string>("")
+  const [tarjetaEspecifica, setTarjetaEspecifica] = useState<string>("")
 
   // NUEVO: Estados para asociar a gastos recurrentes
   const [gastosRecurrentes, setGastosRecurrentes] = useState<any[]>([])
@@ -150,6 +151,11 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
     if (movementType === "tarjeta") {
       if (!cantidadCuotas || parseInt(cantidadCuotas) < 1) {
         setError("Por favor, ingresa una cantidad válida de cuotas")
+        setLoading(false)
+        return
+      }
+      if (!tarjetaEspecifica) {
+        setError("Por favor, selecciona la tarjeta específica")
         setLoading(false)
         return
       }
@@ -230,7 +236,8 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
               cantidadCuotas: parseInt(cantidadCuotas),
               montoCuota,
               fechaPrimerPago: parsedFechaPrimerPago,
-              diaPago: diaPago ? parseInt(diaPago) : null
+              diaPago: diaPago ? parseInt(diaPago) : null,
+              tarjetaEspecifica: tarjetaEspecifica
             }),
           })
           
@@ -271,6 +278,7 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
       setFechaPrimerPago(undefined)
       setFechaPrimerPagoStr("")
       setDiaPago("")
+      setTarjetaEspecifica("")
       setGastoRecurrenteId("")
       setGastoRecurrenteSeleccionado(null)
       setSuccess(true)
@@ -510,6 +518,25 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
         {movementType === "tarjeta" && (
           <div className="space-y-4 p-4 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800">
             <h4 className="font-medium text-gray-900 dark:text-gray-100">Detalles de Financiación</h4>
+            
+            <div className="space-y-2">
+              <Label htmlFor="tarjetaEspecifica">Tarjeta Específica</Label>
+              <Select value={tarjetaEspecifica} onValueChange={setTarjetaEspecifica}>
+                <SelectTrigger>  
+                  <SelectValue placeholder="Seleccionar tarjeta" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Visa Macro">💳 Visa Macro</SelectItem>
+                  <SelectItem value="Visa Ciudad">💳 Visa Ciudad</SelectItem>
+                  <SelectItem value="Mastercard BBVA">💳 Mastercard BBVA</SelectItem>
+                  <SelectItem value="Mastercard Galicia">💳 Mastercard Galicia</SelectItem>
+                  <SelectItem value="American Express">💳 American Express</SelectItem>
+                  <SelectItem value="Naranja">🧡 Naranja</SelectItem>
+                  <SelectItem value="Cabal">💙 Cabal</SelectItem>
+                  <SelectItem value="Otra">💳 Otra tarjeta</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             
             <div className="space-y-2">
               <Label htmlFor="cantidadCuotas">Cantidad de Cuotas</Label>

@@ -249,10 +249,19 @@ export default function FinanciacionPage() {
       <div className="mx-auto w-full max-w-7xl">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Financiación con Tarjeta</h1>
-          <Button variant="outline" onClick={() => router.push("/?dashboard=true")}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Volver al Dashboard
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => router.push('/financiacion/pagar-tarjeta')}
+              className="gap-2"
+            >
+              <CreditCard className="h-4 w-4" />
+              Pagar Tarjeta
+            </Button>
+            <Button variant="outline" onClick={() => router.push("/?dashboard=true")}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Volver al Dashboard
+            </Button>
+          </div>
         </div>
 
         {/* Resumen de totales */}

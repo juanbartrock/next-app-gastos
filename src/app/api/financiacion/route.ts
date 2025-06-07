@@ -41,7 +41,8 @@ export async function GET() {
             fecha: true,
             categoria: true
           }
-        }
+        },
+        tarjetaInfo: true // Incluir información específica de tarjeta
       },
       orderBy: {
         fechaProximoPago: 'asc'
@@ -93,7 +94,8 @@ export async function POST(request: Request) {
       cantidadCuotas, 
       montoCuota, 
       fechaPrimerPago,
-      diaPago
+      diaPago,
+      tarjetaEspecifica
     } = await request.json()
 
     console.log("Datos recibidos para financiación:", {
@@ -173,20 +175,38 @@ export async function POST(request: Request) {
       }
     }
 
-    // Crear la financiación
-    const financiacion = await prisma.financiacion.create({
-      data: {
-        gastoId: Number(gastoId),
-        userId: usuario.id,
-        cantidadCuotas: Number(cantidadCuotas),
-        cuotasPagadas: 0,
-        cuotasRestantes: Number(cantidadCuotas),
-        montoCuota: Number(montoCuota),
-        fechaPrimerPago: fechaPrimerPagoDate,
-        fechaProximoPago: fechaPrimerPagoDate,
-        diaPago: diaPago ? Number(diaPago) : null
+    // Crear la financiación y la información de tarjeta en una transacción
+    const resultado = await prisma.$transaction(async (tx) => {
+      // Crear la financiación
+      const financiacion = await tx.financiacion.create({
+        data: {
+          gastoId: Number(gastoId),
+          userId: usuario.id,
+          cantidadCuotas: Number(cantidadCuotas),
+          cuotasPagadas: 0,
+          cuotasRestantes: Number(cantidadCuotas),
+          montoCuota: Number(montoCuota),
+          fechaPrimerPago: fechaPrimerPagoDate,
+          fechaProximoPago: fechaPrimerPagoDate,
+          diaPago: diaPago ? Number(diaPago) : null
+        }
+      })
+      
+      // Si se especificó una tarjeta, crear la información específica
+      let tarjetaInfo = null
+      if (tarjetaEspecifica) {
+        tarjetaInfo = await tx.financiacionTarjeta.create({
+          data: {
+            financiacionId: financiacion.id,
+            tarjetaEspecifica: tarjetaEspecifica
+          }
+        })
       }
+      
+      return { financiacion, tarjetaInfo }
     })
+    
+    const { financiacion, tarjetaInfo } = resultado
     
     console.log("Financiación creada:", financiacion)
     

@@ -52,6 +52,7 @@ model User {
   gruposAdmin          Grupo[]               @relation("GrupoAdmin")
   grupos               GrupoMiembro[]
   inversiones          Inversion[]
+  pagosTarjeta         PagoTarjeta[]         // Nueva relación
   prestamos            Prestamo[]
   presupuestos         Presupuesto[]
   servicios            Servicio[]
@@ -115,6 +116,7 @@ model Gasto {
   gastoRecurrenteId Int?
   origenComprobante String?
   financiacion      Financiacion?
+  pagoTarjeta       PagoTarjeta?     @relation("PagoTarjetaGasto")
   categoriaRel      Categoria?       @relation(fields: [categoriaId], references: [id])
   gastoRecurrente   GastoRecurrente? @relation("GastoGenerado", fields: [gastoRecurrenteId], references: [id])
   user              User             @relation(fields: [userId], references: [id])
@@ -159,20 +161,63 @@ model GastoRecurrente {
 }
 
 model Financiacion {
-  id               Int       @id @default(autoincrement())
-  gastoId          Int       @unique
-  userId           String
-  cantidadCuotas   Int
-  cuotasPagadas    Int       @default(0)
-  cuotasRestantes  Int
-  montoCuota       Float
-  fechaPrimerPago  DateTime?
-  fechaProximoPago DateTime?
-  diaPago          Int?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  gasto            Gasto     @relation(fields: [gastoId], references: [id], onDelete: Cascade)
-  user             User      @relation(fields: [userId], references: [id])
+  id                 Int                      @id @default(autoincrement())
+  gastoId            Int                      @unique
+  userId             String
+  cantidadCuotas     Int
+  cuotasPagadas      Int                      @default(0)
+  cuotasRestantes    Int
+  montoCuota         Float
+  fechaPrimerPago    DateTime?
+  fechaProximoPago   DateTime?
+  diaPago            Int?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  gasto              Gasto                    @relation(fields: [gastoId], references: [id], onDelete: Cascade)
+  user               User                     @relation(fields: [userId], references: [id])
+  cuotasVinculadas   CuotaVinculada[]         // Cuotas ya pagadas
+  tarjetaInfo        FinanciacionTarjeta?     // Información específica de tarjeta (opcional)
+}
+
+model FinanciacionTarjeta {
+  id                Int       @id @default(autoincrement())
+  financiacionId    Int       @unique // Relación 1:1 con financiacion existente
+  tarjetaEspecifica String    // "Visa Macro", "Visa Ciudad", "Mastercard BBVA"
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  financiacion      Financiacion @relation(fields: [financiacionId], references: [id], onDelete: Cascade)
+}
+
+model PagoTarjeta {
+  id                String              @id @default(cuid())
+  concepto          String              // "Pago Tarjeta Visa Macro"
+  monto             Float
+  fecha             DateTime            @default(now())
+  tipoMovimiento    String              @default("digital")
+  tarjetaEspecifica String              // "Visa Macro", "Visa Ciudad", "Mastercard BBVA"
+  userId            String
+  gastoId           Int                 @unique // Vinculado al gasto real del pago
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  gasto             Gasto               @relation("PagoTarjetaGasto", fields: [gastoId], references: [id], onDelete: Cascade)
+  user              User                @relation(fields: [userId], references: [id])
+  cuotasVinculadas  CuotaVinculada[]    // Cuotas que se pagaron con este pago
+}
+
+model CuotaVinculada {
+  id               String         @id @default(cuid())
+  financiacionId   Int
+  pagoTarjetaId    String
+  montoCuota       Float          // Monto de esta cuota específica
+  fechaVinculacion DateTime       @default(now())
+  createdAt        DateTime       @default(now())
+  
+  financiacion     Financiacion   @relation(fields: [financiacionId], references: [id], onDelete: Cascade)
+  pagoTarjeta      PagoTarjeta    @relation(fields: [pagoTarjetaId], references: [id], onDelete: Cascade)
+  
+  @@unique([financiacionId, pagoTarjetaId])
 }
 
 model Plan {
