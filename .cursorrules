@@ -75,6 +75,7 @@
 - ✅ **MOTOR AUTOMÁTICO DE ALERTAS (FASE 2)**
 - ✅ **INTELIGENCIA ARTIFICIAL INTEGRADA (FASE 3)**
 - ✅ **GASTOS RECURRENTES CON ASOCIACIÓN AUTOMÁTICA**
+- ✅ **MODO FAMILIAR PARA ADMINISTRADORES** - Toggle personal/familiar con control de permisos
 
 #### **Próximas Expansiones Sugeridas (FASE 4+)**
 - [ ] Gamificación (badges, streaks, logros)
@@ -209,6 +210,7 @@ export function GastoRecurrenteSelector({ value, onChange, gastosRecurrentes }) 
 - ✅ `POST /api/gastos` - Crear transacción con soporte para gastoRecurrenteId
 - ✅ `PUT /api/gastos/[id]` - Editar transacción con manejo de asociaciones
 - ✅ `GET /api/gastos/recurrentes-disponibles` - Lista optimizada para selector
+- ✅ `GET /api/gastos/familiares` - Transacciones familiares para administradores
 - ✅ `POST /api/recurrentes/[id]/generar-pago` - Generación automática
 
 ## Estructura del Proyecto
@@ -323,6 +325,7 @@ src/
 - Soporte para gastos grupales y individuales
 - **✅ Asociación con gastos recurrentes** en creación y edición
 - **✅ Cálculo automático de estados** (pendiente/pago_parcial/pagado)
+- **✅ Modo familiar** - Toggle para administradores ver transacciones de toda la familia
 
 #### **Sistema de Gastos Recurrentes (COMPLETADO)**
 - **✅ Relación padre-hijo** con campo `gastoRecurrenteId` en tabla Gasto
@@ -690,6 +693,78 @@ export function ExpenseForm() {
 }
 ```
 
+### **Modo Familiar Pattern** ✅
+```typescript
+// Componente con modo familiar para administradores
+export function TransaccionesPage() {
+  const [modoFamiliar, setModoFamiliar] = useState(false)
+  const { esAdministradorFamiliar } = usePermisosFamiliares()
+  
+  // Fetch automático según modo
+  const fetchGastosPersonales = async () => {
+    const endpoint = (modoFamiliar && esAdministradorFamiliar) 
+      ? '/api/gastos/familiares' 
+      : '/api/gastos'
+    
+    const response = await fetch(endpoint)
+    const data = await response.json()
+    
+    if (modoFamiliar && data.gastos) {
+      setGastosPersonales(data.gastos) // API familiar
+    } else {
+      setGastosPersonales(data) // API personal
+    }
+  }
+  
+  return (
+    <div>
+      {/* Toggle modo familiar */}
+      {esAdministradorFamiliar && (
+        <div className="mb-4 p-3 border rounded-lg bg-blue-50 dark:bg-blue-950">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">
+              {modoFamiliar ? 'Ver transacciones familiares' : 'Ver mis transacciones'}
+            </span>
+            <Button
+              variant={modoFamiliar ? "default" : "outline"}
+              size="sm"
+              onClick={() => setModoFamiliar(!modoFamiliar)}
+              className="gap-2"
+            >
+              {modoFamiliar ? (
+                <>
+                  <User className="h-4 w-4" />
+                  Cambiar a Personal
+                </>
+              ) : (
+                <>
+                  <Users className="h-4 w-4" />
+                  Ver Familia
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
+      
+      {/* Lista de transacciones con identificación de usuario */}
+      {gastosFiltrados.map((movimiento) => (
+        <div key={movimiento.id}>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {modoFamiliar && movimiento.user?.name && (
+              <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                {movimiento.user.name}
+              </Badge>
+            )}
+            {/* Resto de badges... */}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+```
+
 ## Notas Importantes
 - **NO usar datos simulados o ficticios**
 - **NO implementar reseteo automático de base de datos**
@@ -701,6 +776,7 @@ export function ExpenseForm() {
 - **✅ OpenAI integrado**: Usar AIAnalyzer para nuevas funcionalidades de IA
 - **✅ AlertEngine funcionando**: Usar para evaluar nuevas condiciones automáticas
 - **✅ Gastos Recurrentes**: Sistema completo con asociación bidireccional implementado
+- **✅ Modo Familiar**: Toggle personal/familiar con control de permisos para administradores
 - **✅ Next.js 15**: Usar `await params` en todas las API routes nuevas
 - **✅ Performance**: Implementar timeouts en queries críticas para evitar problemas con Neon
 - **✅ Páginas de prueba disponibles**: `/test-alertas`, `/test-fase2`, `/test-fase3`, `/recurrentes`

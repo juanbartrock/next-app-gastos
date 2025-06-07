@@ -36,6 +36,7 @@ import { format, addMonths, isSameMonth, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
 import { toast } from "sonner"
 import { useCurrency } from "@/contexts/CurrencyContext"
+import { useVisibility } from "@/contexts/VisibilityContext"
 
 // Tipos
 type Financiacion = {
@@ -74,6 +75,7 @@ export default function FinanciacionPage() {
   const [currentFinanciacionId, setCurrentFinanciacionId] = useState<number | null>(null)
   const [selectedTipoMovimiento, setSelectedTipoMovimiento] = useState("digital")
   const { formatMoney } = useCurrency()
+  const { valuesVisible } = useVisibility()
 
   // Cargar datos iniciales
   const fetchData = async () => {
@@ -261,7 +263,7 @@ export default function FinanciacionPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {formatMoney(totalMesEnCurso)}
+                {valuesVisible ? formatMoney(totalMesEnCurso) : "***"}
               </div>
               <p className="text-xs text-gray-500 mt-1">Pagos programados para este mes</p>
             </CardContent>
@@ -273,7 +275,7 @@ export default function FinanciacionPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-                {formatMoney(totalRestante)}
+                {valuesVisible ? formatMoney(totalRestante) : "***"}
               </div>
               <p className="text-xs text-gray-500 mt-1">Monto total a pagar en todas las financiaciones</p>
             </CardContent>
@@ -332,10 +334,10 @@ export default function FinanciacionPage() {
                           {financiacion.gasto.concepto}
                         </TableCell>
                         <TableCell>
-                          {formatMoney(financiacion.gasto.monto)}
+                          {valuesVisible ? formatMoney(financiacion.gasto.monto) : "***"}
                         </TableCell>
                         <TableCell>
-                          {formatMoney(financiacion.montoCuota)}
+                          {valuesVisible ? formatMoney(financiacion.montoCuota) : "***"}
                         </TableCell>
                         <TableCell>
                           {financiacion.cuotasPagadas} de {financiacion.cantidadCuotas}
@@ -347,7 +349,7 @@ export default function FinanciacionPage() {
                           {getProximoPago(financiacion)}
                         </TableCell>
                         <TableCell className="font-medium">
-                          {formatMoney(calcularMontoRestante(financiacion))}
+                          {valuesVisible ? formatMoney(calcularMontoRestante(financiacion)) : "***"}
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">

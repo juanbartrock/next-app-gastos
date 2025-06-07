@@ -422,6 +422,7 @@ Relación entre funcionalidades y planes.
 - Visualización en gráficos y tablas interactivas
 - Registro detallado de ítems para tickets con múltiples productos
 - **Control de visibilidad familiar** con campo `incluirEnFamilia`
+- **✅ NUEVO: Modo familiar para administradores** - Toggle para ver transacciones de toda la familia
 
 ### Gestión de Grupos
 - Creación y administración de grupos
@@ -993,12 +994,120 @@ Actualiza estado del recurrente automáticamente
 - [ ] **GraphQL** para queries más eficientes
 - [ ] **WebSockets** para updates en tiempo real
 
+## 🏠 **NUEVA FUNCIONALIDAD: MODO FAMILIAR PARA ADMINISTRADORES**
+
+### **📋 DESCRIPCIÓN GENERAL**
+Los administradores familiares pueden alternar entre ver solo sus transacciones personales o todas las transacciones de la familia mediante un toggle intuitivo en la página de historial.
+
+### **🔗 FUNCIONALIDADES IMPLEMENTADAS**
+
+#### **1. Toggle Personal/Familiar**
+- **Ubicación**: `/transacciones/nuevo` - Tab "Historial"
+- **Control de permisos**: Solo visible para administradores familiares
+- **Estados visuales**: Iconos User (personal) vs Users (familiar)
+- **Persistencia**: El modo se mantiene durante la sesión
+
+#### **2. APIs Especializadas**
+```typescript
+// Modo personal (default)
+GET /api/gastos → Solo transacciones del usuario actual
+
+// Modo familiar (admin)  
+GET /api/gastos/familiares → Transacciones de toda la familia
+```
+
+#### **3. Identificación Visual por Usuario**
+- **Badge púrpura** con nombre del usuario en cada transacción familiar
+- **Ocultación automática** en modo personal
+- **Información contextual** clara de quién realizó cada movimiento
+
+#### **4. Funcionalidad Completa Preservada**
+- **Filtros funcionan igual** en ambos modos
+- **Totales dinámicos** basados en ingresos del mes/familia
+- **Paginación por mes** de imputación mantenida
+- **Exportación CSV** con datos correspondientes al modo activo
+
+### **🔧 IMPLEMENTACIÓN TÉCNICA**
+
+#### **Control de Permisos**
+```typescript
+// Contexto de permisos familiares
+const { esAdministradorFamiliar } = usePermisosFamiliares()
+
+// Toggle solo visible para administradores
+{esAdministradorFamiliar && (
+  <Button onClick={() => setModoFamiliar(!modoFamiliar)}>
+    {modoFamiliar ? 'Ver Personal' : 'Ver Familia'}
+  </Button>
+)}
+```
+
+#### **Lógica de APIs**
+```typescript
+// Selección automática de endpoint
+const endpoint = (modoFamiliar && esAdministradorFamiliar) 
+  ? '/api/gastos/familiares' 
+  : '/api/gastos'
+
+// Manejo de respuestas diferenciadas
+if (modoFamiliar && data.gastos) {
+  setGastosPersonales(data.gastos) // API familiar
+} else {
+  setGastosPersonales(data) // API personal
+}
+```
+
+#### **Componentes UI Actualizados**
+- ✅ **TransaccionesPage** - Toggle y lógica de modo
+- ✅ **NotificationCenter** - Soporte para permisos familiares
+- ✅ **APIs familiares** - Endpoint `/api/gastos/familiares` utilizado
+
+### **🎪 CASOS DE USO SOPORTADOS**
+
+#### **Scenario 1: Usuario Regular**
+```typescript
+// Usuario sin permisos de administrador familiar
+// No ve el toggle, solo accede a modo personal
+// Funcionalidad estándar sin cambios
+```
+
+#### **Scenario 2: Administrador Familiar**
+```typescript
+// Ve toggle personal/familiar
+// Modo personal: solo sus transacciones
+// Modo familiar: todas las transacciones con nombre de usuario
+// Filtros y totales funcionan en ambos modos
+```
+
+#### **Scenario 3: Análisis Familiar**
+```typescript
+// Administrador en modo familiar
+// Filtra por categoría específica
+// Ve gastos de toda la familia en esa categoría
+// Total y porcentaje calculado sobre ingresos familiares
+```
+
+### **🎯 BENEFICIOS PARA USUARIOS**
+
+#### **Para Administradores Familiares**
+- ✅ **Vista unificada** de finanzas familiares
+- ✅ **Control granular** con toggle simple
+- ✅ **Identificación clara** de responsables por transacción
+- ✅ **Análisis completo** con filtros y totales familiares
+
+#### **Para Usuarios Regulares**
+- ✅ **Sin cambios** en experiencia actual
+- ✅ **Privacidad mantenida** - Solo ven sus transacciones
+- ✅ **Performance igual** - No afecta carga de datos
+
 ## 🎯 **CONCLUSIÓN**
 
-El sistema de gastos recurrentes está **100% completo y funcional**, proporcionando:
+El sistema de gastos recurrentes y **modo familiar** están **100% completos y funcionales**, proporcionando:
 
 ✅ **Asociación bidireccional** entre transacciones y recurrentes
 ✅ **Estados automáticos** basados en pagos reales  
+✅ **Vista familiar completa** para administradores
+✅ **Control de permisos robusto** automático
 ✅ **Interfaz intuitiva** para usuarios finales
 ✅ **Arquitectura robusta** con manejo de errores
 ✅ **Performance optimizada** para uso en producción

@@ -34,6 +34,7 @@ import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { toast } from "sonner"
 import { useCurrency } from "@/contexts/CurrencyContext"
+import { useVisibility } from "@/contexts/VisibilityContext"
 
 interface GastoCategoriaFamiliar {
   categoria: string
@@ -80,6 +81,7 @@ const COLORES_GRAFICO = [
 
 export function GraficoGastosCategoriaFamiliar({ mesSeleccionado }: Props) {
   const { formatMoney } = useCurrency()
+  const { valuesVisible } = useVisibility()
   
   // Estados principales
   const [loading, setLoading] = useState(false)
@@ -191,7 +193,7 @@ export function GraficoGastosCategoriaFamiliar({ mesSeleccionado }: Props) {
         <div className="bg-white dark:bg-gray-800 border rounded-lg p-4 shadow-lg">
           <p className="font-medium text-sm">{data.categoriaCompleta}</p>
           <p className="text-lg font-bold text-purple-600 dark:text-purple-400">
-            {formatMoney(data.monto)}
+            {valuesVisible ? formatMoney(data.monto) : "***"}
           </p>
           <p className="text-sm text-gray-600 dark:text-gray-300">
             {data.transacciones} transacciones
@@ -200,7 +202,7 @@ export function GraficoGastosCategoriaFamiliar({ mesSeleccionado }: Props) {
             {data.porcentaje.toFixed(1)}% del total
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Promedio: {formatMoney(data.promedio)}
+            Promedio: {valuesVisible ? formatMoney(data.promedio) : "***"}
           </p>
         </div>
       )
@@ -286,7 +288,7 @@ export function GraficoGastosCategoriaFamiliar({ mesSeleccionado }: Props) {
                   {datos.length} categorías
                 </Badge>
                 <Badge variant="secondary" className="text-xs">
-                  {formatMoney(estadisticasGenerales?.totalGastado || 0)}
+                  {valuesVisible ? formatMoney(estadisticasGenerales?.totalGastado || 0) : "***"}
                 </Badge>
               </>
             )}
@@ -434,7 +436,7 @@ export function GraficoGastosCategoriaFamiliar({ mesSeleccionado }: Props) {
               <div className="text-center p-3 bg-white/70 dark:bg-gray-800/70 rounded-lg">
                 <div className="flex items-center justify-center gap-1 text-green-600 dark:text-green-400">
                   <DollarSign className="h-4 w-4" />
-                  <span className="font-bold text-lg">{formatMoney(estadisticasGenerales?.totalGastado || 0)}</span>
+                  <span className="font-bold text-lg">{valuesVisible ? formatMoney(estadisticasGenerales?.totalGastado || 0) : "***"}</span>
                 </div>
                 <div className="text-xs text-gray-500">Total gastado</div>
               </div>
@@ -450,7 +452,7 @@ export function GraficoGastosCategoriaFamiliar({ mesSeleccionado }: Props) {
               <div className="text-center p-3 bg-white/70 dark:bg-gray-800/70 rounded-lg">
                 <div className="flex items-center justify-center gap-1 text-purple-600 dark:text-purple-400">
                   <TrendingUp className="h-4 w-4" />
-                  <span className="font-bold text-lg">{formatMoney(estadisticasGenerales?.promedioTransaccion || 0)}</span>
+                  <span className="font-bold text-lg">{valuesVisible ? formatMoney(estadisticasGenerales?.promedioTransaccion || 0) : "***"}</span>
                 </div>
                 <div className="text-xs text-gray-500">Promedio</div>
               </div>
@@ -558,7 +560,7 @@ export function GraficoGastosCategoriaFamiliar({ mesSeleccionado }: Props) {
                           {categoria.categoria}
                         </h4>
                         <Badge variant="outline">
-                          {formatMoney(categoria.totalGasto)} ({categoria.participacionPorcentual.toFixed(1)}%)
+                          {valuesVisible ? `${formatMoney(categoria.totalGasto)} (${categoria.participacionPorcentual.toFixed(1)}%)` : "*** (**%)"} 
                         </Badge>
                       </div>
                       
@@ -570,7 +572,7 @@ export function GraficoGastosCategoriaFamiliar({ mesSeleccionado }: Props) {
                           >
                             <div className="font-medium text-sm">{usuario.usuario}</div>
                             <div className="text-lg font-bold text-purple-600 dark:text-purple-400">
-                              {formatMoney(usuario.totalGasto)}
+                              {valuesVisible ? formatMoney(usuario.totalGasto) : "***"}
                             </div>
                             <div className="text-xs text-gray-500">
                               {usuario.cantidadTransacciones} transacciones ({usuario.participacionEnCategoria.toFixed(1)}%)

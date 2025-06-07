@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { useCurrency } from "@/contexts/CurrencyContext"
+import { useVisibility } from "@/contexts/VisibilityContext"
 import { FinancialSummary } from "@/components/FinancialSummary"
 
 // Tipos
@@ -113,6 +114,7 @@ export default function RecurrentesPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { formatMoney } = useCurrency()
+  const { valuesVisible } = useVisibility()
   
   // Estado para gastos recurrentes
   const [gastosRecurrentes, setGastosRecurrentes] = useState<GastoRecurrente[]>([])
@@ -828,7 +830,7 @@ export default function RecurrentesPage() {
                       <p className="text-sm text-gray-500 dark:text-gray-400">{new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</p>
                     </div>
                     <div className="text-3xl font-bold text-primary">
-                      {formatMoney(totalMesActual)}
+                      {valuesVisible ? formatMoney(totalMesActual) : "***"}
                     </div>
                   </div>
                 </div>
@@ -848,7 +850,7 @@ export default function RecurrentesPage() {
                   </div>
                   <div className="text-right">
                     <div className="text-3xl font-bold text-primary">
-                      {formatMoney(totalServiciosMensual)}
+                      {valuesVisible ? formatMoney(totalServiciosMensual) : "***"}
                     </div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       {servicios.length} servicio{servicios.length !== 1 ? 's' : ''}
@@ -892,7 +894,7 @@ export default function RecurrentesPage() {
                                   </TableCell>
                                   <TableCell>
                                     <div className="text-right">
-                                      <div className="font-medium">{formatMoney(servicio.monto)}</div>
+                                      <div className="font-medium">{valuesVisible ? formatMoney(servicio.monto) : "***"}</div>
                                       <div className="text-xs text-gray-500 capitalize">
                                         {periodicidad}
                                       </div>
@@ -901,9 +903,9 @@ export default function RecurrentesPage() {
                                   <TableCell>
                                     <div className="text-right">
                                       <div className="font-medium text-blue-600">
-                                        {formatMoney(equivalenteMensual)}
+                                        {valuesVisible ? formatMoney(equivalenteMensual) : "***"}
                                       </div>
-                                      {periodicidad !== 'mensual' && (
+                                      {valuesVisible && periodicidad !== 'mensual' && (
                                         <div className="text-xs text-gray-500">
                                           ÷ {periodicidad === 'anual' ? '12' : periodicidad === 'trimestral' ? '3' : periodicidad === 'semestral' ? '6' : '2'}
                                         </div>
@@ -1089,7 +1091,7 @@ export default function RecurrentesPage() {
                       className="pl-8"
                     />
                     <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
-                    {monto && (
+                    {monto && valuesVisible && (
                       <div className="mt-1 text-sm text-gray-500">
                         {formatMoney(parseFloat(monto) || 0)}
                       </div>
@@ -1246,7 +1248,7 @@ export default function RecurrentesPage() {
                     className="pl-8"
                   />
                   <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
-                  {servicioMonto && (
+                  {servicioMonto && valuesVisible && (
                     <div className="mt-1 text-sm text-gray-500">
                       {formatMoney(parseFloat(servicioMonto) || 0)}
                       {servicioMedioPago.toLowerCase().includes("anual") && (
@@ -1424,7 +1426,7 @@ export default function RecurrentesPage() {
                             </TableCell>
                             <TableCell>{gasto.periodicidad}</TableCell>
                             <TableCell>
-                              {formatMoney(gasto.monto)}
+                              {valuesVisible ? formatMoney(gasto.monto) : "***"}
                             </TableCell>
                             <TableCell>{formatTipoMovimiento(gasto.tipoMovimiento)}</TableCell>
                             <TableCell>
@@ -1437,19 +1439,24 @@ export default function RecurrentesPage() {
                                   return (
                                     <div className="space-y-1">
                                       <div className="text-sm font-medium">
-                                        {formatMoney(totalPagado)} / {formatMoney(gasto.monto)}
+                                        {valuesVisible ? `${formatMoney(totalPagado)} / ${formatMoney(gasto.monto)}` : "*** / ***"}
                                       </div>
                                       <div className="text-xs text-gray-500">
                                         {gasto.gastosGenerados.length} pago{gasto.gastosGenerados.length !== 1 ? 's' : ''}
                                       </div>
-                                      {porcentajePagado > 0 && porcentajePagado < 100 && (
+                                      {valuesVisible && porcentajePagado > 0 && porcentajePagado < 100 && (
                                         <div className="text-xs text-amber-600 font-medium">
                                           {porcentajePagado.toFixed(1)}% pagado
                                         </div>
                                       )}
-                                      {saldoPendiente > 0 && (
+                                      {valuesVisible && saldoPendiente > 0 && (
                                         <div className="text-xs text-red-600">
                                           Resta: {formatMoney(saldoPendiente)}
+                                        </div>
+                                      )}
+                                      {!valuesVisible && (
+                                        <div className="text-xs text-gray-400">
+                                          (Valores ocultos)
                                         </div>
                                       )}
                                     </div>

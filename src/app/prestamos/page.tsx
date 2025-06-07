@@ -28,6 +28,7 @@ import { format, differenceInDays } from "date-fns"
 import { es } from "date-fns/locale"
 import { toast } from "sonner"
 import { useCurrency } from "@/contexts/CurrencyContext"
+import { useVisibility } from "@/contexts/VisibilityContext"
 import { PageLayout } from "@/components/PageLayout"
 
 // Tipos
@@ -64,6 +65,7 @@ export default function PrestamosPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { formatMoney } = useCurrency()
+  const { valuesVisible } = useVisibility()
   const [prestamos, setPrestamos] = useState<Prestamo[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedPrestamo, setSelectedPrestamo] = useState<Prestamo | null>(null)
@@ -213,7 +215,7 @@ export default function PrestamosPage() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatMoney(totales.totalSaldos)}</div>
+              <div className="text-2xl font-bold">{valuesVisible ? formatMoney(totales.totalSaldos) : "***"}</div>
               <p className="text-xs text-muted-foreground">
                 Deuda pendiente total
               </p>
@@ -226,7 +228,7 @@ export default function PrestamosPage() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatMoney(totales.totalCuotasMensuales)}</div>
+              <div className="text-2xl font-bold">{valuesVisible ? formatMoney(totales.totalCuotasMensuales) : "***"}</div>
               <p className="text-xs text-muted-foreground">
                 Total mensual a pagar
               </p>
@@ -318,15 +320,15 @@ export default function PrestamosPage() {
                         <TableCell>{prestamo.tipoCredito}</TableCell>
                         <TableCell>
                           <div className="text-right">
-                            <div className="font-semibold">{formatMoney(prestamo.saldoActual)}</div>
+                            <div className="font-semibold">{valuesVisible ? formatMoney(prestamo.saldoActual) : "***"}</div>
                             <div className="text-sm text-muted-foreground">
-                              de {formatMoney(prestamo.montoAprobado)}
+                              de {valuesVisible ? formatMoney(prestamo.montoAprobado) : "***"}
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="text-right">
-                            <div className="font-semibold">{formatMoney(prestamo.cuotaMensual)}</div>
+                            <div className="font-semibold">{valuesVisible ? formatMoney(prestamo.cuotaMensual) : "***"}</div>
                             <div className="text-sm text-muted-foreground">
                               {prestamo.tasaInteres}% anual + IVA
                             </div>
@@ -407,11 +409,11 @@ export default function PrestamosPage() {
                                       </div>
                                       <div>
                                         <label className="text-sm font-medium">Monto Aprobado</label>
-                                        <p>{formatMoney(selectedPrestamo.montoAprobado)}</p>
+                                        <p>{valuesVisible ? formatMoney(selectedPrestamo.montoAprobado) : "***"}</p>
                                       </div>
                                       <div>
                                         <label className="text-sm font-medium">Saldo Actual</label>
-                                        <p>{formatMoney(selectedPrestamo.saldoActual)}</p>
+                                        <p>{valuesVisible ? formatMoney(selectedPrestamo.saldoActual) : "***"}</p>
                                       </div>
                                       <div>
                                         <label className="text-sm font-medium">Tasa de Interés</label>
@@ -419,7 +421,7 @@ export default function PrestamosPage() {
                                       </div>
                                       <div>
                                         <label className="text-sm font-medium">Cuota Mensual</label>
-                                        <p>{formatMoney(selectedPrestamo.cuotaMensual)}</p>
+                                        <p>{valuesVisible ? formatMoney(selectedPrestamo.cuotaMensual) : "***"}</p>
                                       </div>
                                       <div>
                                         <label className="text-sm font-medium">Fecha de Desembolso</label>

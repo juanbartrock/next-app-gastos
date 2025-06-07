@@ -34,7 +34,8 @@ Una aplicación completa de gestión de gastos personales y familiares con **int
 - ✅ **Presupuestos** con alertas de límites automáticas
 - ✅ **Préstamos** con amortización francesa
 - ✅ **Inversiones** con tracking de rendimientos
-- ✅ **Gastos familiares** vs personales
+- ✅ **Vista familiar completa** - Administradores pueden ver transacciones de toda la familia
+- ✅ **Toggle personal/familiar** con control de permisos
 - ✅ **Categorización inteligente**
 
 ## 🚀 **INSTALACIÓN Y CONFIGURACIÓN**
@@ -200,6 +201,28 @@ Actualiza estado inmediatamente
 - Separación de lógica crítica vs auxiliar
 - Logs detallados para debugging
 
+## 🏠 **NUEVA FUNCIONALIDAD: MODO FAMILIAR**
+
+### **🎯 ¿Qué es el Modo Familiar?**
+Permite a los **administradores familiares** cambiar entre ver solo sus transacciones o las de toda la familia con un simple toggle.
+
+#### **✅ Características Principales**
+- **Toggle visual** en página de transacciones (personal ↔ familiar)
+- **Solo para administradores** - Control de permisos automático
+- **Identificación clara** - Badge con nombre del usuario en cada transacción
+- **APIs especializadas** - `/api/gastos` vs `/api/gastos/familiares`
+- **Funcionalidad completa** - Filtros, totales, exportación funcionan igual
+
+#### **🎪 Ejemplo de Uso**
+```typescript
+// Usuario administrador familiar en /transacciones/nuevo
+1. Por defecto: "Ver mis transacciones" 
+2. Clic en "Ver Familia": Cambia a modo familiar
+3. Ve todas las transacciones familiares con nombre de quien las hizo
+4. Todos los filtros y totales funcionan con el conjunto familiar
+5. Clic en "Cambiar a Personal": Vuelve al modo personal
+```
+
 ## 📱 **USO EN PRODUCCIÓN**
 
 ### **Deployment en Vercel**
@@ -225,10 +248,12 @@ OPENAI_API_KEY=sk-...
 - ✅ Gestión de gastos recurrentes (servicios, alquiler)
 
 ### **Para Familias**
-- ✅ Gastos compartidos vs personales
-- ✅ Control de límites familiares
-- ✅ Alertas de gastos inusuales
-- ✅ Reportes financieros familiares
+- ✅ **Vista unificada familiar** - Administradores ven todas las transacciones
+- ✅ **Toggle inteligente** personal/familiar con un clic
+- ✅ **Identificación por usuario** - Cada transacción muestra quién la realizó
+- ✅ **Control de permisos** - Solo administradores familiares acceden
+- ✅ **Filtros y análisis completos** en ambos modos
+- ✅ **Totales dinámicos** con porcentajes de ingresos familiares
 
 ### **Para Pequeños Negocios**
 - ✅ Tracking de gastos operativos

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useCurrency } from "@/contexts/CurrencyContext"
+import { useVisibility } from "@/contexts/VisibilityContext"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -108,6 +109,7 @@ export default function InformesPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { formatMoney } = useCurrency()
+  const { valuesVisible } = useVisibility()
 
   const [data, setData] = useState<InformeData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -552,7 +554,7 @@ export default function InformesPage() {
             </CardHeader>
             <CardContent className="relative">
               <div className="text-3xl font-bold text-white mb-1">
-                {formatMoney(data.resumen.totalIngresos)}
+                {valuesVisible ? formatMoney(data.resumen.totalIngresos) : "***"}
               </div>
               <p className="text-xs text-white/80">
                 {data.resumen.cantidadIngresos} movimiento{data.resumen.cantidadIngresos !== 1 ? 's' : ''}
@@ -571,7 +573,7 @@ export default function InformesPage() {
             </CardHeader>
             <CardContent className="relative">
               <div className="text-3xl font-bold text-white mb-1">
-                {formatMoney(data.resumen.totalEgresos)}
+                {valuesVisible ? formatMoney(data.resumen.totalEgresos) : "***"}
               </div>
               <p className="text-xs text-white/80">
                 {data.resumen.cantidadEgresos} movimiento{data.resumen.cantidadEgresos !== 1 ? 's' : ''}
@@ -592,7 +594,7 @@ export default function InformesPage() {
             </CardHeader>
             <CardContent className="relative">
               <div className="text-3xl font-bold text-white mb-1">
-                {formatMoney(data.resumen.balance)}
+                {valuesVisible ? formatMoney(data.resumen.balance) : "***"}
               </div>
               <p className="text-xs text-white/80">
                 {data.resumen.balance >= 0 ? '✅ Superávit' : '⚠️ Déficit'}
@@ -614,7 +616,7 @@ export default function InformesPage() {
                 {data.resumen.cantidadProximosPagos}
               </div>
               <p className="text-xs text-white/80">
-                {formatMoney(data.resumen.montoProximosPagos)} pendientes
+                {valuesVisible ? formatMoney(data.resumen.montoProximosPagos) : "***"} pendientes
               </p>
             </CardContent>
           </Card>
@@ -696,7 +698,7 @@ export default function InformesPage() {
                         <div className="flex justify-between items-center p-4 bg-gradient-to-r from-red-100 to-pink-100 dark:from-red-900 dark:to-pink-900 rounded-xl">
                           <h4 className="font-semibold text-lg">💸 Total de Egresos</h4>
                           <span className="text-2xl font-bold text-red-600 dark:text-red-400">
-                            -{formatMoney(data.movimientos.totalEgresos)}
+                            {valuesVisible ? `-${formatMoney(data.movimientos.totalEgresos)}` : "-***"}
                           </span>
                         </div>
                         <Separator />
@@ -741,7 +743,7 @@ export default function InformesPage() {
                                     </Badge>
                                   </TableCell>
                                   <TableCell className="text-right text-red-600 dark:text-red-400 font-bold text-lg">
-                                    -{formatMoney(egreso.monto)}
+                                    {valuesVisible ? `-${formatMoney(egreso.monto)}` : "-***"}
                                   </TableCell>
                                 </TableRow>
                               ))}
@@ -756,7 +758,7 @@ export default function InformesPage() {
                         <div className="flex justify-between items-center p-4 bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900 dark:to-emerald-900 rounded-xl">
                           <h4 className="font-semibold text-lg">💰 Total de Ingresos</h4>
                           <span className="text-2xl font-bold text-green-600 dark:text-green-400">
-                            +{formatMoney(data.movimientos.totalIngresos)}
+                            {valuesVisible ? `+${formatMoney(data.movimientos.totalIngresos)}` : "+***"}
                           </span>
                         </div>
                         <Separator />
@@ -801,7 +803,7 @@ export default function InformesPage() {
                                     </Badge>
                                   </TableCell>
                                   <TableCell className="text-right text-green-600 dark:text-green-400 font-bold text-lg">
-                                    +{formatMoney(ingreso.monto)}
+                                    {valuesVisible ? `+${formatMoney(ingreso.monto)}` : "+***"}
                                   </TableCell>
                                 </TableRow>
                               ))}
@@ -838,7 +840,7 @@ export default function InformesPage() {
                                     </div>
                                     <div className="text-right">
                                       <div className={`text-2xl font-bold ${userMovimientos.balance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                        {userMovimientos.balance >= 0 ? '+' : ''}{formatMoney(userMovimientos.balance)}
+                                        {valuesVisible ? `${userMovimientos.balance >= 0 ? '+' : ''}${formatMoney(userMovimientos.balance)}` : "***"}
                                       </div>
                                       <div className="text-sm text-gray-500 dark:text-gray-400">
                                         Balance neto
@@ -855,7 +857,7 @@ export default function InformesPage() {
                                         <span className="font-semibold text-green-700 dark:text-green-300">Ingresos</span>
                                       </div>
                                       <div className="text-xl font-bold text-green-600 dark:text-green-400">
-                                        +{formatMoney(userMovimientos.totalIngresos)}
+                                        {valuesVisible ? `+${formatMoney(userMovimientos.totalIngresos)}` : "+***"}
                                       </div>
                                       <div className="text-sm text-green-600 dark:text-green-400">
                                         {userMovimientos.ingresos.length} movimiento{userMovimientos.ingresos.length !== 1 ? 's' : ''}
@@ -869,7 +871,7 @@ export default function InformesPage() {
                                         <span className="font-semibold text-red-700 dark:text-red-300">Egresos</span>
                                       </div>
                                       <div className="text-xl font-bold text-red-600 dark:text-red-400">
-                                        -{formatMoney(userMovimientos.totalEgresos)}
+                                        {valuesVisible ? `-${formatMoney(userMovimientos.totalEgresos)}` : "-***"}
                                       </div>
                                       <div className="text-sm text-red-600 dark:text-red-400">
                                         {userMovimientos.egresos.length} movimiento{userMovimientos.egresos.length !== 1 ? 's' : ''}
@@ -918,7 +920,7 @@ export default function InformesPage() {
                                                     </Badge>
                                                   </TableCell>
                                                   <TableCell className="text-right text-xs font-bold text-red-600 dark:text-red-400">
-                                                    -{formatMoney(egreso.monto)}
+                                                    {valuesVisible ? `-${formatMoney(egreso.monto)}` : "-***"}
                                                   </TableCell>
                                                 </TableRow>
                                               ))}
@@ -962,7 +964,7 @@ export default function InformesPage() {
                                                     </Badge>
                                                   </TableCell>
                                                   <TableCell className="text-right text-xs font-bold text-green-600 dark:text-green-400">
-                                                    +{formatMoney(ingreso.monto)}
+                                                    {valuesVisible ? `+${formatMoney(ingreso.monto)}` : "+***"}
                                                   </TableCell>
                                                 </TableRow>
                                               ))}
@@ -1127,7 +1129,7 @@ export default function InformesPage() {
                           />
                           <Tooltip 
                             formatter={(value, name, props) => {
-                              return [formatMoney(Number(value)), '💸 Gasto del día']
+                              return [valuesVisible ? formatMoney(Number(value)) : "***", '💸 Gasto del día']
                             }}
                             labelFormatter={(label) => `📅 Fecha: ${label}`}
                             contentStyle={{
@@ -1256,7 +1258,7 @@ export default function InformesPage() {
                                 <TableCell className="text-right">
                                   <div className="space-y-1">
                                     <div className="font-bold text-lg text-orange-600 dark:text-orange-400">
-                                      {formatMoney(pago.saldoPendiente)}
+                                      {valuesVisible ? formatMoney(pago.saldoPendiente) : "***"}
                                     </div>
                                     {pago.porcentajePagado > 0 && (
                                       <div className="text-sm text-gray-500 dark:text-gray-400">
