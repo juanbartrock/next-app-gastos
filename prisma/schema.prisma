@@ -73,6 +73,7 @@ model User {
   pagosSuscripcionMP        PagoSuscripcionMP[]
   configuracionMercadoPago  ConfiguracionMercadoPago?
   usosCodigosPromocionales UsoCodigoPromocional[]
+  presupuestoImputaciones   PresupuestoImputacion[] @relation("PresupuestoImputacionUsuario")
 }
 
 model VerificationToken {
@@ -92,6 +93,7 @@ model Grupo {
   adminId     String
   admin       User           @relation("GrupoAdmin", fields: [adminId], references: [id])
   miembros    GrupoMiembro[]
+  presupuestos Presupuesto[]
 }
 
 model GrupoMiembro {
@@ -133,6 +135,7 @@ model Gasto {
   detalles                 GastoDetalle[]
   pagoTarjeta              PagoTarjeta?              @relation("PagoTarjetaGasto")
   comprobanteTransferencia ComprobanteTransferencia?
+  presupuestoImputaciones  PresupuestoImputacion[]
 }
 
 model Categoria {
@@ -152,6 +155,7 @@ model Categoria {
   gastos            Gasto[]
   gastosRecurrentes GastoRecurrente[]
   presupuestos      Presupuesto[]
+  presupuestoCategorias PresupuestoCategoria[]
 }
 
 model GastoRecurrente {
@@ -342,19 +346,62 @@ model PagoPrestamo {
 model Presupuesto {
   id          String    @id @default(cuid())
   nombre      String
+  descripcion String?
   monto       Float
   mes         Int
   año        Int
-  categoriaId Int
+  categoriaId Int?
   userId      String
+  grupoId     String?
+  tipo        String    @default("personal")
+  activo      Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   alertas     Alerta[]
-  categoria   Categoria @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  categoria   Categoria? @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   tareas      Tarea[]
+  grupo       Grupo?    @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  categorias  PresupuestoCategoria[]
+  imputaciones PresupuestoImputacion[]
 
   @@unique([userId, categoriaId, mes, año])
+}
+
+model PresupuestoCategoria {
+  id            String     @id @default(cuid())
+  presupuestoId String
+  categoriaId   Int
+  porcentaje    Float?     @default(100)
+  montoMaximo   Float?
+  activo        Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  presupuesto   Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+  categoria     Categoria   @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  
+  @@unique([presupuestoId, categoriaId])
+}
+
+model PresupuestoImputacion {
+  id              String     @id @default(cuid())
+  presupuestoId   String
+  gastoId         Int
+  montoImputado   Float
+  porcentajeGasto Float      @default(100)
+  comentario      String?
+  fechaImputacion DateTime   @default(now())
+  creadoPor       String
+  activo          Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  
+  presupuesto     Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+  gasto           Gasto       @relation(fields: [gastoId], references: [id], onDelete: Cascade)
+  usuario         User        @relation("PresupuestoImputacionUsuario", fields: [creadoPor], references: [id])
+  
+  @@unique([presupuestoId, gastoId])
 }
 
 model Servicio {

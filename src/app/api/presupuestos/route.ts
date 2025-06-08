@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     // Construir filtro basado en parámetros opcionales
     const filter: any = {
-      userId: session.user.id,
+      userId: session.user.id
     };
 
     if (mes !== null) filter.mes = mes;
@@ -31,6 +31,9 @@ export async function GET(request: NextRequest) {
       where: filter,
       include: {
         categoria: true,
+        user: {
+          select: { id: true, name: true, email: true }
+        }
       },
       orderBy: {
         createdAt: 'desc',
@@ -41,31 +44,140 @@ export async function GET(request: NextRequest) {
     const presupuestosConGastos = await Promise.all(
       presupuestos.map(async (presupuesto: any) => {
         let gastoActual = 0;
+        let usuariosParaCalcular: string[] = [session.user.id!]; // Por defecto, solo el usuario actual
+        
+        console.log(`🔍 Procesando presupuesto: ${presupuesto.nombre} - Tipo: ${presupuesto.tipo} - GrupoId: ${presupuesto.grupoId}`);
+        
+        // Calcular cuánto se gastó el mes anterior para comparar
+        let gastoMesAnterior = 0;
+        
+        // Obtener fechas del mes anterior
+        const fechaMesAnterior = new Date(presupuesto.año, presupuesto.mes - 2, 1); // mes-2 porque mes está en base 1
+        const añoMesAnterior = fechaMesAnterior.getFullYear();
+        const numeroMesAnterior = fechaMesAnterior.getMonth() + 1; // getMonth() devuelve base 0
+        
+        // Si es presupuesto grupal, obtener todos los miembros del grupo
+        if (presupuesto.tipo === 'grupal' && presupuesto.grupoId) {
+          try {
+            const miembrosGrupo = await prisma.grupoMiembro.findMany({
+              where: { grupoId: presupuesto.grupoId },
+              select: { userId: true }
+            });
+            
+            // Obtener todos los IDs de usuarios del grupo
+            const usuariosDelGrupo = miembrosGrupo.map(m => m.userId);
+            
+            if (usuariosDelGrupo.length > 0) {
+              usuariosParaCalcular = usuariosDelGrupo;
+            }
+            
+            console.log(`Presupuesto grupal ${presupuesto.nombre} - Usuarios para calcular:`, usuariosParaCalcular);
+          } catch (error) {
+            console.error('Error obteniendo miembros del grupo:', error);
+          }
+        }
         
         // Obtener gastos para el mes y año específicos en la categoría
         if (presupuesto.categoriaId) {
-          // Primero obtener todos los gastos de la categoría para el usuario
-          const todosLosGastos = await prisma.gasto.findMany({
-            where: {
-              userId: session.user.id,
-              categoriaId: presupuesto.categoriaId,
-              tipoTransaccion: 'expense',
-              tipoMovimiento: {
-                not: 'tarjeta'  // Excluir gastos de tipo tarjeta
+          try {
+            // Obtener todos los gastos de la categoría para los usuarios relevantes
+            const todosLosGastos = await prisma.gasto.findMany({
+              where: {
+                userId: { 
+                  in: usuariosParaCalcular 
+                },
+                categoriaId: presupuesto.categoriaId,
+                tipoTransaccion: 'expense',
+                tipoMovimiento: {
+                  not: 'tarjeta'  // Excluir gastos de tipo tarjeta
+                },
               },
-            },
-          });
-          
-          // Filtrar por fecha contable (fechaImputacion si existe, sino fecha)
-          const fechaInicio = new Date(presupuesto.año, presupuesto.mes - 1, 1);
-          const fechaFin = new Date(presupuesto.año, presupuesto.mes, 1);
-          
-          const gastosFiltrados = todosLosGastos.filter(gasto => {
-            const fechaContable = (gasto as any).fechaImputacion || gasto.fecha;
-            return fechaContable >= fechaInicio && fechaContable < fechaFin;
-          });
-          
-          gastoActual = gastosFiltrados.reduce((sum, gasto) => sum + gasto.monto, 0);
+              include: {
+                user: { select: { name: true } }
+              }
+            });
+            
+            console.log(`Presupuesto ${presupuesto.nombre} - Total gastos encontrados:`, todosLosGastos.length);
+            
+            // Filtrar por fecha contable (fechaImputacion si existe, sino fecha)
+            const fechaInicio = new Date(presupuesto.año, presupuesto.mes - 1, 1);
+            const fechaFin = new Date(presupuesto.año, presupuesto.mes, 1);
+            
+            const gastosFiltrados = todosLosGastos.filter(gasto => {
+              const fechaContable = (gasto as any).fechaImputacion || gasto.fecha;
+              return fechaContable >= fechaInicio && fechaContable < fechaFin;
+            });
+            
+            console.log(`Presupuesto ${presupuesto.nombre} - Gastos filtrados por fecha (${presupuesto.mes}/${presupuesto.año}):`, gastosFiltrados.length);
+            
+            gastoActual = gastosFiltrados.reduce((sum, gasto) => sum + gasto.monto, 0);
+            
+            // Debug información para presupuestos grupales
+            if (presupuesto.tipo === 'grupal') {
+              const gastosPorUsuario = gastosFiltrados.reduce((acc: any, gasto: any) => {
+                const userName = gasto.user?.name || 'Usuario sin nombre';
+                acc[userName] = (acc[userName] || 0) + gasto.monto;
+                return acc;
+              }, {});
+              
+              console.log(`Presupuesto grupal ${presupuesto.nombre} - Resumen:`, {
+                totalUsuarios: usuariosParaCalcular.length,
+                totalGastos: gastosFiltrados.length,
+                gastoActual,
+                gastosPorUsuario
+              });
+            }
+          } catch (error) {
+            console.error(`Error calculando gastos para presupuesto ${presupuesto.nombre}:`, error);
+          }
+        }
+        
+        // Calcular cuánto se gastó el mes anterior en la misma categoría
+        let comparacionMesAnterior = null;
+        if (presupuesto.categoriaId) {
+          try {
+            // Calcular gastos reales del mes anterior
+            const gastosDelMesAnterior = await prisma.gasto.findMany({
+              where: {
+                userId: { 
+                  in: usuariosParaCalcular 
+                },
+                categoriaId: presupuesto.categoriaId,
+                tipoTransaccion: 'expense',
+                tipoMovimiento: {
+                  not: 'tarjeta'
+                },
+              }
+            });
+            
+            // Filtrar por fechas del mes anterior
+            const inicioMesAnterior = new Date(añoMesAnterior, numeroMesAnterior - 1, 1);
+            const finMesAnterior = new Date(añoMesAnterior, numeroMesAnterior, 1);
+            
+            const gastosDelMesAnteriorFiltrados = gastosDelMesAnterior.filter(gasto => {
+              const fechaContable = (gasto as any).fechaImputacion || gasto.fecha;
+              return fechaContable >= inicioMesAnterior && fechaContable < finMesAnterior;
+            });
+            
+            gastoMesAnterior = gastosDelMesAnteriorFiltrados.reduce((sum, gasto) => sum + gasto.monto, 0);
+            
+            // Comparar gasto del mes anterior con presupuesto actual
+            const diferencia = gastoMesAnterior - presupuesto.monto;
+            
+            comparacionMesAnterior = {
+              gastoMesAnterior: gastoMesAnterior,
+              presupuestoActual: presupuesto.monto,
+              diferencia: diferencia,
+              color: gastoMesAnterior <= presupuesto.monto ? 'green' : 'red',
+              añoMesAnterior: añoMesAnterior,
+              numeroMesAnterior: numeroMesAnterior
+            };
+            
+            console.log(`📊 Comparación simple para ${presupuesto.nombre}: Mes anterior: $${gastoMesAnterior}, Presupuesto actual: $${presupuesto.monto}`);
+            
+          } catch (error) {
+            console.error(`Error calculando gasto mes anterior para ${presupuesto.nombre}:`, error);
+          }
         }
         
         return {
@@ -73,6 +185,10 @@ export async function GET(request: NextRequest) {
           gastoActual,
           porcentajeConsumido: presupuesto.monto > 0 ? (gastoActual / presupuesto.monto) * 100 : 0,
           disponible: presupuesto.monto - gastoActual,
+          esGrupal: presupuesto.tipo === 'grupal',
+          tipoDescripcion: presupuesto.tipo === 'grupal' ? 'Grupal' : 'Personal',
+          // NUEVA: Comparación con mes anterior
+          comparacionMesAnterior: comparacionMesAnterior
         };
       })
     );
@@ -93,35 +209,84 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
     
-    const { nombre, monto, categoriaId, mes, año } = await request.json();
+    const { nombre, descripcion, monto, categoriaId, mes, año, tipo, grupoId, categorias } = await request.json();
     
-    // Verificar si ya existe un presupuesto para esta categoría, mes y año
+    // Validaciones básicas
+    if (!nombre || !monto || !mes || !año) {
+      return NextResponse.json(
+        { error: 'Nombre, monto, mes y año son obligatorios' },
+        { status: 400 }
+      );
+    }
+    
+    // Validar que si es grupal, tenga grupoId
+    if (tipo === 'grupal' && !grupoId) {
+      return NextResponse.json(
+        { error: 'Para presupuestos grupales debe seleccionar un grupo' },
+        { status: 400 }
+      );
+    }
+    
+    // Validar que el grupo existe y el usuario pertenece a él (si es grupal)
+    if (tipo === 'grupal' && grupoId) {
+      const miembroGrupo = await prisma.grupoMiembro.findFirst({
+        where: {
+          grupoId: grupoId,
+          userId: session.user.id!
+        }
+      });
+      
+      if (!miembroGrupo) {
+        return NextResponse.json(
+          { error: 'No tienes permisos para crear presupuestos en este grupo' },
+          { status: 403 }
+        );
+      }
+    }
+    
+    // Verificar si ya existe un presupuesto similar
     const existingBudget = await prisma.presupuesto.findFirst({
       where: {
-        userId: session.user.id,
-        categoriaId,
-        mes,
-        año,
+        nombre: nombre,
+        mes: mes,
+        año: año,
+        userId: session.user.id
       },
     });
     
     if (existingBudget) {
       return NextResponse.json(
-        { error: 'Ya existe un presupuesto para esta categoría en el período especificado' },
+        { error: 'Ya existe un presupuesto con ese nombre para este período' },
         { status: 400 }
       );
     }
     
+    // Crear el presupuesto base (simplificado)
+    const datosPresupuesto: any = {
+      nombre,
+      monto,
+      categoriaId: categoriaId || null,
+      mes,
+      año,
+      userId: session.user.id!,
+    };
+    
+    // Agregar campos adicionales si están disponibles
+    if (descripcion) datosPresupuesto.descripcion = descripcion;
+    if (tipo) datosPresupuesto.tipo = tipo;
+    if (tipo === 'grupal' && grupoId) datosPresupuesto.grupoId = grupoId;
+    
     const presupuesto = await prisma.presupuesto.create({
-      data: {
-        nombre,
-        monto,
-        categoriaId,
-        mes,
-        año,
-        userId: session.user.id,
-      },
+      data: datosPresupuesto,
+      include: {
+        categoria: true,
+        user: {
+          select: { id: true, name: true, email: true }
+        }
+      }
     });
+    
+    console.log(`✅ Presupuesto creado: ${presupuesto.nombre} - Tipo: ${(presupuesto as any).tipo || 'personal'}${(presupuesto as any).grupoId ? ` - Grupo: ${(presupuesto as any).grupoId}` : ''}`);
      
     return NextResponse.json(presupuesto);
   } catch (error) {

@@ -49,7 +49,8 @@ export type LimitKey = keyof typeof PLAN_LIMITS['gratuito']
 // ✅ OBTENER PLAN ACTUAL DEL USUARIO
 export async function getUserPlan(userId: string): Promise<PlanType> {
   try {
-    const suscripcion = await prisma.suscripcion.findFirst({
+    // Usar any temporalmente para evitar problemas de tipos hasta que se regenere Prisma
+    const suscripcion = await (prisma as any).suscripcion.findFirst({
       where: {
         userId: userId,
         estado: 'activa'
@@ -58,7 +59,7 @@ export async function getUserPlan(userId: string): Promise<PlanType> {
         plan: true
       },
       orderBy: {
-        fechaCreacion: 'desc'
+        createdAt: 'desc'
       }
     })
 
@@ -161,7 +162,7 @@ export async function getCurrentUsage(userId: string, limitType: LimitKey): Prom
         })
         
       case 'consultas_ia_mes':
-        const usoMensual = await prisma.usoMensual.findUnique({
+        const usoMensual = await (prisma as any).usoMensual.findUnique({
           where: {
             userId_año_mes: {
               userId: userId,
@@ -225,7 +226,7 @@ export async function incrementUsage(userId: string, limitType: LimitKey, amount
     switch (limitType) {
       case 'consultas_ia_mes':
         // Incrementar contador de consultas IA
-        await prisma.usoMensual.upsert({
+        await (prisma as any).usoMensual.upsert({
           where: {
             userId_año_mes: {
               userId: userId,
@@ -249,7 +250,7 @@ export async function incrementUsage(userId: string, limitType: LimitKey, amount
         
       case 'transacciones_mes':
         // Incrementar contador de transacciones
-        await prisma.usoMensual.upsert({
+        await (prisma as any).usoMensual.upsert({
           where: {
             userId_año_mes: {
               userId: userId,
