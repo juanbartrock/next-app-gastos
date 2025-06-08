@@ -34,34 +34,42 @@ model Session {
 }
 
 model User {
-  id                   String                @id @default(cuid())
-  name                 String?
-  email                String?               @unique
-  emailVerified        DateTime?
-  image                String?
-  password             String?
-  phoneNumber          String?
-  planId               String?
-  isAdmin              Boolean               @default(false)
-  accounts             Account[]
-  alertas              Alerta[]
-  configuracionAlertas ConfiguracionAlerta[]
-  financiaciones       Financiacion[]
-  gastos               Gasto[]
-  gastosRecurrentes    GastoRecurrente[]
-  gruposAdmin          Grupo[]               @relation("GrupoAdmin")
-  grupos               GrupoMiembro[]
-  inversiones          Inversion[]
-  pagosTarjeta         PagoTarjeta[]         // Nueva relación
-  prestamos            Prestamo[]
-  presupuestos         Presupuesto[]
-  servicios            Servicio[]
-  sessions             Session[]
-  tareas               Tarea[]
-  tiposInversion       TipoInversion[]
+  id                        String                     @id @default(cuid())
+  name                      String?
+  email                     String?                    @unique
+  emailVerified             DateTime?
+  image                     String?
+  password                  String?
+  phoneNumber               String?
+  planId                    String?
+  isAdmin                   Boolean                    @default(false)
+  estado                    String?                    @default("activo")
+  fechaRegistro             DateTime?                  @default(now())
+  rolSistema                String?                    @default("usuario")
+  ultimaActividad           DateTime?
+  accounts                  Account[]
+  alertas                   Alerta[]
+  auditoriasAdmin           AuditoriaAdmin[]
+  categoriasPersonales      Categoria[]                @relation("CategoriasPersonales")
+  configuracionAlertas      ConfiguracionAlerta[]
+  financiaciones            Financiacion[]
+  gastos                    Gasto[]
+  gastosRecurrentes         GastoRecurrente[]
+  gruposAdmin               Grupo[]                    @relation("GrupoAdmin")
+  grupos                    GrupoMiembro[]
+  inversiones               Inversion[]
+  pagosTarjeta              PagoTarjeta[]
+  prestamos                 Prestamo[]
+  presupuestos              Presupuesto[]
+  servicios                 Servicio[]
+  sessions                  Session[]
+  suscripciones             Suscripcion[]
+  tareas                    Tarea[]
+  tiposInversion            TipoInversion[]
+  plan                      Plan?                      @relation(fields: [planId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usosMensuales             UsoMensual[]
+  comprobantesPendientes    ComprobantePendiente[]
   comprobantesTransferencia ComprobanteTransferencia[]
-  comprobantesPendientes ComprobantePendiente[]
-  plan                 Plan?                 @relation(fields: [planId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model VerificationToken {
@@ -100,27 +108,27 @@ model GrupoMiembro {
 }
 
 model Gasto {
-  id                Int              @id @default(autoincrement())
-  concepto          String
-  monto             Float
-  fecha             DateTime         @default(now())
-  categoria         String
-  tipoTransaccion   String           @default("expense")
-  tipoMovimiento    String           @default("efectivo")
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  userId            String
-  categoriaId       Int?
-  incluirEnFamilia  Boolean          @default(true)
-  fechaImputacion   DateTime?
-  gastoRecurrenteId Int?
-  origenComprobante String?
-  financiacion      Financiacion?
-  pagoTarjeta       PagoTarjeta?     @relation("PagoTarjetaGasto")
-  categoriaRel      Categoria?       @relation(fields: [categoriaId], references: [id])
-  gastoRecurrente   GastoRecurrente? @relation("GastoGenerado", fields: [gastoRecurrenteId], references: [id])
-  user              User             @relation(fields: [userId], references: [id])
-  detalles          GastoDetalle[]
+  id                       Int                       @id @default(autoincrement())
+  concepto                 String
+  monto                    Float
+  fecha                    DateTime                  @default(now())
+  categoria                String
+  tipoTransaccion          String                    @default("expense")
+  tipoMovimiento           String                    @default("efectivo")
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  userId                   String
+  categoriaId              Int?
+  incluirEnFamilia         Boolean                   @default(true)
+  fechaImputacion          DateTime?
+  gastoRecurrenteId        Int?
+  origenComprobante        String?
+  financiacion             Financiacion?
+  categoriaRel             Categoria?                @relation(fields: [categoriaId], references: [id])
+  gastoRecurrente          GastoRecurrente?          @relation("GastoGenerado", fields: [gastoRecurrenteId], references: [id])
+  user                     User                      @relation(fields: [userId], references: [id])
+  detalles                 GastoDetalle[]
+  pagoTarjeta              PagoTarjeta?              @relation("PagoTarjetaGasto")
   comprobanteTransferencia ComprobanteTransferencia?
 }
 
@@ -131,6 +139,13 @@ model Categoria {
   grupo_categoria   String?
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
+  colorHex          String?
+  icono             String?
+  userId            String?           // Para categorías personales (NULL = genérica del sistema)
+  esPrivada         Boolean           @default(false)  // Solo visible para el creador
+  
+  // Relaciones
+  propietario       User?             @relation("CategoriasPersonales", fields: [userId], references: [id], onDelete: Cascade)
   gastos            Gasto[]
   gastosRecurrentes GastoRecurrente[]
   presupuestos      Presupuesto[]
@@ -161,62 +176,59 @@ model GastoRecurrente {
 }
 
 model Financiacion {
-  id                 Int                      @id @default(autoincrement())
-  gastoId            Int                      @unique
-  userId             String
-  cantidadCuotas     Int
-  cuotasPagadas      Int                      @default(0)
-  cuotasRestantes    Int
-  montoCuota         Float
-  fechaPrimerPago    DateTime?
-  fechaProximoPago   DateTime?
-  diaPago            Int?
-  createdAt          DateTime                 @default(now())
-  updatedAt          DateTime                 @updatedAt
-  gasto              Gasto                    @relation(fields: [gastoId], references: [id], onDelete: Cascade)
-  user               User                     @relation(fields: [userId], references: [id])
-  cuotasVinculadas   CuotaVinculada[]         // Cuotas ya pagadas
-  tarjetaInfo        FinanciacionTarjeta?     // Información específica de tarjeta (opcional)
+  id               Int                  @id @default(autoincrement())
+  gastoId          Int                  @unique
+  userId           String
+  cantidadCuotas   Int
+  cuotasPagadas    Int                  @default(0)
+  cuotasRestantes  Int
+  montoCuota       Float
+  fechaPrimerPago  DateTime?
+  fechaProximoPago DateTime?
+  diaPago          Int?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  cuotasVinculadas CuotaVinculada[]
+  gasto            Gasto                @relation(fields: [gastoId], references: [id], onDelete: Cascade)
+  user             User                 @relation(fields: [userId], references: [id])
+  tarjetaInfo      FinanciacionTarjeta?
 }
 
 model FinanciacionTarjeta {
-  id                Int       @id @default(autoincrement())
-  financiacionId    Int       @unique // Relación 1:1 con financiacion existente
-  tarjetaEspecifica String    // "Visa Macro", "Visa Ciudad", "Mastercard BBVA"
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  
+  id                Int          @id @default(autoincrement())
+  financiacionId    Int          @unique
+  tarjetaEspecifica String
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
   financiacion      Financiacion @relation(fields: [financiacionId], references: [id], onDelete: Cascade)
 }
 
 model PagoTarjeta {
-  id                String              @id @default(cuid())
-  concepto          String              // "Pago Tarjeta Visa Macro"
+  id                String           @id @default(cuid())
+  concepto          String
   monto             Float
-  fecha             DateTime            @default(now())
-  tipoMovimiento    String              @default("digital")
-  tarjetaEspecifica String              // "Visa Macro", "Visa Ciudad", "Mastercard BBVA"
+  fecha             DateTime         @default(now())
+  tipoMovimiento    String           @default("digital")
+  tarjetaEspecifica String
   userId            String
-  gastoId           Int                 @unique // Vinculado al gasto real del pago
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  
-  gasto             Gasto               @relation("PagoTarjetaGasto", fields: [gastoId], references: [id], onDelete: Cascade)
-  user              User                @relation(fields: [userId], references: [id])
-  cuotasVinculadas  CuotaVinculada[]    // Cuotas que se pagaron con este pago
+  gastoId           Int              @unique
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  cuotasVinculadas  CuotaVinculada[]
+  gasto             Gasto            @relation("PagoTarjetaGasto", fields: [gastoId], references: [id], onDelete: Cascade)
+  user              User             @relation(fields: [userId], references: [id])
 }
 
 model CuotaVinculada {
-  id               String         @id @default(cuid())
+  id               String       @id @default(cuid())
   financiacionId   Int
   pagoTarjetaId    String
-  montoCuota       Float          // Monto de esta cuota específica
-  fechaVinculacion DateTime       @default(now())
-  createdAt        DateTime       @default(now())
-  
-  financiacion     Financiacion   @relation(fields: [financiacionId], references: [id], onDelete: Cascade)
-  pagoTarjeta      PagoTarjeta    @relation(fields: [pagoTarjetaId], references: [id], onDelete: Cascade)
-  
+  montoCuota       Float
+  fechaVinculacion DateTime     @default(now())
+  createdAt        DateTime     @default(now())
+  financiacion     Financiacion @relation(fields: [financiacionId], references: [id], onDelete: Cascade)
+  pagoTarjeta      PagoTarjeta  @relation(fields: [pagoTarjetaId], references: [id], onDelete: Cascade)
+
   @@unique([financiacionId, pagoTarjetaId])
 }
 
@@ -228,7 +240,15 @@ model Plan {
   precioMensual   Float?
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @default(now()) @updatedAt
+  activo          Boolean             @default(true)
+  colorHex        String?
+  features        String?
+  limitaciones    Json?
+  ordenDisplay    Int?                @default(0)
+  trialDias       Int?                @default(0)
   funcionalidades FuncionalidadPlan[]
+  limites         LimitePlan[]
+  suscripciones   Suscripcion[]
   usuarios        User[]
 }
 
@@ -538,6 +558,163 @@ model ConfiguracionAlerta {
   @@index([userId, habilitado])
 }
 
+model ComprobanteTransferencia {
+  id                  String    @id @default(cuid())
+  userId              String
+  nombreArchivo       String
+  tipoArchivo         String
+  tamanioArchivo      Int
+  rutaArchivo         String?
+  fecha               DateTime
+  monto               Float
+  moneda              String    @default("ARS")
+  bancoEmisor         String?
+  cuentaOrigen        String?
+  cuentaDestino       String?
+  cbuOrigen           String?
+  cbuDestino          String?
+  aliasOrigen         String?
+  aliasDestino        String?
+  concepto            String?
+  numeroOperacion     String?
+  comision            Float?    @default(0)
+  estadoProcesamiento String    @default("pendiente")
+  confianzaExtraccion Float?
+  erroresDetectados   String?
+  datosOriginalesOCR  String?
+  gastoGeneradoId     Int?      @unique
+  fechaSubida         DateTime  @default(now())
+  fechaProcesado      DateTime?
+  fechaDescartado     DateTime?
+  gastoGenerado       Gasto?    @relation(fields: [gastoGeneradoId], references: [id])
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, estadoProcesamiento])
+  @@index([userId, fechaSubida])
+  @@map("comprobantes_transferencia")
+}
+
+model ComprobantePendiente {
+  id                     String    @id @default(cuid())
+  userId                 String
+  nombreArchivo          String
+  tipoDetectado          String
+  confianzaClasificacion Float
+  contenidoBase64        String
+  tamaño                Int
+  metadatos              Json?
+  estado                 String    @default("pendiente")
+  datosExtraidos         Json?
+  errorProcesamiento     String?
+  fechaSubida            DateTime  @default(now())
+  fechaProcesado         DateTime?
+  fechaConfirmado        DateTime?
+  fechaDescartado        DateTime?
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, estado])
+  @@index([userId, fechaSubida])
+  @@index([estado, fechaSubida])
+  @@map("comprobantes_pendientes")
+}
+
+model AlertaExecution {
+  id         String   @id @default(cuid())
+  type       String
+  executedAt DateTime
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([type, executedAt])
+  @@index([executedAt])
+  @@map("alerta_executions")
+}
+
+model Suscripcion {
+  id               String    @id @default(cuid())
+  userId           String
+  planId           String
+  fechaInicio      DateTime  @default(now())
+  fechaVencimiento DateTime?
+  estado           String    @default("activa")
+  metodoPago       String?
+  referenciaPago   String?
+  autoRenovacion   Boolean   @default(true)
+  montoMensual     Float?
+  montoTotal       Float?
+  fechaProximoPago DateTime?
+  intentosFallidos Int       @default(0)
+  observaciones    String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  plan             Plan      @relation(fields: [planId], references: [id], onDelete: Cascade)
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, estado])
+  @@index([estado, fechaVencimiento])
+  @@index([planId, estado])
+}
+
+model LimitePlan {
+  id           String   @id @default(cuid())
+  planId       String
+  nombreLimite String
+  valorLimite  Int
+  tipo         String
+  unidad       String?
+  descripcion  String?
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  plan         Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, nombreLimite])
+  @@index([planId, activo])
+}
+
+model AuditoriaAdmin {
+  id              String   @id @default(cuid())
+  adminId         String
+  accion          String
+  entidadAfectada String
+  entidadId       String
+  datosAnteriores Json?
+  datosNuevos     Json?
+  descripcion     String?
+  ipAddress       String?
+  userAgent       String?
+  resultadoExito  Boolean  @default(true)
+  errorMensaje    String?
+  fechaAccion     DateTime @default(now())
+  admin           User     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId, fechaAccion])
+  @@index([accion, fechaAccion])
+  @@index([entidadAfectada, entidadId])
+}
+
+model UsoMensual {
+  id                   String    @id @default(cuid())
+  userId               String
+  año                 Int
+  mes                  Int
+  transaccionesCreadas Int       @default(0)
+  alertasGeneradas     Int       @default(0)
+  exportacionesCSV     Int       @default(0)
+  consultasIA          Int       @default(0)
+  storageUsadoMB       Int       @default(0)
+  sesionesInicidas     Int       @default(0)
+  tiempoAppMinutos     Int       @default(0)
+  fechaUltimaActividad DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, año, mes])
+  @@index([userId, año, mes])
+  @@index([año, mes])
+}
+
 enum RolFamiliar {
   ADMINISTRADOR_FAMILIAR
   MIEMBRO_COMPLETO
@@ -584,86 +761,30 @@ enum FrecuenciaNotificacion {
   PERSONALIZADA
 }
 
-model ComprobanteTransferencia {
-  id              String   @id @default(cuid())
-  userId          String
-  
-  nombreArchivo   String
-  tipoArchivo     String
-  tamanioArchivo  Int
-  rutaArchivo     String?
-  
-  fecha           DateTime
-  monto           Float
-  moneda          String   @default("ARS")
-  bancoEmisor     String?
-  cuentaOrigen    String?
-  cuentaDestino   String?
-  cbuOrigen       String?
-  cbuDestino      String?
-  aliasOrigen     String?
-  aliasDestino    String?
-  concepto        String?
-  numeroOperacion String?
-  comision        Float?   @default(0)
-  
-  estadoProcesamiento String @default("pendiente")
-  confianzaExtraccion Float?
-  erroresDetectados   String?
-  datosOriginalesOCR  String?
-  
-  gastoGeneradoId Int?     @unique
-  gastoGenerado   Gasto?   @relation(fields: [gastoGeneradoId], references: [id])
-  
-  fechaSubida     DateTime @default(now())
-  fechaProcesado  DateTime?
-  fechaDescartado DateTime?
-  
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@map("comprobantes_transferencia")
-  @@index([userId, estadoProcesamiento])
-  @@index([userId, fechaSubida])
+enum RolSistema {
+  USUARIO
+  ADMIN_GRUPO
+  ADMIN_GENERAL
 }
 
-model ComprobantePendiente {
-  id                     String   @id @default(cuid())
-  userId                 String
-  
-  nombreArchivo          String
-  tipoDetectado          String   // 'transferencia', 'ticket', 'servicio', 'resumen_tarjeta', 'desconocido'
-  confianzaClasificacion Float    // 0-100
-  contenidoBase64        String   @db.Text
-  tamaño                 Int
-  metadatos              Json?
-  
-  estado                 String   @default("pendiente") // 'pendiente', 'procesando', 'confirmado', 'descartado'
-  
-  // Datos extraídos temporalmente (JSON)
-  datosExtraidos         Json?
-  errorProcesamiento     String?
-  
-  fechaSubida            DateTime @default(now())
-  fechaProcesado         DateTime?
-  fechaConfirmado        DateTime?
-  fechaDescartado        DateTime?
-  
-  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@map("comprobantes_pendientes")
-  @@index([userId, estado])
-  @@index([userId, fechaSubida])
-  @@index([estado, fechaSubida])
+enum EstadoUsuario {
+  ACTIVO
+  SUSPENDIDO
+  INACTIVO
+  BLOQUEADO
 }
 
-model AlertaExecution {
-  id          String   @id @default(cuid())
-  type        String   // 'SMART_TRIGGER', 'CRON_JOB', 'MANUAL'
-  executedAt  DateTime
-  metadata    Json?    // Configuración y datos adicionales
-  createdAt   DateTime @default(now())
+enum EstadoSuscripcion {
+  ACTIVA
+  VENCIDA
+  CANCELADA
+  SUSPENDIDA
+  TRIAL
+}
 
-  @@map("alerta_executions")
-  @@index([type, executedAt])
-  @@index([executedAt])
+enum TipoLimite {
+  CANTIDAD
+  STORAGE
+  FUNCIONALIDAD
+  TIEMPO
 }

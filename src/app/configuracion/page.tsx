@@ -12,7 +12,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { CategoriasManager } from "@/components/admin/CategoriasManager";
+import { CategoriasFamiliaresManager } from "@/components/admin/CategoriasFamiliaresManager";
 
 export default function ConfiguracionPage() {
   const { data: session, status } = useSession();
@@ -262,33 +262,36 @@ export default function ConfiguracionPage() {
                   {loadingAdmin ? (
                     <div className="py-8 text-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                      <p className="text-muted-foreground">Verificando permisos...</p>
+                      <p className="text-muted-foreground">Cargando configuración...</p>
                     </div>
-                  ) : userIsAdmin ? (
+                  ) : (
                     <>
                       <div className="flex items-center gap-2 mb-4">
-                        <Shield className="h-5 w-5 text-amber-500" />
-                        <span className="text-lg font-semibold">Panel de Administración</span>
-                        <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
-                          Solo Administradores
-                        </span>
+                        <Settings className="h-5 w-5 text-blue-500" />
+                        <span className="text-lg font-semibold">Gestión de Categorías</span>
                       </div>
-                      <CategoriasManager />
+                      <CategoriasFamiliaresManager />
+                      
+                      {userIsAdmin && (
+                        <>
+                          <div className="border-t pt-6">
+                            <div className="flex items-center gap-2 mb-4">
+                              <Shield className="h-5 w-5 text-amber-500" />
+                              <span className="text-lg font-semibold">Panel de Administración</span>
+                              <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
+                                Solo Administradores
+                              </span>
+                            </div>
+                            <div className="bg-amber-50 p-4 rounded-lg">
+                              <p className="text-sm text-amber-700">
+                                🚧 <strong>Panel de Administración General</strong> estará disponible próximamente.
+                                Incluirá gestión de usuarios, planes y analytics del sistema.
+                              </p>
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </>
-                  ) : (
-                    <div className="py-8 text-center">
-                      <Settings className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-medium mb-2">Configuración General</h3>
-                      <p className="text-muted-foreground mb-4">
-                        Las opciones de configuración general estarán disponibles próximamente.
-                      </p>
-                      <div className="bg-blue-50 p-4 rounded-lg">
-                        <p className="text-sm text-blue-700">
-                          💡 <strong>¿Eres administrador?</strong> Si deberías tener acceso a funciones administrativas, 
-                          contacta al administrador del sistema para que verifique tus permisos.
-                        </p>
-                      </div>
-                    </div>
                   )}
                 </div>
               </TabsContent>

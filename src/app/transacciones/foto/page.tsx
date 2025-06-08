@@ -99,19 +99,20 @@ export default function FotoTicketPage() {
   useEffect(() => {
     const cargarCategorias = async () => {
       try {
-        const res = await fetch("/api/categorias")
+                  const res = await fetch("/api/categorias/familiares")
         if (res.ok) {
           const data = await res.json()
-          setCategorias(data)
+          const categoriasArray = data.categorias || data
+          setCategorias(categoriasArray)
           // Seleccionar por defecto la categoría de Alimentación o la primera si no existe
-          const alimentacion = data.find((cat: Categoria) => 
+          const alimentacion = categoriasArray.find((cat: Categoria) => 
             cat.descripcion.toLowerCase() === "alimentación" || 
             cat.descripcion.toLowerCase() === "alimentacion")
           
           if (alimentacion) {
             setCategoriaSeleccionada(alimentacion.id.toString())
-          } else if (data.length > 0) {
-            setCategoriaSeleccionada(data[0].id.toString())
+          } else if (categoriasArray.length > 0) {
+            setCategoriaSeleccionada(categoriasArray[0].id.toString())
           }
         }
       } catch (error) {

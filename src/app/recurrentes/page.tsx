@@ -300,10 +300,15 @@ export default function RecurrentesPage() {
       setLoading(true)
       
       // Obtener categorías
-      const respCategorias = await fetch('/api/categorias')
-      if (respCategorias.ok) {
-        const datos = await respCategorias.json()
-        setCategorias(datos)
+              const respCategorias = await fetch('/api/categorias/familiares')
+              if (respCategorias.ok) {
+          const datos = await respCategorias.json()
+          // Combinar categorías genéricas y familiares
+          const todasLasCategorias = [
+            ...(datos.categoriasGenericas || []),
+            ...(datos.categoriasFamiliares || [])
+          ]
+          setCategorias(todasLasCategorias)
       }
       
       // Obtener gastos recurrentes

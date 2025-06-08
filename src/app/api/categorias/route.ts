@@ -1,97 +1,106 @@
-import { NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { options } from '@/app/api/auth/[...nextauth]/options'
-import { isAdmin } from '@/lib/auth-utils'
+import { options as authOptions } from '@/app/api/auth/[...nextauth]/options'
+import prisma from '@/lib/prisma'
+import { z } from 'zod'
 
-// GET - Obtener todas las categorías
-export async function GET() {
+// Schema de validación para crear categorías
+const categoriaSchema = z.object({
+  descripcion: z.string().min(1, 'La descripción es requerida'),
+  colorHex: z.string().optional(),
+  icono: z.string().optional(),
+  grupo_categoria: z.string().optional(),
+  esGenerica: z.boolean().default(false),
+  activa: z.boolean().default(true),
+  tipo: z.string().default('grupo')
+})
+
+// GET - Obtener todas las categorías (para testing)
+export async function GET(request: NextRequest) {
   try {
-    // Obtener categorías activas usando el cliente de Prisma en lugar de SQL directo
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    // Obtener todas las categorías ordenadas por tipo y descripción
     const categorias = await prisma.categoria.findMany({
       where: {
         status: true
       },
-      orderBy: {
-        descripcion: 'asc'
-      },
-      select: {
-        id: true,
-        descripcion: true,
-        grupo_categoria: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true
-      }
-    });
-    
+      orderBy: [
+        { descripcion: 'asc' }
+      ]
+    })
+
     return NextResponse.json(categorias)
+    
   } catch (error) {
     console.error('Error al obtener categorías:', error)
-    return NextResponse.json(
-      { error: 'Error al obtener las categorías' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }
 
-// POST - Crear una nueva categoría (solo admins)
-export async function POST(request: Request) {
+// POST - Crear nueva categoría (para testing de categorías de grupo)
+export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(options)
+    const session = await getServerSession(authOptions)
     
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "No autenticado" },
-        { status: 401 }
-      )
-    }
-    
-    // Verificar que el usuario sea administrador
-    const esAdmin = await isAdmin(session.user.id)
-    if (!esAdmin) {
-      return NextResponse.json(
-        { error: "Acceso denegado. Solo administradores pueden crear categorías" },
-        { status: 403 }
-      )
-    }
-    
-    const data = await request.json()
-    const { descripcion, grupo_categoria } = data
-    
-    if (!descripcion) {
-      return NextResponse.json(
-        { error: 'Falta el nombre de la categoría' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    // Crear la nueva categoría
-    const nuevaCategoria = await prisma.categoria.create({
-      data: {
-        descripcion,
-        grupo_categoria,
+    const body = await request.json()
+    const validatedData = categoriaSchema.parse(body)
+
+    // Verificar que no existe una categoría con el mismo nombre
+    const categoriaExistente = await prisma.categoria.findFirst({
+      where: {
+        descripcion: validatedData.descripcion,
         status: true
       }
     })
+
+    if (categoriaExistente) {
+      return NextResponse.json({ 
+        error: 'Ya existe una categoría con ese nombre' 
+      }, { status: 400 })
+    }
+
+    // Crear la nueva categoría con solo los campos disponibles
+    const nuevaCategoria = await prisma.categoria.create({
+      data: {
+        descripcion: validatedData.descripcion,
+        icono: validatedData.icono,
+        grupo_categoria: validatedData.grupo_categoria,
+        tipo: validatedData.tipo,
+        status: true,
+        adminCreadorId: session.user.id,
+        esGenerica: validatedData.esGenerica,
+        activa: validatedData.activa
+      }
+    })
+
+    return NextResponse.json(nuevaCategoria, { status: 201 })
     
-    return NextResponse.json(
-      { mensaje: 'Categoría creada con éxito', categoria: nuevaCategoria },
-      { status: 201 }
-    )
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ 
+        error: 'Datos inválidos', 
+        details: error.errors 
+      }, { status: 400 })
+    }
+
     console.error('Error al crear categoría:', error)
-    return NextResponse.json(
-      { error: 'Error al crear la categoría' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }
 
 // PUT - Actualizar una categoría existente (solo admins)
 export async function PUT(request: Request) {
   try {
-    const session = await getServerSession(options)
+    const session = await getServerSession(authOptions)
     
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -156,7 +165,7 @@ export async function PUT(request: Request) {
 // DELETE - Eliminar una categoría (marca como inactiva, solo admins)
 export async function DELETE(request: Request) {
   try {
-    const session = await getServerSession(options)
+    const session = await getServerSession(authOptions)
     
     if (!session?.user?.id) {
       return NextResponse.json(

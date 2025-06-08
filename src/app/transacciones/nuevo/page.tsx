@@ -253,10 +253,23 @@ export default function TransaccionesPage() {
 
   const fetchCategorias = async () => {
     try {
-      const response = await fetch('/api/categorias')
-      if (response.ok) {
-        const data = await response.json()
-        setCategorias(data)
+              const response = await fetch('/api/categorias/familiares')
+              if (response.ok) {
+          const data = await response.json()
+          console.log('🔧 DEBUG TransaccionesPage - Data recibida:', {
+            categorias: data.categorias?.length || 0,
+            categoriasGenericas: data.categoriasGenericas?.length || 0,
+            categoriasFamiliares: data.categoriasFamiliares?.length || 0,
+            muestra5: data.categoriasFamiliares?.slice(0, 5).map((c: any) => ({ id: c.id, descripcion: c.descripcion }))
+          })
+          
+          // Combinar categorías genéricas y familiares
+          const todasLasCategorias = [
+            ...(data.categoriasGenericas || []),
+            ...(data.categoriasFamiliares || [])
+          ]
+          console.log('🔧 DEBUG TransaccionesPage - Categorías combinadas:', todasLasCategorias.length)
+          setCategorias(todasLasCategorias)
       }
     } catch (error) {
       console.error('Error al cargar categorías:', error)

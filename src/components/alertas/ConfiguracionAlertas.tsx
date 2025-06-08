@@ -103,10 +103,10 @@ export function ConfiguracionAlertas() {
 
   const cargarCategorias = async () => {
     try {
-      const response = await fetch('/api/categorias')
+      const response = await fetch('/api/categorias/familiares')
       if (response.ok) {
         const data = await response.json()
-        setCategorias(data)
+        setCategorias(data.categorias || data)
       }
     } catch (error) {
       console.error('Error al cargar categorías:', error)

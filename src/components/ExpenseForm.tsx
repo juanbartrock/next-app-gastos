@@ -97,10 +97,17 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
     const fetchCategorias = async () => {
       try {
         setLoadingCategorias(true)
-        const response = await fetch("/api/categorias")
+        const response = await fetch("/api/categorias/familiares")
         if (response.ok) {
           const data = await response.json()
-          setCategorias(data)
+          
+          // Combinar categorías genéricas y familiares
+          const todasLasCategorias = [
+            ...(data.categoriasGenericas || []),
+            ...(data.categoriasFamiliares || [])
+          ]
+          
+          setCategorias(todasLasCategorias)
         }
       } catch (error) {
         console.error("Error al cargar categorías:", error)
@@ -408,23 +415,25 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
               {loadingCategorias ? (
                 <SelectItem value="loading" disabled>Cargando categorías...</SelectItem>
               ) : categorias.length > 0 ? (
-                categorias.map((categoria) => (
-                  <SelectItem key={categoria.id} value={categoria.id.toString()}>
-                    {categoria.descripcion}
-                    {categoria.grupo_categoria && (
-                      <span className="text-xs text-muted-foreground ml-2">
-                        ({categoria.grupo_categoria})
-                      </span>
-                    )}
-                  </SelectItem>
-                ))
+                categorias
+                  .sort((a, b) => a.descripcion.localeCompare(b.descripcion)) // ✅ Ordenamiento alfabético
+                  .map((categoria) => (
+                    <SelectItem key={categoria.id} value={categoria.id.toString()}>
+                      {categoria.descripcion}
+                      {categoria.grupo_categoria && (
+                        <span className="text-xs text-muted-foreground ml-2">
+                          ({categoria.grupo_categoria})
+                        </span>
+                      )}
+                    </SelectItem>
+                  ))
               ) : (
                 <>
-                  <SelectItem value="alimentacion">Alimentación</SelectItem>
-                  <SelectItem value="transporte">Transporte</SelectItem>
-                  <SelectItem value="servicios">Servicios</SelectItem>
-                  <SelectItem value="ocio">Ocio</SelectItem>
-                  <SelectItem value="otros">Otros</SelectItem>
+                  <SelectItem value="1">Alimentación</SelectItem>
+                  <SelectItem value="2">Transporte</SelectItem>
+                  <SelectItem value="3">Servicios</SelectItem>
+                  <SelectItem value="4">Ocio</SelectItem>
+                  <SelectItem value="5">Otros</SelectItem>
                 </>
               )}
             </SelectContent>
