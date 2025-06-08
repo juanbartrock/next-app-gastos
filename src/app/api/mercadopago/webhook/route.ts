@@ -5,6 +5,15 @@ import { MercadoPagoAR, MPSuscripciones } from '@/lib/mercadopago'
 // ✅ WEBHOOK MERCADOPAGO PARA SUSCRIPCIONES
 export async function POST(request: NextRequest) {
   try {
+    // Verificar si MercadoPago está habilitado
+    if (!MercadoPagoAR.isEnabled || !MercadoPagoAR.payment) {
+      console.log('⚠️ MercadoPago no configurado - webhook ignorado')
+      return NextResponse.json({ 
+        error: 'MercadoPago not configured', 
+        message: 'Configura MERCADOPAGO_ACCESS_TOKEN para habilitar esta funcionalidad'
+      }, { status: 503 })
+    }
+
     const body = await request.json()
     console.log('📬 Webhook MercadoPago recibido:', body)
     
@@ -208,7 +217,7 @@ async function procesarPagoRechazado(pago: any) {
     console.log('❌ Procesando pago rechazado:', pago.id)
     
     // Incrementar intentos fallidos
-    await prisma.suscripcion.update({
+    const suscripcionActualizada = await prisma.suscripcion.update({
       where: { id: pago.suscripcionId },
       data: {
         intentosFallidos: { increment: 1 }
@@ -216,11 +225,7 @@ async function procesarPagoRechazado(pago: any) {
     })
     
     // Si hay muchos intentos fallidos, suspender suscripción
-    const suscripcion = await prisma.suscripcion.findUnique({
-      where: { id: pago.suscripcionId }
-    })
-    
-    if (suscripcion && suscripcion.intentosFallidos >= 3) {
+    if (suscripcionActualizada.intentosFallidos >= 3) {
       await prisma.suscripcion.update({
         where: { id: pago.suscripcionId },
         data: { estado: 'suspendida' }
@@ -233,7 +238,13 @@ async function procesarPagoRechazado(pago: any) {
   }
 }
 
-// GET para verificación de MercadoPago
+// ✅ GET ENDPOINT PARA VERIFICAR ESTADO
 export async function GET() {
-  return NextResponse.json({ status: 'Webhook MercadoPago activo' })
+  return NextResponse.json({
+    status: 'available',
+    mercadopago_enabled: MercadoPagoAR.isEnabled,
+    message: MercadoPagoAR.isEnabled 
+      ? 'MercadoPago configurado correctamente' 
+      : 'MercadoPago no configurado - agrega MERCADOPAGO_ACCESS_TOKEN al .env'
+  })
 } 

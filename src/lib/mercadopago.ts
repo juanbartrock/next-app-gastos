@@ -1,25 +1,30 @@
 import { MercadoPagoConfig, Payment, Preference } from 'mercadopago'
 
-// ✅ CONFIGURACIÓN MERCADOPAGO ARGENTINA
+// ✅ CONFIGURACIÓN MERCADOPAGO ARGENTINA (OPCIONAL)
 const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN
 const publicKey = process.env.MERCADOPAGO_PUBLIC_KEY
 
-if (!accessToken) {
-  throw new Error('MERCADOPAGO_ACCESS_TOKEN no configurado en variables de entorno')
+// Solo inicializar si las variables están configuradas
+let client: MercadoPagoConfig | null = null
+let payment: Payment | null = null
+let preference: Preference | null = null
+
+if (accessToken) {
+  // Cliente de MercadoPago con configuración para Argentina
+  client = new MercadoPagoConfig({
+    accessToken: accessToken,
+    options: {
+      timeout: 5000, // 5 segundos timeout
+      idempotencyKey: undefined // Se configura por operación
+    }
+  })
+
+  // Instancias de APIs principales
+  payment = new Payment(client)
+  preference = new Preference(client)
+} else {
+  console.warn('⚠️ MERCADOPAGO_ACCESS_TOKEN no configurado - funcionalidades de MercadoPago deshabilitadas')
 }
-
-// Cliente de MercadoPago con configuración para Argentina
-const client = new MercadoPagoConfig({
-  accessToken: accessToken,
-  options: {
-    timeout: 5000, // 5 segundos timeout
-    idempotencyKey: undefined // Se configura por operación
-  }
-})
-
-// Instancias de APIs principales
-const payment = new Payment(client)
-const preference = new Preference(client)
 
 // ✅ CONFIGURACIÓN ARGENTINA ESPECÍFICA
 export const MercadoPagoAR = {
@@ -28,6 +33,9 @@ export const MercadoPagoAR = {
   preference,
   publicKey,
   
+  // Flag para verificar si está habilitado
+  isEnabled: !!accessToken,
+  
   // Configuración específica de Argentina
   config: {
     // Moneda argentina
@@ -35,10 +43,10 @@ export const MercadoPagoAR = {
     
     // URLs base (se completan en cada implementación)
     baseUrls: {
-      success: `${process.env.NEXTAUTH_URL}/mercadopago/success`,
-      failure: `${process.env.NEXTAUTH_URL}/mercadopago/failure`,
-      pending: `${process.env.NEXTAUTH_URL}/mercadopago/pending`,
-      webhook: `${process.env.NEXTAUTH_URL}/api/mercadopago/webhook`
+      success: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/mercadopago/success`,
+      failure: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/mercadopago/failure`,
+      pending: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/mercadopago/pending`,
+      webhook: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/mercadopago/webhook`
     },
     
     // Métodos de pago argentinos
@@ -103,7 +111,19 @@ export const MPSuscripciones = {
     añoFacturado: number
   }) {
     try {
+      if (!MercadoPagoAR.isEnabled || !MercadoPagoAR.preference) {
+        throw new Error('MercadoPago no está configurado')
+      }
+
       const referencia = `SUSCRIPCION_${datos.suscripcionId}_${datos.tipoPago}_${datos.mesFacturado}_${datos.añoFacturado}`
+      const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+      
+      console.log('🔧 Configuración MercadoPago:', {
+        baseUrl,
+        success_url: `${baseUrl}/suscripcion/exito`,
+        failure_url: `${baseUrl}/suscripcion/fallo`,
+        pending_url: `${baseUrl}/suscripcion/pendiente`
+      })
       
       const body = {
         items: [
@@ -131,16 +151,18 @@ export const MPSuscripciones = {
           installments: 1 // Suscripciones solo pago único
         },
         back_urls: {
-          success: `${process.env.NEXTAUTH_URL}/suscripcion/exito`,
-          failure: `${process.env.NEXTAUTH_URL}/suscripcion/fallo`,
-          pending: `${process.env.NEXTAUTH_URL}/suscripcion/pendiente`
+          success: `${baseUrl}/suscripcion/exito`,
+          failure: `${baseUrl}/suscripcion/fallo`,
+          pending: `${baseUrl}/suscripcion/pendiente`
         },
-        auto_return: 'approved',
+        // auto_return: 'approved', // Comentado para testing local
         binary_mode: false,
         statement_descriptor: 'App Gastos - Suscripcion'
       }
       
-      const response = await preference.create({ body })
+      console.log('📤 Body enviado a MercadoPago:', JSON.stringify(body, null, 2))
+      
+      const response = await MercadoPagoAR.preference.create({ body })
       return response
     } catch (error) {
       console.error('Error creando preferencia suscripción:', error)

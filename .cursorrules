@@ -5,6 +5,8 @@
 - **Stack**: Next.js 15, React 18, TypeScript, Prisma, PostgreSQL (Neon), NextAuth.js, OpenAI
 - **UI**: TailwindCSS, Shadcn/ui, Lucide React
 - **Base de datos**: PostgreSQL unificada (desarrollo y producción con Neon)
+- **🖥️ ENTORNO**: Windows 10/11 con PowerShell - NUNCA usar comandos de Linux/Bash
+- **🚨 PROHIBIDO**: Borrar, truncar o eliminar datos de la base de datos bajo cualquier circunstancia
 
 ## 🚀 HOJA DE RUTA DE DESARROLLO 
 > **Estado**: ✅ **PROYECTO 100% COMPLETADO** - 3 FASES + GASTOS RECURRENTES IMPLEMENTADOS
@@ -430,12 +432,25 @@ TWILIO_AUTH_TOKEN=... # Opcional para notificaciones
 ```
 
 ## Comandos de Desarrollo
-```bash
+```powershell
 npm run dev:full        # Iniciar con variables de entorno
 npm run studio          # Prisma Studio con variables
 npx prisma db push      # Sincronizar schema
 npx prisma generate     # Generar cliente
+
+# 🖥️ COMANDOS WINDOWS/POWERSHELL ESPECÍFICOS
+.\start-dev.ps1         # Script PowerShell de desarrollo
+Set-Location "ruta"     # Cambiar directorio (NO usar cd en algunos contextos)
+Get-ChildItem          # Listar archivos (NO usar ls)
 ```
+
+## 🚨 REGLAS CRÍTICAS DE SEGURIDAD
+
+### ❌ PROHIBICIONES ABSOLUTAS
+- **NUNCA borrar datos de la base de datos**: No usar DELETE, TRUNCATE, DROP
+- **NUNCA resetear la base de datos**: No usar reset, seed destructivos
+- **NUNCA usar comandos Linux**: No usar bash, sh, cd, ls en comandos
+- **NUNCA simular datos**: Solo trabajar con datos reales del usuario
 
 ## Patrones de Código Específicos
 
