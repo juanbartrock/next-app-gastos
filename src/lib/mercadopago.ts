@@ -157,7 +157,7 @@ export const MPSuscripciones = {
         },
         // auto_return: 'approved', // Comentado para testing local
         binary_mode: false,
-        statement_descriptor: 'App Gastos - Suscripcion'
+        statement_descriptor: 'FinanzIA - Suscripcion'
       }
       
       console.log('📤 Body enviado a MercadoPago:', JSON.stringify(body, null, 2))

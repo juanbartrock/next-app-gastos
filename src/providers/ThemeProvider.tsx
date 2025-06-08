@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react"
 
 // Clave para el localStorage
-const THEME_STORAGE_KEY = 'appGastos_theme'
+const THEME_STORAGE_KEY = 'finanzIA_theme'
 
 type Theme = 'dark' | 'light'
 

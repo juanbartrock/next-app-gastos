@@ -1,19 +1,33 @@
-# Cursor Rules para Aplicación de Gestión de Gastos
+# Cursor Rules para FinanzIA
 
 ## Información del Proyecto
-- **Aplicación**: Sistema de gestión de gastos personales y grupales
-- **Stack**: Next.js 15, React 18, TypeScript, Prisma, PostgreSQL (Neon), NextAuth.js, OpenAI
+- **Aplicación**: FinanzIA - Sistema de gestión de gastos personales y grupales con IA
+- **Stack**: Next.js 15, React 18, TypeScript, Prisma, PostgreSQL (Neon), NextAuth.js, OpenAI, MercadoPago
 - **UI**: TailwindCSS, Shadcn/ui, Lucide React
 - **Base de datos**: PostgreSQL unificada (desarrollo y producción con Neon)
+- **Pagos**: MercadoPago Argentina (Sandbox y Producción)
 - **🖥️ ENTORNO**: Windows 10/11 con PowerShell - NUNCA usar comandos de Linux/Bash
 - **🚨 PROHIBIDO**: Borrar, truncar o eliminar datos de la base de datos bajo cualquier circunstancia
 
 ## 🚀 HOJA DE RUTA DE DESARROLLO 
-> **Estado**: ✅ **PROYECTO 100% COMPLETADO** - 3 FASES + GASTOS RECURRENTES IMPLEMENTADOS
+> **Estado**: ✅ **PROYECTO 100% COMPLETADO + MERCADOPAGO INTEGRADO** - 3 FASES + GASTOS RECURRENTES + PAGOS
 > 
-> **Referencia**: Ver `DOCUMENTACION.md`, `GASTOS_RECURRENTES_COMPLETADO.md` y `PROYECTO_COMPLETADO_FINAL.md`
+> **Referencia**: Ver `DOCUMENTACION.md`, `GASTOS_RECURRENTES_COMPLETADO.md`, `PROYECTO_COMPLETADO_FINAL.md`
 
 ### **✅ TODAS LAS FASES COMPLETADAS - Enero 2025**
+
+#### **✅ SISTEMA DE PAGOS MERCADOPAGO COMPLETADO - Enero 2025**
+- ✅ **Integración completa** con MercadoPago Argentina
+- ✅ **Sandbox configurado** y funcionando
+- ✅ **APIs de pago** (`/api/suscripciones/crear-pago`, `/api/suscripciones/verificar-pago`)
+- ✅ **Webhook handler** (`/api/mercadopago/webhook`) 
+- ✅ **Páginas de resultado** (éxito, fallo, pendiente)
+- ✅ **Modelos de base de datos** (PagoSuscripcionMP, WebhookMercadoPago, ConfiguracionMercadoPago)
+- ✅ **Enums específicos** (EstadoPagoMP, TipoPagoMP)
+- ✅ **Configuración opcional** - no afecta build si no está configurado
+- ✅ **URLs de retorno** configuradas automáticamente
+- ✅ **Manejo de errores** robusto y completo
+- ✅ **Ready para producción** - solo cambiar credenciales TEST → PROD
 
 #### **✅ FASE 1 COMPLETADA - Sistema de Alertas Avanzado**
 - ✅ Modelo `Alerta` y `ConfiguracionAlerta` en Prisma
@@ -32,7 +46,6 @@
 - ✅ `AlertScheduler` con patrón Singleton para programación automática
 - ✅ APIs de control (`/api/alertas/evaluate`, `/api/alertas/scheduler`)
 - ✅ Panel de administración en `/admin/alertas`
-- ✅ Página de pruebas `/test-fase2` completamente funcional
 - ✅ Alertas automáticas de presupuestos (80%, 90%, 100% usado)
 - ✅ Sistema de programación de evaluaciones cada 60 minutos
 - ✅ Detección automática de gastos inusuales/anómalos
@@ -42,7 +55,6 @@
 - ✅ `AIAnalyzer` con integración OpenAI completa
 - ✅ 5 APIs de IA (`/api/ai/*`) funcionando correctamente
 - ✅ Centro de IA `/ai-financiero` con componentes especializados
-- ✅ Página de pruebas `/test-fase3` completamente funcional
 - ✅ Integración OpenAI para análisis de patrones (GPT-3.5-turbo, GPT-4o-mini)
 - ✅ Recomendaciones personalizadas de ahorro con impacto económico
 - ✅ Alertas predictivas basadas en tendencias
@@ -61,7 +73,7 @@
 - ✅ **Compatibilidad Next.js 15** con `await params`
 - ✅ **Manejo de timeouts** optimizado para Neon PostgreSQL
 
-### **🎯 ESTADO ACTUAL: LISTO PARA PRODUCCIÓN**
+### **🎯 ESTADO ACTUAL: LISTO PARA PRODUCCIÓN CON PAGOS**
 
 #### **Funcionalidades Principales Implementadas** ✅
 - ✅ Sistema básico de gestión de gastos y transacciones
@@ -78,16 +90,54 @@
 - ✅ **INTELIGENCIA ARTIFICIAL INTEGRADA (FASE 3)**
 - ✅ **GASTOS RECURRENTES CON ASOCIACIÓN AUTOMÁTICA**
 - ✅ **MODO FAMILIAR PARA ADMINISTRADORES** - Toggle personal/familiar con control de permisos
+- ✅ **SISTEMA DE PAGOS MERCADOPAGO COMPLETO** - Suscripciones, webhooks, manejo de estados
 
 #### **Próximas Expansiones Sugeridas (FASE 4+)**
+- [ ] Integración con bancos argentinos (API de Open Banking)
 - [ ] Gamificación (badges, streaks, logros)
 - [ ] Widgets personalizables en dashboard
 - [ ] PWA con notificaciones push
-- [ ] Integraciones bancarias argentinas (Mercado Pago, etc.)
 - [ ] Chat AI conversacional 24/7
 - [ ] Internacionalización para otros países latinoamericanos
+- [ ] Modo multi-moneda (USD, EUR, etc.)
+- [ ] Integración con facturación electrónica AFIP
 
 ### Reglas Específicas para Mantenimiento 🔔 ✅
+
+#### **MercadoPago Integration Patterns** ✅
+```typescript
+// Configuración MercadoPago - IMPLEMENTADO Y FUNCIONAL
+const MercadoPagoAR = {
+  client: MercadoPagoConfig | null,
+  payment: Payment | null, 
+  preference: Preference | null,
+  publicKey: string,
+  isEnabled: boolean, // Verifica si está configurado
+  config: {
+    currency: 'ARS',
+    baseUrls: { success, failure, pending, webhook },
+    paymentMethods: { creditCard, debitCard, cash, bankTransfer, digitalWallet }
+  }
+}
+
+// APIs implementadas y funcionando
+POST /api/suscripciones/crear-pago    // Crear preferencias de pago
+GET  /api/suscripciones/verificar-pago // Verificar estado del pago  
+POST /api/mercadopago/webhook          // Procesar notificaciones
+
+// Páginas de resultado implementadas
+/suscripcion/exito      // Pago exitoso
+/suscripcion/fallo      // Pago fallido  
+/suscripcion/pendiente  // Pago pendiente
+
+// Modelos de base de datos implementados
+model PagoSuscripcionMP {
+  mpPaymentId: Int?           // ID del pago confirmado
+  mpPreferenceId: String?     // ID de la preferencia creada
+  mpStatus: EstadoPagoMP     // PENDING, APPROVED, REJECTED, etc.
+  mpExternalReference: String // Referencia única del pago
+}
+```
 
 #### Patrones de Implementación Completados ✅
 ```typescript

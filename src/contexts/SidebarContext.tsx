@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react"
 
 // Clave para el localStorage
-const SIDEBAR_STATE_KEY = 'appGastos_sidebarOpen'
+const SIDEBAR_STATE_KEY = 'finanzIA_sidebarOpen'
 
 // Interfaz para el contexto
 interface SidebarContextType {

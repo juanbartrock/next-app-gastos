@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react"
 
 // Clave para el localStorage
-const VISIBILITY_STATE_KEY = 'appGastos_valuesVisible'
+const VISIBILITY_STATE_KEY = 'finanzIA_valuesVisible'
 
 // Interfaz para el contexto
 interface VisibilityContextType {

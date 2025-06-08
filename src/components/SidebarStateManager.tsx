@@ -4,7 +4,7 @@ import { useEffect } from "react"
 import { useSidebar } from "@/contexts/SidebarContext"
 
 // Clave para el localStorage
-const SIDEBAR_STATE_KEY = 'appGastos_sidebarOpen'
+const SIDEBAR_STATE_KEY = 'finanzIA_sidebarOpen'
 
 /**
  * Componente invisible que sincroniza el estado del sidebar con localStorage

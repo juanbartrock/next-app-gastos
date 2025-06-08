@@ -4,7 +4,7 @@ import { getToken } from 'next-auth/jwt'
 
 export async function middleware(request: NextRequest) {
   // Rutas públicas que no requieren autenticación
-  const publicPaths = ['/login', '/register']
+  const publicPaths = ['/', '/login', '/register']
   
   // Verificar si la ruta actual es pública
   const isPublicPath = publicPaths.some((path) => 
@@ -37,23 +37,16 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // Si el usuario está autenticado y trata de acceder a login/register
-    if (token && isPublicPath) {
+    // Si el usuario está autenticado y trata de acceder a login/register (NO incluir "/")
+    if (token && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/register')) {
       // Redirigir a la página de inicio
-      return NextResponse.redirect(new URL('/home', request.url))
+      return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 
-    // Si el usuario está autenticado y está en la raíz, verificar si tiene el parámetro dashboard
+    // Si el usuario está autenticado y está en la raíz "/", permitir que React maneje la redirección
     if (token && request.nextUrl.pathname === '/') {
-      // Si tiene el parámetro dashboard, no redirigir
-      if (request.nextUrl.searchParams.has('dashboard')) {
-        // Crear una URL limpia sin el parámetro dashboard
-        const cleanUrl = new URL('/', request.url)
-        return NextResponse.rewrite(cleanUrl)
-      }
-      
-      // Si no tiene el parámetro dashboard, redirigir a /home
-      return NextResponse.redirect(new URL('/home', request.url))
+      // Permitir que el componente React maneje la redirección al dashboard
+      return NextResponse.next()
     }
 
     return NextResponse.next()
