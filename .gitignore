@@ -42,3 +42,14 @@ start-dev.ps1
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Documentacion
+#/Documentacion
+#/Documentos Importantes
+
+# Ejecutables
+/Ejecutables
+/scripts
+
+# Otros
+/backup

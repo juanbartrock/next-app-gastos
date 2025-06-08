@@ -19,7 +19,8 @@ import {
   CheckSquare2,
   Bell,
   Upload,
-  Archive
+  Archive,
+  Crown
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSidebar } from "@/contexts/SidebarContext"
@@ -271,7 +272,7 @@ export function Sidebar() {
           {isOpen && (
             <div className="my-4 border-t border-gray-200 dark:border-gray-600 pt-2">
               <span className="text-xs text-gray-400 dark:text-gray-500 px-3 font-medium">
-                Configuración Inicial
+                Configuración & Suscripción
               </span>
             </div>
           )}

@@ -70,6 +70,9 @@ model User {
   usosMensuales             UsoMensual[]
   comprobantesPendientes    ComprobantePendiente[]
   comprobantesTransferencia ComprobanteTransferencia[]
+  pagosSuscripcionMP        PagoSuscripcionMP[]
+  configuracionMercadoPago  ConfiguracionMercadoPago?
+  usosCodigosPromocionales UsoCodigoPromocional[]
 }
 
 model VerificationToken {
@@ -250,6 +253,8 @@ model Plan {
   limites         LimitePlan[]
   suscripciones   Suscripcion[]
   usuarios        User[]
+  pagosSuscripcionMP PagoSuscripcionMP[]
+  codigosPromocionales CodigoPromocional[]
 }
 
 model Funcionalidad {
@@ -649,6 +654,8 @@ model Suscripcion {
   updatedAt        DateTime  @updatedAt
   plan             Plan      @relation(fields: [planId], references: [id], onDelete: Cascade)
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pagosMercadoPago PagoSuscripcionMP[]
+  usosCodigosPromocionales UsoCodigoPromocional[]
 
   @@index([userId, estado])
   @@index([estado, fechaVencimiento])
@@ -713,6 +720,171 @@ model UsoMensual {
   @@unique([userId, año, mes])
   @@index([userId, año, mes])
   @@index([año, mes])
+}
+
+// ✅ MODELOS MERCADOPAGO PARA SUSCRIPCIONES
+model PagoSuscripcionMP {
+  id                  String                   @id @default(cuid())
+  userId              String
+  suscripcionId       String
+  planId              String
+  concepto            String                   // "Suscripción Plan Básico - Enero 2025"
+  monto               Float                    // 4.99, 9.99, etc.
+  
+  // Datos específicos de MercadoPago
+  mpPaymentId         Int?                     @unique
+  mpPreferenceId      String?
+  mpStatus            EstadoPagoMP             @default(PENDING)
+  mpPaymentType       TipoPagoMP?
+  mpPaymentMethod     String?
+  mpExternalReference String                   @unique
+  
+  // Metadatos de suscripción
+  tipoPago            String                   // "inicial", "renovacion", "upgrade", "downgrade"
+  mesFacturado        Int                      // Mes que se está pagando
+  añoFacturado       Int                      // Año que se está pagando
+  fechaVencimiento    DateTime?                // Cuándo vence esta suscripción
+  
+  // Timestamps
+  fechaCreacion       DateTime                 @default(now())
+  fechaPago           DateTime?
+  fechaProcesado      DateTime?
+  fechaActualizacion  DateTime                 @updatedAt
+  
+  // Datos adicionales de MercadoPago
+  mpCollectorId       Int?
+  mpNotificationUrl   String?
+  mpStatementDescriptor String?                @default("App Gastos - Suscripcion")
+  
+  // Relaciones CORRECTAS para monetización
+  user                User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  suscripcion         Suscripcion              @relation(fields: [suscripcionId], references: [id], onDelete: Cascade)
+  plan                Plan                     @relation(fields: [planId], references: [id])
+  
+  // Historial de webhooks
+  webhooks            WebhookMercadoPago[]
+  
+  @@index([userId, mpStatus])
+  @@index([suscripcionId])
+  @@index([mpPaymentId])
+  @@index([mpExternalReference])
+  @@index([fechaCreacion])
+  @@index([tipoPago, fechaCreacion])
+  @@map("pagos_suscripcion_mp")
+}
+
+model WebhookMercadoPago {
+  id                String           @id @default(cuid())
+  pagoSuscripcionId String
+  
+  // Datos del webhook
+  mpResource        String           // Ej: "payment"
+  mpTopic           String           // Ej: "payment"
+  mpId              String           // ID del recurso en MP
+  mpUserId          String?          // Usuario de MP
+  mpLiveMode        Boolean          @default(true)
+  
+  // Data completa del webhook
+  webhookData       Json             // Data completa recibida
+  responseStatus    Int?             // Status de respuesta que enviamos
+  procesado         Boolean          @default(false)
+  fechaRecibido     DateTime         @default(now())
+  fechaProcesado    DateTime?
+  errorProceso      String?
+  
+  // Relación CORREGIDA para suscripciones
+  pagoSuscripcion   PagoSuscripcionMP @relation(fields: [pagoSuscripcionId], references: [id], onDelete: Cascade)
+  
+  @@index([pagoSuscripcionId])
+  @@index([mpResource, mpId])
+  @@index([procesado, fechaRecibido])
+  @@map("webhooks_mercadopago")
+}
+
+model ConfiguracionMercadoPago {
+  id                      String           @id @default(cuid())
+  userId                  String           @unique
+  
+  // Configuración de pagos
+  autoGenararGastos       Boolean          @default(true)
+  notificarPagosAprobados Boolean          @default(true)
+  notificarPagosRechazados Boolean         @default(true)
+  
+  // Configuración de gastos recurrentes
+  autoMarcarRecurrentesPagados Boolean     @default(true)
+  
+  // Configuración de préstamos  
+  autoRegistrarCuotasPrestamos Boolean     @default(false)
+  
+  // URLs personalizadas (opcional)
+  urlExitoPersonalizada   String?
+  urlFalloPersonalizada   String?
+  urlPendientePersonalizada String?
+  
+  // Timestamps
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+  
+  // Relación
+  user                    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("configuracion_mercadopago")
+}
+
+// ✅ SISTEMA DE CÓDIGOS PROMOCIONALES
+model CodigoPromocional {
+  id                String   @id @default(cuid())
+  codigo            String   @unique              // Ej: "PREMIUM2025", "EARLY_ADOPTER"
+  planId            String                        // Plan que otorga
+  tipoDescuento     String                        // "gratuito", "descuento_porcentaje", "descuento_monto"
+  valorDescuento    Float?                        // 50.0 para 50% off, 5.0 para $5 off, null para gratuito
+  duracionMeses     Int?                          // Duración del beneficio en meses, null = permanente
+  
+  // Restricciones de uso
+  usosMaximos       Int?                          // Máximo número de usos, null = ilimitado
+  usosActuales      Int                 @default(0)
+  fechaVencimiento  DateTime?                     // Cuándo expira el código
+  
+  // Información adicional
+  descripcion       String?                       // "Plan Premium gratuito por 6 meses"
+  creadoPor         String?                       // Email del admin que lo creó
+  activo            Boolean             @default(true)
+  
+  // Metadatos
+  esPermanente      Boolean             @default(false)    // true para códigos de lifetime
+  esPublico         Boolean             @default(false)    // true para códigos promocionales públicos
+  
+  // Timestamps
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  // Relaciones
+  plan              Plan                @relation(fields: [planId], references: [id])
+  usos              UsoCodigoPromocional[]
+  
+  @@index([codigo, activo])
+  @@index([fechaVencimiento, activo])
+}
+
+model UsoCodigoPromocional {
+  id                      String            @id @default(cuid())
+  codigoPromocionalId     String
+  userId                  String
+  suscripcionId           String?           // Suscripción creada por este código
+  
+  // Información del uso
+  fechaUso                DateTime          @default(now())
+  ipAddress               String?
+  userAgent               String?
+  
+  // Relaciones
+  codigoPromocional       CodigoPromocional @relation(fields: [codigoPromocionalId], references: [id], onDelete: Cascade)
+  user                    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  suscripcion             Suscripcion?      @relation(fields: [suscripcionId], references: [id])
+  
+  @@unique([codigoPromocionalId, userId])  // Un usuario solo puede usar un código una vez
+  @@index([userId, fechaUso])
+  @@index([codigoPromocionalId, fechaUso])
 }
 
 enum RolFamiliar {
@@ -787,4 +959,23 @@ enum TipoLimite {
   STORAGE
   FUNCIONALIDAD
   TIEMPO
+}
+
+// ✅ ENUMS MERCADOPAGO ESPECÍFICOS ARGENTINA
+enum EstadoPagoMP {
+  PENDING     // Pendiente
+  APPROVED    // Aprobado
+  REJECTED    // Rechazado
+  CANCELLED   // Cancelado
+  IN_PROCESS  // En proceso
+  REFUNDED    // Reembolsado
+}
+
+enum TipoPagoMP {
+  CREDIT_CARD      // Tarjeta de crédito
+  DEBIT_CARD       // Tarjeta de débito
+  CASH             // Efectivo (Pago Fácil, Rapipago, etc.)
+  BANK_TRANSFER    // Transferencia bancaria
+  DIGITAL_WALLET   // Billetera digital (dinero en cuenta MP)
+  OTHER           // Otros métodos
 }

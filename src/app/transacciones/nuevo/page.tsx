@@ -18,6 +18,7 @@ import { useCurrency } from "@/contexts/CurrencyContext"
 import { usePermisosFamiliares } from "@/contexts/PermisosFamiliaresContext"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { LimitWarning, LimitBadge } from "@/components/limits/LimitWarning"
 
 // Interfaces para tipos
 interface Categoria {
@@ -454,9 +455,15 @@ export default function TransaccionesPage() {
             </TabsList>
             
             <TabsContent value="manual" className="mt-4 space-y-4">
+              {/* ✅ ADVERTENCIA DE LÍMITES */}
+              <LimitWarning feature="transacciones_mes" />
+              
               <Card>
                 <CardHeader>
-                  <CardTitle>Formulario de Movimiento</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Formulario de Movimiento</CardTitle>
+                    <LimitBadge feature="transacciones_mes" />
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <ExpenseForm onTransactionAdded={handleTransactionAdded} />

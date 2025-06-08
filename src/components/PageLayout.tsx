@@ -7,7 +7,7 @@ import { useSidebar } from "@/contexts/SidebarContext"
 import { FloatingAdvisor } from "@/components/FloatingAdvisor"
 import { NotificationCenter } from "@/components/alertas/NotificationCenter"
 import { Button } from "@/components/ui/button"
-import { User, Settings } from "lucide-react"
+import { User, Settings, Crown, CreditCard } from "lucide-react"
 import { useSession, signOut } from "next-auth/react"
 import {
   DropdownMenu,
@@ -87,6 +87,14 @@ export function PageLayout({ children }: PageLayoutProps) {
                   <DropdownMenuItem onClick={() => window.location.href = "/configuracion"}>
                     <Settings className="mr-2 h-4 w-4" />
                     Configuración
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => window.location.href = "/planes"}>
+                    <Crown className="mr-2 h-4 w-4 text-yellow-500" />
+                    Ver Planes
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => window.location.href = "/suscripcion"}>
+                    <CreditCard className="mr-2 h-4 w-4 text-blue-500" />
+                    Mi Suscripción
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => signOut()}>

@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth"
 import { options } from "@/app/api/auth/[...nextauth]/options"
 import { createInitialCategories } from "@/lib/dbSetup";
 import { z } from "zod"
+import { validateLimit, incrementUsage } from "@/lib/plan-limits"
 
 // Remover la llamada automática para evitar creaciones duplicadas
 // createInitialCategories().catch(error => {
@@ -308,6 +309,21 @@ export async function POST(request: Request) {
       }
     }
 
+    // ✅ VALIDAR LÍMITES DEL PLAN
+    const validacionTransacciones = await validateLimit(usuario.id, 'transacciones_mes');
+    if (!validacionTransacciones.allowed) {
+      return NextResponse.json({
+        error: 'Límite de transacciones alcanzado',
+        codigo: 'LIMIT_REACHED',
+        limite: validacionTransacciones.limit,
+        uso: validacionTransacciones.usage,
+        upgradeRequired: true,
+        mensaje: validacionTransacciones.limit === 50 
+          ? 'Has alcanzado el límite de 50 transacciones mensuales del Plan Gratuito. Upgrade al Plan Básico para transacciones ilimitadas.'
+          : 'Has alcanzado el límite de transacciones de tu plan actual.'
+      }, { status: 403 })
+    }
+
     // Usar transacción para crear gasto y actualizar recurrente
     const resultado = await prisma.$transaction(async (tx) => {
       // Crear el gasto
@@ -360,6 +376,9 @@ export async function POST(request: Request) {
 
       return gasto;
     });
+
+    // ✅ INCREMENTAR CONTADOR DE USO
+    await incrementUsage(usuario.id, 'transacciones_mes');
 
     return NextResponse.json(resultado)
   } catch (error) {
