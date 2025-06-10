@@ -99,10 +99,10 @@ export default function FotoTicketPage() {
   useEffect(() => {
     const cargarCategorias = async () => {
       try {
-                  const res = await fetch("/api/categorias/familiares")
+        const res = await fetch("/api/categorias/unificadas")
         if (res.ok) {
           const data = await res.json()
-          const categoriasArray = data.categorias || data
+          const categoriasArray = data.categorias || []
           setCategorias(categoriasArray)
           // Seleccionar por defecto la categoría de Alimentación o la primera si no existe
           const alimentacion = categoriasArray.find((cat: Categoria) => 

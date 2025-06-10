@@ -97,17 +97,12 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
     const fetchCategorias = async () => {
       try {
         setLoadingCategorias(true)
-        const response = await fetch("/api/categorias/familiares")
+        const response = await fetch("/api/categorias/unificadas")
         if (response.ok) {
           const data = await response.json()
           
-          // Combinar categorías genéricas y familiares
-          const todasLasCategorias = [
-            ...(data.categoriasGenericas || []),
-            ...(data.categoriasFamiliares || [])
-          ]
-          
-          setCategorias(todasLasCategorias)
+          // Usar las categorías unificadas directamente
+          setCategorias(data.categorias || [])
         }
       } catch (error) {
         console.error("Error al cargar categorías:", error)
