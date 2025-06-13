@@ -56,12 +56,12 @@ export async function GET(request: NextRequest) {
       const fechaLimiteInferior = new Date(proximaFecha)
       fechaLimiteInferior.setDate(fechaLimiteInferior.getDate() - diasTolerancia)
       
-      const gastoEnPeriodo = recurrente.gastosGenerados.find((gasto: any) => {
-        const fechaGasto = new Date(gasto.fecha)
+      const gastosFiltrados = recurrente.gastosGenerados.filter(gasto => {
+        const fechaGasto = new Date(gasto.fechaImputacion || gasto.fecha)
         return fechaGasto >= fechaLimiteInferior && fechaGasto <= ahora
       })
       
-      return !!gastoEnPeriodo
+      return gastosFiltrados.length > 0
     }
 
     // Calcular estado automático para cada recurrente
@@ -202,12 +202,12 @@ export async function POST(request: NextRequest) {
       const fechaLimiteInferior = new Date(proximaFecha)
       fechaLimiteInferior.setDate(fechaLimiteInferior.getDate() - diasTolerancia)
       
-      const gastoEnPeriodo = recurrente.gastosGenerados.find((gasto: any) => {
-        const fechaGasto = new Date(gasto.fecha)
+      const gastosFiltrados = recurrente.gastosGenerados.filter(gasto => {
+        const fechaGasto = new Date(gasto.fechaImputacion || gasto.fecha)
         return fechaGasto >= fechaLimiteInferior && fechaGasto <= ahora
       })
       
-      tieneGasto = !!gastoEnPeriodo
+      tieneGasto = gastosFiltrados.length > 0
       
       if (tieneGasto) {
         estadoCalculado = 'pagado'

@@ -16,7 +16,8 @@ let openai: OpenAI | null = null
 if (isOpenAIConfigured) {
   openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
-    timeout: 20000 // 20 segundos de timeout para OpenAI
+    timeout: 30000, // Aumentar a 30 segundos
+    maxRetries: 2  // Agregar reintentos
   })
 }
 
@@ -165,7 +166,7 @@ async function obtenerContextoCompleto(userId: string, inversionId?: string, con
       prisma.gasto.findMany({
         where: { 
           userId,
-          fecha: { 
+          fechaImputacion: { 
             gte: primerDiaMesAnterior
           }
         },
@@ -181,7 +182,7 @@ async function obtenerContextoCompleto(userId: string, inversionId?: string, con
         where: { 
           userId,
           tipoTransaccion: 'income',
-          fecha: { 
+          fechaImputacion: { 
             gte: primerDiaMesAnterior
           }
         },
@@ -223,8 +224,8 @@ async function obtenerContextoCompleto(userId: string, inversionId?: string, con
     const totalPrestamos = prestamos.reduce((acc: number, p: any) => acc + Number(p.cuotaMensual || 0), 0);
     const totalFinanciaciones = financiaciones.reduce((acc: number, f: any) => acc + Number(f.montoCuota), 0);
     
-    const gastosUltimoMes = gastosRecientes.filter((g: any) => g.fecha >= primerDiaMesActual && g.tipoTransaccion === 'expense');
-    const ingresosUltimoMes = ingresos.filter((i: any) => i.fecha >= primerDiaMesActual);
+    const gastosUltimoMes = gastosRecientes.filter((g: any) => g.fechaImputacion >= primerDiaMesActual && g.tipoTransaccion === 'expense');
+    const ingresosUltimoMes = ingresos.filter((i: any) => i.fechaImputacion >= primerDiaMesActual);
     
     const totalGastosVariables = gastosUltimoMes.reduce((acc: number, g: any) => acc + Number(g.monto), 0);
     const totalIngresos = ingresosUltimoMes.reduce((acc: number, i: any) => acc + Number(i.monto), 0);
@@ -282,14 +283,14 @@ async function obtenerContextoCompleto(userId: string, inversionId?: string, con
       gastosRecientes: gastosRecientes.slice(0, 20).map((g: any) => ({
         concepto: g.concepto,
         monto: Number(g.monto),
-        fecha: g.fecha,
+        fecha: g.fechaImputacion ? g.fechaImputacion.toISOString() : g.fecha.toISOString(),
         categoria: g.categoriaRel?.nombre || 'Sin categoría',
         tipoMovimiento: g.tipoMovimiento
       })),
       ingresos: ingresos.slice(0, 10).map((i: any) => ({
         concepto: i.concepto,
         monto: Number(i.monto),
-        fecha: i.fecha
+        fecha: i.fechaImputacion ? i.fechaImputacion.toISOString() : i.fecha.toISOString()
       })),
       inversiones: inversiones.map((inv: any) => ({
         nombre: inv.nombre,
@@ -366,7 +367,7 @@ IMPORTANTE: No inventes datos. Solo usa la información proporcionada.`;
       
       // Crear una promesa con timeout manual adicional
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout de OpenAI')), 15000); // 15 segundos
+        setTimeout(() => reject(new Error('Timeout de OpenAI')), 25000); // Aumentar a 25 segundos
       });
       
       const openaiPromise = openai.chat.completions.create({
@@ -376,13 +377,21 @@ IMPORTANTE: No inventes datos. Solo usa la información proporcionada.`;
           { role: "user", content: userQuery }
         ],
         temperature: 0.7,
-        max_tokens: 1000 // Reducir tokens para respuesta más rápida
+        max_tokens: 800, // Reducir tokens para respuesta más rápida
+        presence_penalty: 0.6,
+        frequency_penalty: 0.3
       });
 
-      const completion = await Promise.race([openaiPromise, timeoutPromise]) as any;
-      const response = completion.choices[0].message.content;
-      console.log("Respuesta de OpenAI recibida:", response ? "Sí" : "No");
-      return response || "Lo siento, no pude generar una respuesta. Por favor, intenta reformular tu pregunta.";
+      try {
+        const completion = await Promise.race([openaiPromise, timeoutPromise]) as any;
+        const response = completion.choices[0].message.content;
+        console.log("Respuesta de OpenAI recibida:", response ? "Sí" : "No");
+        return response || "Lo siento, no pude generar una respuesta. Por favor, intenta reformular tu pregunta.";
+      } catch (error) {
+        console.error("Error específico de OpenAI:", error);
+        console.log("Usando fallback por error de OpenAI");
+        return generarRespuestaContextual(userQuery, contextData, messages);
+      }
     } else {
       console.log("OpenAI no configurado - usando fallback contextual");
       // Fallback a respuestas predefinidas pero inteligentes

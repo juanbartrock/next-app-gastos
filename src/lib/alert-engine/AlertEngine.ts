@@ -101,7 +101,7 @@ export class AlertEngine {
           where: {
             userId,
             categoriaId: presupuesto.categoriaId,
-            fecha: {
+            fechaImputacion: {
               gte: new Date(añoActual, mesActual - 1, 1),
               lt: new Date(añoActual, mesActual, 1),
             },
@@ -136,12 +136,12 @@ export class AlertEngine {
           alertas.push({
             tipo: 'PRESUPUESTO_80',
             prioridad: 'MEDIA',
-            titulo: `Presupuesto al 80% - ${presupuesto.categoria.descripcion}`,
-            mensaje: `Has usado el 80% de tu presupuesto mensual para ${presupuesto.categoria.descripcion}. Gastado: $${montoGastado.toFixed(2)} de $${presupuesto.monto.toFixed(2)}.`,
+            titulo: `Presupuesto al 80% - ${presupuesto.categoria?.descripcion || 'Sin categoría'}`,
+            mensaje: `Has usado el 80% de tu presupuesto mensual para ${presupuesto.categoria?.descripcion || 'esta categoría'}. Gastado: $${montoGastado.toFixed(2)} de $${presupuesto.monto.toFixed(2)}.`,
             metadatos: {
               presupuestoId: presupuesto.id,
               categoriaId: presupuesto.categoriaId,
-              nombreCategoria: presupuesto.categoria.descripcion,
+              nombreCategoria: presupuesto.categoria?.descripcion || 'Sin categoría',
               montoPresupuesto: presupuesto.monto,
               montoGastado,
               porcentajeUsado: Math.round(porcentajeUsado),
@@ -156,12 +156,12 @@ export class AlertEngine {
           alertas.push({
             tipo: 'PRESUPUESTO_90',
             prioridad: 'ALTA',
-            titulo: `¡Presupuesto al 90%! - ${presupuesto.categoria.descripcion}`,
-            mensaje: `¡Atención! Has usado el 90% de tu presupuesto mensual para ${presupuesto.categoria.descripcion}. Solo te quedan $${(presupuesto.monto - montoGastado).toFixed(2)}.`,
+            titulo: `¡Presupuesto al 90%! - ${presupuesto.categoria?.descripcion || 'Sin categoría'}`,
+            mensaje: `¡Atención! Has usado el 90% de tu presupuesto mensual para ${presupuesto.categoria?.descripcion || 'esta categoría'}. Solo te quedan $${(presupuesto.monto - montoGastado).toFixed(2)}.`,
             metadatos: {
               presupuestoId: presupuesto.id,
               categoriaId: presupuesto.categoriaId,
-              nombreCategoria: presupuesto.categoria.descripcion,
+              nombreCategoria: presupuesto.categoria?.descripcion || 'Sin categoría',
               montoPresupuesto: presupuesto.monto,
               montoGastado,
               porcentajeUsado: Math.round(porcentajeUsado),
@@ -176,12 +176,12 @@ export class AlertEngine {
           alertas.push({
             tipo: 'PRESUPUESTO_SUPERADO',
             prioridad: 'CRITICA',
-            titulo: `🚨 Presupuesto Superado - ${presupuesto.categoria.descripcion}`,
-            mensaje: `Has superado tu presupuesto mensual para ${presupuesto.categoria.descripcion}. Gastado: $${montoGastado.toFixed(2)} de $${presupuesto.monto.toFixed(2)} (${Math.round(porcentajeUsado)}%).`,
+            titulo: `🚨 Presupuesto Superado - ${presupuesto.categoria?.descripcion || 'Sin categoría'}`,
+            mensaje: `Has superado tu presupuesto mensual para ${presupuesto.categoria?.descripcion || 'esta categoría'}. Gastado: $${montoGastado.toFixed(2)} de $${presupuesto.monto.toFixed(2)} (${Math.round(porcentajeUsado)}%).`,
             metadatos: {
               presupuestoId: presupuesto.id,
               categoriaId: presupuesto.categoriaId,
-              nombreCategoria: presupuesto.categoria.descripcion,
+              nombreCategoria: presupuesto.categoria?.descripcion || 'Sin categoría',
               montoPresupuesto: presupuesto.monto,
               montoGastado,
               porcentajeUsado: Math.round(porcentajeUsado),
@@ -628,10 +628,11 @@ export class AlertEngine {
             gastoId: gasto.id,
             concepto: gasto.concepto,
             monto: gasto.monto,
-            categoria: gasto.categoriaRel?.descripcion,
+            fecha: gasto.fechaImputacion ? gasto.fechaImputacion.toISOString() : gasto.fecha.toISOString(),
+            categoria: gasto.categoriaRel?.descripcion || 'Sin categoría',
+            tipoTransaccion: gasto.tipoTransaccion,
             promedioHistorico: Math.round(promedioHistorico * 100) / 100,
             multiplicador,
-            fecha: gasto.fecha,
           },
         })
       }

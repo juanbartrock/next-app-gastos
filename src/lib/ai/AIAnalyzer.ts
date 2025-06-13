@@ -95,7 +95,7 @@ export class AIAnalyzer {
       const datosAnalisis = gastos.map(gasto => ({
         concepto: gasto.concepto,
         monto: gasto.monto,
-        fecha: gasto.fecha.toISOString(),
+        fecha: gasto.fechaImputacion ? gasto.fechaImputacion.toISOString() : gasto.fecha.toISOString(),
         categoria: gasto.categoriaRel?.descripcion || gasto.categoria,
         tipoMovimiento: gasto.tipoMovimiento,
       }))
@@ -493,9 +493,9 @@ Considera anómalos gastos que:
       id: gasto.id,
       concepto: gasto.concepto,
       monto: gasto.monto,
-      fecha: gasto.fecha.toISOString(),
-      categoria: gasto.categoriaRel?.descripcion || gasto.categoria,
-      tipoMovimiento: gasto.tipoMovimiento,
+      fecha: gasto.fechaImputacion ? gasto.fechaImputacion.toISOString() : gasto.fecha.toISOString(),
+      categoria: gasto.categoriaRel?.descripcion || 'Sin categoría',
+      tipoTransaccion: gasto.tipoTransaccion
     }))
   }
 
@@ -512,7 +512,7 @@ Considera anómalos gastos que:
     return gastos.map(gasto => ({
       concepto: gasto.concepto,
       monto: gasto.monto,
-      categoria: gasto.categoriaRel?.descripcion || gasto.categoria,
+      categoria: gasto.categoriaRel?.descripcion || 'Sin categoría',
     }))
   }
 

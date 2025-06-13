@@ -60,8 +60,9 @@ Basados en Shadcn/ui en [src/components/ui/](mdc:src/components/ui/):
 
 ## Contextos de React ✅
 - **VisibilityContext**: [src/contexts/VisibilityContext.tsx](mdc:src/contexts/VisibilityContext.tsx)
+- **PermisosFamiliaresContext**: [src/contexts/PermisosFamiliaresContext.tsx](mdc:src/contexts/PermisosFamiliaresContext.tsx)
 - **ThemeProvider**: [src/providers/ThemeProvider.tsx](mdc:src/providers/ThemeProvider.tsx)
-- Gestión de estado global para Currency, Sidebar, Visibility, Theme
+- Gestión de estado global para Currency, Sidebar, Visibility, Theme, Permisos Familiares
 
 ## Autenticación NextAuth.js ✅
 Configuración en [src/app/api/auth/[...nextauth]/options.ts](mdc:src/app/api/auth/[...nextauth]/options.ts):

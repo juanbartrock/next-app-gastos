@@ -16,8 +16,10 @@ alwaysApply: false
 
 ### Transacciones y Gastos
 - **API principal**: [src/app/api/gastos/route.ts](mdc:src/app/api/gastos/route.ts)
+- **API familiar**: [src/app/api/gastos/familiares/route.ts](mdc:src/app/api/gastos/familiares/route.ts)
 - **Página de gestión**: [src/app/transacciones/page.tsx](mdc:src/app/transacciones/page.tsx)
 - **Formulario nuevo**: [src/app/transacciones/nuevo/page.tsx](mdc:src/app/transacciones/nuevo/page.tsx)
+- **✅ NUEVO: Modo familiar** con toggle personal/familiar para administradores
 - **Modelo Gasto**: [prisma/schema.prisma](mdc:prisma/schema.prisma) (líneas ~76-95)
 
 ### Préstamos con Alertas Automáticas
