@@ -77,16 +77,45 @@ export async function GET(request: NextRequest) {
           }
         }
         
-        // Obtener gastos para el mes y año específicos en la categoría
-        if (presupuesto.categoriaId) {
+        // Obtener categorías a considerar (puede ser múltiples)
+        const categoriasParaCalcular: number[] = [];
+        
+        // Verificar si tiene múltiples categorías asociadas
+        let categoriasDelPresupuesto: any[] = [];
+        try {
+          categoriasDelPresupuesto = await prisma.presupuestoCategoria.findMany({
+            where: { 
+              presupuestoId: presupuesto.id,
+              activo: true 
+            },
+            include: {
+              categoria: true
+            }
+          });
+        } catch (error) {
+          console.error(`Error obteniendo categorías para presupuesto ${presupuesto.nombre}:`, error);
+        }
+        
+        if (categoriasDelPresupuesto.length > 0) {
+          // Presupuesto con múltiples categorías
+          categoriasParaCalcular.push(...categoriasDelPresupuesto.map(pc => pc.categoriaId));
+        } else if (presupuesto.categoriaId) {
+          // Presupuesto con una sola categoría (legacy)
+          categoriasParaCalcular.push(presupuesto.categoriaId);
+        }
+        
+        // Obtener gastos para el mes y año específicos en las categorías
+        if (categoriasParaCalcular.length > 0) {
           try {
-            // Obtener todos los gastos de la categoría para los usuarios relevantes
+            // Obtener todos los gastos de las categorías para los usuarios relevantes
             const todosLosGastos = await prisma.gasto.findMany({
               where: {
                 userId: { 
                   in: usuariosParaCalcular 
                 },
-                categoriaId: presupuesto.categoriaId,
+                categoriaId: {
+                  in: categoriasParaCalcular
+                },
                 tipoTransaccion: 'expense',
                 tipoMovimiento: {
                   not: 'tarjeta'  // Excluir gastos de tipo tarjeta
@@ -97,7 +126,7 @@ export async function GET(request: NextRequest) {
               }
             });
             
-            console.log(`Presupuesto ${presupuesto.nombre} - Total gastos encontrados:`, todosLosGastos.length);
+            console.log(`Presupuesto ${presupuesto.nombre} - Total gastos encontrados:`, todosLosGastos.length, `- Categorías: [${categoriasParaCalcular.join(', ')}]`);
             
             // Filtrar por fecha contable (fechaImputacion si existe, sino fecha)
             const fechaInicio = new Date(presupuesto.año, presupuesto.mes - 1, 1);
@@ -124,7 +153,9 @@ export async function GET(request: NextRequest) {
                 totalUsuarios: usuariosParaCalcular.length,
                 totalGastos: gastosFiltrados.length,
                 gastoActual,
-                gastosPorUsuario
+                gastosPorUsuario,
+                totalCategorias: categoriasParaCalcular.length,
+                categorias: categoriasDelPresupuesto.map(c => c.categoria?.descripcion).join(', ')
               });
             }
           } catch (error) {
@@ -187,6 +218,13 @@ export async function GET(request: NextRequest) {
           disponible: presupuesto.monto - gastoActual,
           esGrupal: presupuesto.tipo === 'grupal',
           tipoDescripcion: presupuesto.tipo === 'grupal' ? 'Grupal' : 'Personal',
+          totalUsuarios: usuariosParaCalcular.length,
+          totalCategorias: categoriasParaCalcular?.length || 0,
+          categoriasInfo: categoriasDelPresupuesto?.map(c => ({
+            id: c.categoriaId,
+            nombre: c.categoria?.descripcion,
+            porcentaje: c.porcentaje
+          })) || [],
           // NUEVA: Comparación con mes anterior
           comparacionMesAnterior: comparacionMesAnterior
         };
@@ -261,29 +299,47 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Crear el presupuesto base (simplificado)
-    const datosPresupuesto: any = {
-      nombre,
-      monto,
-      categoriaId: categoriaId || null,
-      mes,
-      año,
-      userId: session.user.id!,
-    };
-    
-    // Agregar campos adicionales si están disponibles
-    if (descripcion) datosPresupuesto.descripcion = descripcion;
-    if (tipo) datosPresupuesto.tipo = tipo;
-    if (tipo === 'grupal' && grupoId) datosPresupuesto.grupoId = grupoId;
-    
-    const presupuesto = await prisma.presupuesto.create({
-      data: datosPresupuesto,
-      include: {
-        categoria: true,
-        user: {
-          select: { id: true, name: true, email: true }
+    // Usar transacción para crear presupuesto y categorías asociadas
+    const presupuesto = await prisma.$transaction(async (tx) => {
+      // Crear el presupuesto base
+      const datosPresupuesto: any = {
+        nombre,
+        monto,
+        categoriaId: categoriaId || null,
+        mes,
+        año,
+        userId: session.user.id!,
+      };
+      
+      // Agregar campos adicionales si están disponibles
+      if (descripcion) datosPresupuesto.descripcion = descripcion;
+      if (tipo) datosPresupuesto.tipo = tipo;
+      if (tipo === 'grupal' && grupoId) datosPresupuesto.grupoId = grupoId;
+      
+      const nuevoPresupuesto = await tx.presupuesto.create({
+        data: datosPresupuesto,
+        include: {
+          categoria: true,
+          user: {
+            select: { id: true, name: true, email: true }
+          }
         }
+      });
+
+      // Si se proporcionan múltiples categorías, crearlas
+      if (categorias && Array.isArray(categorias) && categorias.length > 0) {
+        await tx.presupuestoCategoria.createMany({
+          data: categorias.map((cat: any) => ({
+            presupuestoId: nuevoPresupuesto.id,
+            categoriaId: cat.categoriaId,
+            porcentaje: cat.porcentaje || 100,
+            montoMaximo: cat.montoMaximo || null,
+            activo: true
+          }))
+        });
       }
+
+      return nuevoPresupuesto;
     });
     
     console.log(`✅ Presupuesto creado: ${presupuesto.nombre} - Tipo: ${(presupuesto as any).tipo || 'personal'}${(presupuesto as any).grupoId ? ` - Grupo: ${(presupuesto as any).grupoId}` : ''}`);

@@ -244,7 +244,7 @@ export default function PresupuestosList() {
                 Nuevo Presupuesto
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl">
+            <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
               <DialogHeader>
                 <DialogTitle>
                   {editingId ? 'Editar Presupuesto' : 'Nuevo Presupuesto'}
@@ -256,10 +256,12 @@ export default function PresupuestosList() {
                   }
                 </DialogDescription>
               </DialogHeader>
-              <PresupuestoForm
-                presupuestoId={editingId || undefined}
-                onSuccess={handleFormSuccess}
-              />
+              <div className="flex-1 overflow-y-auto">
+                <PresupuestoForm
+                  presupuestoId={editingId || undefined}
+                  onSuccess={handleFormSuccess}
+                />
+              </div>
             </DialogContent>
           </Dialog>
         </div>

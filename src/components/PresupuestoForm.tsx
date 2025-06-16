@@ -254,15 +254,8 @@ export default function PresupuestoForm({ presupuestoId, onSuccess }: Presupuest
   }
   
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          {presupuesto.tipo === 'grupal' ? <Users className="h-5 w-5" /> : <User className="h-5 w-5" />}
-          {presupuestoId ? 'Editar Presupuesto' : 'Nuevo Presupuesto'}
-        </CardTitle>
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-6">
+    <div className="w-full max-w-2xl mx-auto">
+      <form onSubmit={handleSubmit} className="space-y-6">
           {/* Tipo de presupuesto */}
           <div className="space-y-3">
             <Label>Tipo de Presupuesto</Label>
@@ -445,20 +438,27 @@ export default function PresupuestoForm({ presupuestoId, onSuccess }: Presupuest
                   const categoria = getCategoriaById(categoriaId)
                   return categoria ? (
                     <Badge key={categoriaId} variant="secondary" className="flex items-center gap-1">
-                      {categoria.descripcion}
-                      <X 
-                        className="h-3 w-3 cursor-pointer" 
-                        onClick={() => removerCategoria(categoriaId)}
-                      />
+                      <span>{categoria.descripcion}</span>
+                      <button
+                        type="button"
+                        className="ml-1 inline-flex items-center justify-center rounded-full hover:bg-destructive/20 p-0.5"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          removerCategoria(categoriaId)
+                        }}
+                        aria-label={`Remover ${categoria.descripcion}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
                     </Badge>
                   ) : null
                 })}
               </div>
             )}
           </div>
-        </CardContent>
         
-        <CardFooter className="flex justify-between">
+        <div className="flex justify-between pt-6 border-t">
           <Button 
             type="button" 
             variant="outline" 
@@ -469,8 +469,8 @@ export default function PresupuestoForm({ presupuestoId, onSuccess }: Presupuest
           <Button type="submit" disabled={loading}>
             {loading ? 'Guardando...' : (presupuestoId ? 'Actualizar' : 'Crear')}
           </Button>
-        </CardFooter>
+        </div>
       </form>
-    </Card>
+    </div>
   )
 } 
