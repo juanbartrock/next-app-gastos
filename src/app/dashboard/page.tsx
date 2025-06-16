@@ -57,6 +57,7 @@ import {
 import { ExpenseForm } from "@/components/ExpenseForm"
 import { NotificationCenter } from "@/components/alertas/NotificationCenter"
 import { FinancialDataWidget } from "@/components/FinancialDataWidget"
+import { MultiChartWidget } from "@/components/MultiChartWidget"
 import { TareasWidget } from "@/components/TareasWidget"
 import { DollarIndicator } from "@/components/DollarIndicator"
 import { CurrencySelector } from "@/components/CurrencySelector"
@@ -814,7 +815,7 @@ export default function DashboardRedesigned() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <FinancialDataWidget month={currentMonth} year={currentYear} />
+                      <MultiChartWidget month={currentMonth} year={currentYear} />
                     </CardContent>
                   </Card>
                   
