@@ -1,0 +1,71 @@
+{
+  "name": "FinanzIA - Gestión Inteligente de Gastos",
+  "short_name": "FinanzIA",
+  "description": "Aplicación de gestión de gastos personales y familiares con inteligencia artificial integrada",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#1f2937",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "es-AR",
+  "categories": ["finance", "productivity", "business"],
+  "icons": [
+    {
+      "src": "/FinanzIA-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/FinanzIA-logo.png",
+      "sizes": "512x512", 
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/FinanzIA-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nueva Transacción",
+      "short_name": "Nueva",
+      "description": "Agregar una nueva transacción",
+      "url": "/transacciones/nuevo",
+      "icons": [
+        {
+          "src": "/FinanzIA-logo.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Inicio",
+      "description": "Ver resumen financiero",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/FinanzIA-logo.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Alertas",
+      "short_name": "Alertas",
+      "description": "Ver alertas y notificaciones",
+      "url": "/alertas", 
+      "icons": [
+        {
+          "src": "/FinanzIA-logo.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ]
+} 

@@ -21,8 +21,51 @@ const robotoMono = Roboto_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "App de Gastos",
-  description: "Aplicación para gestionar gastos personales y grupales",
+  title: "FinanzIA - Gestión Inteligente de Gastos",
+  description: "Aplicación de gestión de gastos personales y familiares con inteligencia artificial integrada",
+  keywords: ["finanzas", "gastos", "presupuesto", "inteligencia artificial", "ahorro", "argentina"],
+  authors: [{ name: "FinanzIA" }],
+  creator: "FinanzIA",
+  publisher: "FinanzIA",
+  icons: {
+    icon: [
+      { url: "/FinanzIA-logo.png", sizes: "32x32", type: "image/png" },
+      { url: "/FinanzIA-logo.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: [
+      { url: "/FinanzIA-logo.png", sizes: "180x180", type: "image/png" },
+    ],
+    shortcut: "/FinanzIA-logo.png",
+  },
+  manifest: "/manifest.json",
+  openGraph: {
+    title: "FinanzIA - Gestión Inteligente de Gastos",
+    description: "Aplicación de gestión de gastos personales y familiares con inteligencia artificial integrada",
+    url: "https://finanzai.vercel.app",
+    siteName: "FinanzIA",
+    images: [
+      {
+        url: "/FinanzIA-logo.png",
+        width: 400,
+        height: 400,
+        alt: "FinanzIA Logo",
+      },
+    ],
+    locale: "es_AR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "FinanzIA - Gestión Inteligente de Gastos",
+    description: "Aplicación de gestión de gastos personales y familiares con inteligencia artificial integrada",
+    images: ["/FinanzIA-logo.png"],
+  },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+  },
+  themeColor: "#6366f1",
 };
 
 export default function RootLayout({

@@ -15,12 +15,12 @@ export default function HomePage() {
   const handleNavigation = (path: string) => {
     setLoading(true)
     
-    // Manejo especial para la navegación al dashboard (/)
+    // Manejo especial para la navegación al dashboard
     if (path === '/') {
       // Usar un parámetro en la URL para que el middleware no redirija
-      router.push('/?dashboard=true')
+      router.replace('/?dashboard=true')
     } else {
-      router.push(path)
+      router.replace(path)
     }
   }
 
@@ -28,7 +28,7 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen bg-background">
       <header className="px-4 py-6 md:px-6 bg-background border-b">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">App de Gastos</h1>
+          <h1 className="text-2xl font-bold">FinanzIA</h1>
         </div>
       </header>
       <main className="flex-1 p-4 md:p-6 flex items-center justify-center">

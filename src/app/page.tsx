@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Logo } from "@/components/ui/logo"
 import { 
   ArrowRight, 
   TrendingUp, 
@@ -17,7 +18,6 @@ import {
   Check,
   Star,
   Clock,
-  PiggyBank,
   CreditCard,
   BarChart3,
   Smartphone,
@@ -29,12 +29,20 @@ export default function LandingPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
 
-  // Flujo Smart: Usuario logueado → dashboard
+  // Flujo Smart: Usuario logueado → home
   useEffect(() => {
     if (status === 'loading') return
     
     if (session) {
-      router.push('/dashboard')
+      // Verificar si viene de login para redirigir al home
+      const fromLogin = typeof window !== 'undefined' ? sessionStorage.getItem('fromLogin') : null
+      if (fromLogin) {
+        sessionStorage.removeItem('fromLogin')
+        router.replace('/home')
+      } else {
+        // Si no viene de login pero está logueado, ir al dashboard directamente
+        router.replace('/dashboard')
+      }
     }
   }, [session, status, router])
 
@@ -59,9 +67,7 @@ export default function LandingPage() {
         <div className="container flex h-14 items-center">
           <div className="mr-4 flex">
             <Link href="/" className="mr-6 flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                <PiggyBank className="h-5 w-5 text-white" />
-              </div>
+              <Logo size="md" showText={false} />
               <span className="font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">FinanzIA</span>
             </Link>
           </div>
@@ -76,8 +82,8 @@ export default function LandingPage() {
             </nav>
             <div className="flex items-center space-x-2">
               {session ? (
-                <Link href="/dashboard">
-                  <Button>Ir al Dashboard</Button>
+                <Link href="/home">
+                  <Button>Ir al Home</Button>
                 </Link>
               ) : (
                 <>
@@ -266,9 +272,7 @@ export default function LandingPage() {
         <div className="container flex flex-col items-center justify-center gap-6 py-16">
           <div className="text-center space-y-2">
             <div className="flex items-center justify-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                <PiggyBank className="h-5 w-5 text-white" />
-              </div>
+              <Logo size="md" showText={false} />
               <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
                 FinanzIA
               </h3>

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, Save, LightbulbIcon, Bell, Settings, Shield } from "lucide-react";
+import { ChevronLeft, Save, LightbulbIcon, Bell, Settings, Shield, Crown, CreditCard, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -123,6 +123,7 @@ export default function ConfiguracionPage() {
               <TabsList className="w-full mb-6">
                 <TabsTrigger value="notificaciones" className="flex-1">Notificaciones</TabsTrigger>
                 <TabsTrigger value="recomendaciones" className="flex-1">Recomendaciones</TabsTrigger>
+                <TabsTrigger value="suscripcion" className="flex-1">Suscripción</TabsTrigger>
                 <TabsTrigger value="general" className="flex-1">General</TabsTrigger>
               </TabsList>
               
@@ -255,6 +256,68 @@ export default function ConfiguracionPage() {
                     )}
                   </Button>
                 </form>
+              </TabsContent>
+              
+              <TabsContent value="suscripcion">
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <CreditCard className="h-5 w-5 text-blue-500" />
+                    <span className="text-lg font-semibold">Gestión de Suscripción</span>
+                  </div>
+                  
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {/* Ver Planes */}
+                    <Card className="p-4 hover:shadow-lg transition-shadow cursor-pointer" 
+                          onClick={() => router.push('/planes')}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg flex items-center justify-center">
+                          <Crown className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold">Ver Planes</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Explora los planes disponibles y sus características
+                          </p>
+                        </div>
+                        <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </Card>
+
+                    {/* Mi Suscripción */}
+                    <Card className="p-4 hover:shadow-lg transition-shadow cursor-pointer" 
+                          onClick={() => router.push('/suscripcion')}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                          <CreditCard className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold">Mi Suscripción</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Gestiona tu suscripción actual y métodos de pago
+                          </p>
+                        </div>
+                        <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </Card>
+                  </div>
+
+                  <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                        <CreditCard className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-1">
+                          Gestión de Suscripción
+                        </h4>
+                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                          Desde aquí puedes ver los planes disponibles, administrar tu suscripción actual, 
+                          actualizar métodos de pago y revisar tu historial de facturación.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </TabsContent>
               
               <TabsContent value="general">

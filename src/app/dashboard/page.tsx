@@ -692,14 +692,6 @@ export default function DashboardRedesigned() {
                     <Settings className="mr-2 h-4 w-4" />
                     Configuración
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => router.push('/planes')}>
-                    <Crown className="mr-2 h-4 w-4 text-yellow-500" />
-                    Ver Planes
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => router.push('/suscripcion')}>
-                    <CreditCard className="mr-2 h-4 w-4 text-blue-500" />
-                    Mi Suscripción
-                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
                     disabled={signingOut}

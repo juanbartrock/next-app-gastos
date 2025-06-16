@@ -13,16 +13,17 @@ import {
   LightbulbIcon,
   TrendingUp,
   Tag,
-  Wallet,
   DollarSign,
   Building2,
   CheckSquare2,
   Bell,
   Upload,
+  Download,
   Archive,
   Crown
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Logo } from "@/components/ui/logo"
 import { useSidebar } from "@/contexts/SidebarContext"
 
 export function Sidebar() {
@@ -62,14 +63,11 @@ export function Sidebar() {
 
       {/* Logo y título */}
       <div className="p-4 flex items-center mb-6">
-        <div className="w-10 h-10 flex items-center justify-center bg-green-100 dark:bg-green-900 rounded-lg">
-          <Wallet className="w-6 h-6 text-green-600 dark:text-green-300" />
-        </div>
-        {isOpen && (
-          <div className="ml-3">
-            <h1 className="font-bold text-gray-900 dark:text-white">Ayudante Financiero</h1>
-          </div>
-        )}
+        <Logo 
+          size="lg" 
+          showText={isOpen}
+          className={!isOpen ? "justify-center" : ""}
+        />
       </div>
 
       {/* Navegación con scroll */}
@@ -246,27 +244,31 @@ export function Sidebar() {
             {isOpen && <span className="ml-3">Buzón Comprobantes</span>}
           </Button>
           
-          {/* 13. Recomendaciones */}
-          <Button 
-            variant={isActive("/recomendaciones-ahorro") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-            onClick={() => handleNavigation('/recomendaciones-ahorro')}
-          >
-            <LightbulbIcon className="w-5 h-5" />
-            {isOpen && <span className="ml-3">Recomendaciones</span>}
-          </Button>
+          {/* 13. Recomendaciones - DESHABILITADO: Funcionalidad deprecada */}
+          {false && (
+            <Button 
+              variant={isActive("/recomendaciones-ahorro") ? "secondary" : "ghost"}
+              className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+              style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+              onClick={() => handleNavigation('/recomendaciones-ahorro')}
+            >
+              <LightbulbIcon className="w-5 h-5" />
+              {isOpen && <span className="ml-3">Recomendaciones</span>}
+            </Button>
+          )}
           
-          {/* 14. Seguimiento Precios */}
-          <Button 
-            variant={isActive("/seguimiento-precios") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-            onClick={() => handleNavigation('/seguimiento-precios')}
-          >
-            <Tag className="w-5 h-5 text-orange-500" />
-            {isOpen && <span className="ml-3">Seguimiento Precios</span>}
-          </Button>
+          {/* 14. Seguimiento Precios - DESHABILITADO: Funcionalidad deprecada */}
+          {false && (
+            <Button 
+              variant={isActive("/seguimiento-precios") ? "secondary" : "ghost"}
+              className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+              style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+              onClick={() => handleNavigation('/seguimiento-precios')}
+            >
+              <Tag className="w-5 h-5 text-orange-500" />
+              {isOpen && <span className="ml-3">Seguimiento Precios</span>}
+            </Button>
+          )}
 
           {/* Separador visual */}
           {isOpen && (
@@ -286,6 +288,17 @@ export function Sidebar() {
           >
             <Upload className="w-5 h-5 text-blue-500" />
             {isOpen && <span className="ml-3">Importar Datos</span>}
+          </Button>
+          
+          {/* 16. Exportar Datos */}
+          <Button 
+            variant={isActive("/exportar-datos") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/exportar-datos')}
+          >
+            <Download className="w-5 h-5 text-green-500" />
+            {isOpen && <span className="ml-3">Exportar Datos</span>}
           </Button>
         </div>
       </nav>

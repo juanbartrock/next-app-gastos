@@ -39,8 +39,8 @@ export async function middleware(request: NextRequest) {
 
     // Si el usuario está autenticado y trata de acceder a login/register (NO incluir "/")
     if (token && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/register')) {
-      // Redirigir a la página de inicio
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+      // Redirigir a la página de home
+      return NextResponse.redirect(new URL('/home', request.url))
     }
 
     // Si el usuario está autenticado y está en la raíz "/", permitir que React maneje la redirección
@@ -59,6 +59,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!login|register|api/auth|api/twilio|_next/static|_next/image|favicon.ico).*)",
+    "/((?!login|register|api/auth|api/twilio|_next/static|_next/image|favicon.ico|manifest.json).*)",
   ]
 } 

@@ -18,7 +18,7 @@ function LoginForm() {
   const callbackParam = searchParams.get("callbackUrl")
   const callbackUrl = callbackParam && callbackParam.startsWith("/") 
     ? callbackParam 
-    : "/"
+    : "/home"
     
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -63,13 +63,17 @@ function LoginForm() {
           setError(result.error)
         }
       } else if (result?.ok) {
-        // Aumentamos el tiempo de espera a 500ms para dar más tiempo a que la sesión se establezca
+        // Login exitoso, redirigir inmediatamente
         console.log("Login exitoso, redirigiendo a:", callbackUrl);
         setIsLoading(true) // Mantener el estado de carga durante la redirección
+        
+        // Usar replace para evitar problemas de navegación
+        router.replace(callbackUrl);
+        
+        // Forzar refresh del estado de la sesión
         setTimeout(() => {
-          router.push(callbackUrl);
-          router.refresh(); // Forzar una actualización del router
-        }, 500);
+          window.location.href = callbackUrl;
+        }, 200);
       }
     } catch (error) {
       console.error("Error durante login:", error);
