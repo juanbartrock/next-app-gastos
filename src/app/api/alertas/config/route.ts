@@ -4,22 +4,17 @@ import { options } from "@/app/api/auth/[...nextauth]/options"
 import prisma from "@/lib/prisma"
 import { z } from "zod"
 
-// Esquema de validación para configuraciones de alertas
+// Esquema de validación para configuraciones de alertas - Solo tipos implementados
 const configuracionAlertaSchema = z.object({
   tipoAlerta: z.enum([
     "PAGO_RECURRENTE",
     "PRESUPUESTO_80", 
     "PRESUPUESTO_90",
     "PRESUPUESTO_SUPERADO",
-    "META_PROGRESO",
     "INVERSION_VENCIMIENTO",
     "PRESTAMO_CUOTA",
     "GASTO_INUSUAL",
-    "OPORTUNIDAD_AHORRO",
-    "SALDO_BAJO",
-    "RECOMENDACION_IA",
-    "TAREA_VENCIMIENTO",
-    "PROMOCION_DISPONIBLE"
+    "TAREA_VENCIMIENTO"
   ]),
   habilitado: z.boolean(),
   canales: z.array(z.enum(["IN_APP", "EMAIL", "SMS", "WHATSAPP", "PUSH"])),
@@ -51,22 +46,17 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Si no hay configuraciones, crear las por defecto
+    // Si no hay configuraciones, crear las por defecto - Solo tipos implementados
     if (configuraciones.length === 0) {
       const tiposAlerta = [
         "PAGO_RECURRENTE",
         "PRESUPUESTO_80", 
         "PRESUPUESTO_90",
         "PRESUPUESTO_SUPERADO",
-        "META_PROGRESO",
         "INVERSION_VENCIMIENTO",
         "PRESTAMO_CUOTA",
         "GASTO_INUSUAL",
-        "OPORTUNIDAD_AHORRO",
-        "SALDO_BAJO",
-        "RECOMENDACION_IA",
-        "TAREA_VENCIMIENTO",
-        "PROMOCION_DISPONIBLE"
+        "TAREA_VENCIMIENTO"
       ]
 
       const configuracionesPorDefecto = await Promise.all(

@@ -105,15 +105,10 @@ export function AlertsList({
       PRESUPUESTO_80: "Presupuesto 80%",
       PRESUPUESTO_90: "Presupuesto 90%",
       PRESUPUESTO_SUPERADO: "Presupuesto Superado",
-      META_PROGRESO: "Meta de Ahorro",
       INVERSION_VENCIMIENTO: "Inversión Vencimiento",
       PRESTAMO_CUOTA: "Cuota de Préstamo",
       GASTO_INUSUAL: "Gasto Inusual",
-      OPORTUNIDAD_AHORRO: "Oportunidad de Ahorro",
-      SALDO_BAJO: "Saldo Bajo",
-      RECOMENDACION_IA: "Recomendación IA",
-      TAREA_VENCIMIENTO: "Tarea Vencimiento",
-      PROMOCION_DISPONIBLE: "Promoción Disponible"
+      TAREA_VENCIMIENTO: "Tarea Vencimiento"
     }
     return labels[tipo] || tipo.replace("_", " ")
   }

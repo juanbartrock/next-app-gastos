@@ -38,21 +38,16 @@ export function ConfiguracionAlertas() {
   const [loading, setLoading] = useState(true)
   const [guardando, setGuardando] = useState(false)
 
-  // Datos estáticos
+  // Tipos de alerta implementados y funcionales
   const tiposAlerta = [
     { value: "PAGO_RECURRENTE", label: "Pagos Recurrentes", descripcion: "Recordatorios de pagos que se repiten mensualmente" },
     { value: "PRESUPUESTO_80", label: "Presupuesto 80%", descripcion: "Cuando has usado el 80% de tu presupuesto" },
     { value: "PRESUPUESTO_90", label: "Presupuesto 90%", descripcion: "Cuando has usado el 90% de tu presupuesto" },
     { value: "PRESUPUESTO_SUPERADO", label: "Presupuesto Superado", descripcion: "Cuando has excedido tu presupuesto" },
-    { value: "META_PROGRESO", label: "Progreso de Metas", descripcion: "Actualizaciones sobre el progreso de tus metas" },
     { value: "INVERSION_VENCIMIENTO", label: "Vencimiento de Inversiones", descripcion: "Cuando una inversión está próxima a vencer" },
     { value: "PRESTAMO_CUOTA", label: "Cuotas de Préstamos", descripcion: "Recordatorios de cuotas próximas a vencer" },
     { value: "GASTO_INUSUAL", label: "Gastos Inusuales", descripcion: "Detección de gastos fuera de lo normal" },
-    { value: "OPORTUNIDAD_AHORRO", label: "Oportunidades de Ahorro", descripcion: "Sugerencias para ahorrar dinero" },
-    { value: "SALDO_BAJO", label: "Saldo Bajo", descripcion: "Cuando tu saldo está por debajo del mínimo" },
-    { value: "RECOMENDACION_IA", label: "Recomendaciones IA", descripcion: "Consejos financieros generados por inteligencia artificial" },
-    { value: "TAREA_VENCIMIENTO", label: "Tareas Próximas", descripcion: "Recordatorios de tareas financieras pendientes" },
-    { value: "PROMOCION_DISPONIBLE", label: "Promociones", descripcion: "Notificaciones sobre promociones y descuentos" }
+    { value: "TAREA_VENCIMIENTO", label: "Tareas Próximas", descripcion: "Recordatorios de tareas financieras pendientes" }
   ]
 
   const canales = [

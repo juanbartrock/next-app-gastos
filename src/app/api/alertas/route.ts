@@ -4,22 +4,17 @@ import { options } from "@/app/api/auth/[...nextauth]/options"
 import prisma, { executeWithTimeout } from "@/lib/prisma"
 import { z } from "zod"
 
-// Esquema de validación para crear alertas
+// Esquema de validación para crear alertas - Solo tipos implementados
 const crearAlertaSchema = z.object({
   tipo: z.enum([
     "PAGO_RECURRENTE",
     "PRESUPUESTO_80", 
     "PRESUPUESTO_90",
     "PRESUPUESTO_SUPERADO",
-    "META_PROGRESO",
     "INVERSION_VENCIMIENTO",
     "PRESTAMO_CUOTA",
     "GASTO_INUSUAL",
-    "OPORTUNIDAD_AHORRO",
-    "SALDO_BAJO",
-    "RECOMENDACION_IA",
-    "TAREA_VENCIMIENTO",
-    "PROMOCION_DISPONIBLE"
+    "TAREA_VENCIMIENTO"
   ]),
   prioridad: z.enum(["BAJA", "MEDIA", "ALTA", "CRITICA"]),
   titulo: z.string().min(1, "El título es requerido"),

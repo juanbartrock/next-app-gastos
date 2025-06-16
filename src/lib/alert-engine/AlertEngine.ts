@@ -2,21 +2,16 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-// Tipos de alerta que coinciden con el enum del schema
+// Tipos de alerta que coinciden con el enum del schema - Solo alertas implementadas
 export type TipoAlerta = 
   | 'PAGO_RECURRENTE'
   | 'PRESUPUESTO_80'
   | 'PRESUPUESTO_90'
   | 'PRESUPUESTO_SUPERADO'
-  | 'META_PROGRESO'
   | 'INVERSION_VENCIMIENTO'
   | 'PRESTAMO_CUOTA'
   | 'GASTO_INUSUAL'
-  | 'OPORTUNIDAD_AHORRO'
-  | 'SALDO_BAJO'
-  | 'RECOMENDACION_IA'
   | 'TAREA_VENCIMIENTO'
-  | 'PROMOCION_DISPONIBLE'
 
 export type PrioridadAlerta = 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA'
 
