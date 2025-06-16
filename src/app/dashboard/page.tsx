@@ -110,7 +110,7 @@ function BalanceCard({
           <div className="space-y-1">
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
             <p className="text-3xl font-bold">
-              {valuesVisible ? amount : "••••••"}
+              {valuesVisible ? amount : "***"}
             </p>
             {subtitle && (
               <p className="text-xs text-muted-foreground">{subtitle}</p>
@@ -164,7 +164,7 @@ function UltimosMovimientos({ gastos }: { gastos: any[] }) {
   const { valuesVisible } = useVisibility()
   const [expandido, setExpandido] = useState(false)
   
-  const cantidadMostrar = expandido ? 20 : 5
+  const cantidadMostrar = expandido ? 20 : 6
   const ultimosMovimientos = gastos
     .slice(0, expandido ? 50 : 15)  // Obtener más datos cuando esté expandido
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -227,7 +227,7 @@ function UltimosMovimientos({ gastos }: { gastos: any[] }) {
                     getTransactionColor(movimiento.tipoTransaccion)
                   )}>
                     {movimiento.tipoTransaccion === 'income' ? '+' : '-'}
-                    {valuesVisible ? formatMoney(movimiento.monto) : "••••"}
+                    {valuesVisible ? formatMoney(movimiento.monto) : "***"}
                   </p>
                   <p className="text-xs text-muted-foreground capitalize">
                     {movimiento.tipoMovimiento}
@@ -617,7 +617,7 @@ export default function DashboardRedesigned() {
                     {totalBalanceTypes[balanceIndex].label}
                   </div>
                   <div className="text-4xl font-bold text-blue-700 dark:text-blue-300">
-                    {valuesVisible ? totalBalanceTypes[balanceIndex].amount : "••••••"}
+                    {valuesVisible ? totalBalanceTypes[balanceIndex].amount : "***"}
                   </div>
                   <div className="text-xs text-blue-500 dark:text-blue-400 mt-1">
                     Incluye gastos familiares
@@ -649,7 +649,9 @@ export default function DashboardRedesigned() {
 
             {/* Sección derecha: Controles */}
             <div className="flex items-center gap-4">
-              <CurrencySelector />
+              <div className="ml-3">
+                <CurrencySelector />
+              </div>
               
               <Button
                 variant="ghost"
