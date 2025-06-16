@@ -7,28 +7,59 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, Save, LightbulbIcon, Bell, Settings, Shield, Crown, CreditCard, ExternalLink } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ChevronLeft, Save, Settings, Shield, Crown, CreditCard, ExternalLink, Eye, EyeOff, Lock, Trash2, AlertTriangle, User, Camera, MapPin, Globe, Calendar, DollarSign } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CategoriasFamiliaresManager } from "@/components/admin/CategoriasFamiliaresManager";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function ConfiguracionPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   
-  const [formData, setFormData] = useState({
-    notificacionesRecomendaciones: true,
-    notificacionesRecurrentes: true,
-    notificacionesGrupos: true,
-    recomendacionesAutomaticas: false,
-    recomendacionesSimilares: true
+  // Estado para perfil del usuario
+  const [profileData, setProfileData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    timezone: "America/Argentina/Buenos_Aires",
+    currency: "ARS",
+    dateFormat: "DD/MM/YYYY",
+    language: "es-AR"
+  });
+
+  // Estado para cambio de contraseña
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: ""
+  });
+  
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
   });
   
   const [loading, setLoading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
   const [userIsAdmin, setUserIsAdmin] = useState(false);
   const [loadingAdmin, setLoadingAdmin] = useState(true);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -57,35 +88,145 @@ export default function ConfiguracionPage() {
 
     if (session?.user?.id) {
       checkAdminStatus();
+      loadUserProfile();
     }
-    
-    // Aquí se cargarían las preferencias del usuario desde la API
-    // Por ahora usamos valores por defecto
   }, [status, router, session?.user?.id]);
 
-  const handleSwitchChange = (name: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: !prev[name as keyof typeof prev]
-    }));
+  const loadUserProfile = async () => {
+    try {
+      const response = await fetch('/api/user/profile');
+      if (response.ok) {
+        const userData = await response.json();
+        setProfileData({
+          name: userData.name || "",
+          email: userData.email || "",
+          phone: userData.phone || "",
+          timezone: userData.timezone || "America/Argentina/Buenos_Aires",
+          currency: userData.currency || "ARS",
+          dateFormat: userData.dateFormat || "DD/MM/YYYY",
+          language: userData.language || "es-AR"
+        });
+      }
+    } catch (error) {
+      console.error('Error cargando perfil:', error);
+    }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
     try {
-      // Aquí se enviarían las preferencias a una API para guardarlas
-      // Por ahora solo simulamos el guardado
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Validaciones
+      if (passwordData.newPassword !== passwordData.confirmPassword) {
+        toast.error("Las contraseñas nuevas no coinciden");
+        return;
+      }
       
-      toast.success("Configuración guardada correctamente");
+      if (passwordData.newPassword.length < 6) {
+        toast.error("La nueva contraseña debe tener al menos 6 caracteres");
+        return;
+      }
+      
+      // TODO: Implementar API para cambio de contraseña
+      const response = await fetch('/api/user/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword
+        })
+      });
+      
+      if (response.ok) {
+        toast.success("Contraseña cambiada correctamente");
+        setPasswordData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: ""
+        });
+      } else {
+        const error = await response.json();
+        toast.error(error.message || "Error al cambiar la contraseña");
+      }
     } catch (error) {
-      console.error("Error al guardar configuración:", error);
-      toast.error("No se pudo guardar la configuración");
+      console.error("Error al cambiar contraseña:", error);
+      toast.error("No se pudo cambiar la contraseña");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== "ELIMINAR") {
+      toast.error("Debe escribir 'ELIMINAR' para confirmar");
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      // TODO: Implementar API para eliminar cuenta
+      const response = await fetch('/api/user/delete-account', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (response.ok) {
+        toast.success("Cuenta eliminada correctamente");
+        // Redireccionar al login después de eliminar
+        setTimeout(() => {
+          router.push('/login');
+        }, 2000);
+      } else {
+        const error = await response.json();
+        toast.error(error.message || "Error al eliminar la cuenta");
+      }
+    } catch (error) {
+      console.error("Error al eliminar cuenta:", error);
+      toast.error("No se pudo eliminar la cuenta");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProfileUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileLoading(true);
+    
+    try {
+      const response = await fetch('/api/user/update-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData)
+      });
+      
+      if (response.ok) {
+        toast.success("Perfil actualizado correctamente");
+      } else {
+        const error = await response.json();
+        toast.error(error.message || "Error al actualizar el perfil");
+      }
+    } catch (error) {
+      console.error("Error al actualizar perfil:", error);
+      toast.error("No se pudo actualizar el perfil");
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const handleProfileChange = (field: string, value: string) => {
+    setProfileData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const togglePasswordVisibility = (field: 'current' | 'new' | 'confirm') => {
+    setShowPasswords(prev => ({
+      ...prev,
+      [field]: !prev[field]
+    }));
   };
 
   // Mostrar una pantalla de carga mientras se verifica la sesión
@@ -119,143 +260,403 @@ export default function ConfiguracionPage() {
           </CardHeader>
           
           <CardContent>
-            <Tabs defaultValue="notificaciones">
+            <Tabs defaultValue="general">
               <TabsList className="w-full mb-6">
-                <TabsTrigger value="notificaciones" className="flex-1">Notificaciones</TabsTrigger>
-                <TabsTrigger value="recomendaciones" className="flex-1">Recomendaciones</TabsTrigger>
-                <TabsTrigger value="suscripcion" className="flex-1">Suscripción</TabsTrigger>
                 <TabsTrigger value="general" className="flex-1">General</TabsTrigger>
+                <TabsTrigger value="perfil" className="flex-1">Perfil</TabsTrigger>
+                <TabsTrigger value="seguridad" className="flex-1">Seguridad</TabsTrigger>
+                <TabsTrigger value="suscripcion" className="flex-1">Suscripción</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="notificaciones">
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="notificacionesRecomendaciones" className="text-base">
-                          <div className="flex items-center gap-2">
-                            <LightbulbIcon className="h-4 w-4 text-yellow-500" />
-                            Notificaciones de recomendaciones de ahorro
-                          </div>
-                        </Label>
-                        <p className="text-sm text-muted-foreground">
-                          Recibe notificaciones cuando encontremos nuevas oportunidades de ahorro
-                        </p>
-                      </div>
-                      <Switch
-                        id="notificacionesRecomendaciones"
-                        checked={formData.notificacionesRecomendaciones}
-                        onCheckedChange={() => handleSwitchChange("notificacionesRecomendaciones")}
-                      />
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="notificacionesRecurrentes" className="text-base">
-                          <div className="flex items-center gap-2">
-                            <Bell className="h-4 w-4" />
-                            Recordatorios de pagos recurrentes
-                          </div>
-                        </Label>
-                        <p className="text-sm text-muted-foreground">
-                          Recibe notificaciones sobre tus gastos recurrentes próximos a vencer
-                        </p>
-                      </div>
-                      <Switch
-                        id="notificacionesRecurrentes"
-                        checked={formData.notificacionesRecurrentes}
-                        onCheckedChange={() => handleSwitchChange("notificacionesRecurrentes")}
-                      />
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="notificacionesGrupos" className="text-base">
-                          <div className="flex items-center gap-2">
-                            <Bell className="h-4 w-4" />
-                            Notificaciones de grupos
-                          </div>
-                        </Label>
-                        <p className="text-sm text-muted-foreground">
-                          Recibe notificaciones sobre actividad en tus grupos
-                        </p>
-                      </div>
-                      <Switch
-                        id="notificacionesGrupos"
-                        checked={formData.notificacionesGrupos}
-                        onCheckedChange={() => handleSwitchChange("notificacionesGrupos")}
-                      />
-                    </div>
+              <TabsContent value="perfil">
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <User className="h-5 w-5 text-blue-500" />
+                    <span className="text-lg font-semibold">Información Personal</span>
                   </div>
                   
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Guardando..." : (
-                      <>
-                        <Save className="mr-2 h-4 w-4" />
-                        Guardar cambios
-                      </>
-                    )}
-                  </Button>
-                </form>
+                  <form onSubmit={handleProfileUpdate} className="space-y-6">
+                    <div className="grid gap-6 md:grid-cols-2">
+                      {/* Información Básica */}
+                      <div className="space-y-4">
+                        <h3 className="text-base font-semibold">Datos Básicos</h3>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="name">Nombre Completo</Label>
+                          <Input
+                            id="name"
+                            value={profileData.name}
+                            onChange={(e) => handleProfileChange('name', e.target.value)}
+                            placeholder="Tu nombre completo"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="email">Email</Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            value={profileData.email}
+                            disabled
+                            className="bg-muted"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            El email no puede modificarse por seguridad
+                          </p>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="phone">Teléfono de Contacto</Label>
+                          <Input
+                            id="phone"
+                            type="tel"
+                            value={profileData.phone}
+                            onChange={(e) => handleProfileChange('phone', e.target.value)}
+                            placeholder="+54 9 11 1234-5678"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Usado para alertas por SMS (opcional)
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Configuración Regional */}
+                      <div className="space-y-4">
+                        <h3 className="text-base font-semibold">Configuración Regional</h3>
+                        
+                        <div className="space-y-2">
+                          <Label>
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4" />
+                              Zona Horaria
+                            </div>
+                          </Label>
+                          <Select value={profileData.timezone} onValueChange={(value) => handleProfileChange('timezone', value)}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="America/Argentina/Buenos_Aires">Buenos Aires (UTC-3)</SelectItem>
+                              <SelectItem value="America/Argentina/Cordoba">Córdoba (UTC-3)</SelectItem>
+                              <SelectItem value="America/Argentina/Mendoza">Mendoza (UTC-3)</SelectItem>
+                              <SelectItem value="America/Argentina/Ushuaia">Ushuaia (UTC-3)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>
+                            <div className="flex items-center gap-2">
+                              <DollarSign className="h-4 w-4" />
+                              Moneda Preferida
+                            </div>
+                          </Label>
+                          <Select value={profileData.currency} onValueChange={(value) => handleProfileChange('currency', value)}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="ARS">Peso Argentino (ARS)</SelectItem>
+                              <SelectItem value="USD">Dólar Estadounidense (USD)</SelectItem>
+                              <SelectItem value="EUR">Euro (EUR)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground">
+                            Para futuras expansiones internacionales
+                          </p>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4" />
+                              Formato de Fecha
+                            </div>
+                          </Label>
+                          <Select value={profileData.dateFormat} onValueChange={(value) => handleProfileChange('dateFormat', value)}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="DD/MM/YYYY">DD/MM/YYYY (Argentina)</SelectItem>
+                              <SelectItem value="MM/DD/YYYY">MM/DD/YYYY (Estados Unidos)</SelectItem>
+                              <SelectItem value="YYYY-MM-DD">YYYY-MM-DD (ISO 8601)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>
+                            <div className="flex items-center gap-2">
+                              <Globe className="h-4 w-4" />
+                              Idioma
+                            </div>
+                          </Label>
+                          <Select value={profileData.language} onValueChange={(value) => handleProfileChange('language', value)}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="es-AR">Español (Argentina)</SelectItem>
+                              <SelectItem value="en-US">English (United States)</SelectItem>
+                              <SelectItem value="pt-BR">Português (Brasil)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground">
+                            Para futuras expansiones regionales
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Información Visual */}
+                    <div className="border-t pt-6">
+                      <h3 className="text-base font-semibold mb-4">Foto de Perfil</h3>
+                      <div className="flex items-center gap-4">
+                        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center">
+                          <User className="h-10 w-10 text-primary/60" />
+                        </div>
+                        <div className="space-y-2">
+                          <Button type="button" variant="outline" size="sm" className="gap-2">
+                            <Camera className="h-4 w-4" />
+                            Cambiar Foto
+                          </Button>
+                          <p className="text-xs text-muted-foreground">
+                            JPG, PNG hasta 2MB (próximamente disponible)
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <Button type="submit" disabled={profileLoading} className="w-full">
+                      {profileLoading ? "Guardando..." : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Guardar Cambios
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                </div>
               </TabsContent>
-              
-              <TabsContent value="recomendaciones">
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="recomendacionesAutomaticas" className="text-base">
-                          <div className="flex items-center gap-2">
-                            <LightbulbIcon className="h-4 w-4 text-yellow-500" />
-                            Búsquedas automáticas
-                          </div>
-                        </Label>
-                        <p className="text-sm text-muted-foreground">
-                          Buscar automáticamente recomendaciones de ahorro semanalmente
-                        </p>
+
+              <TabsContent value="general">
+                <div className="space-y-6">
+                  {loadingAdmin ? (
+                    <div className="py-8 text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                      <p className="text-muted-foreground">Cargando configuración...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2 mb-4">
+                        <Settings className="h-5 w-5 text-blue-500" />
+                        <span className="text-lg font-semibold">Gestión de Categorías</span>
                       </div>
-                      <Switch
-                        id="recomendacionesAutomaticas"
-                        checked={formData.recomendacionesAutomaticas}
-                        onCheckedChange={() => handleSwitchChange("recomendacionesAutomaticas")}
-                      />
+                      <CategoriasFamiliaresManager />
+                      
+                      {userIsAdmin && (
+                        <>
+                          <div className="border-t pt-6">
+                            <div className="flex items-center gap-2 mb-4">
+                              <Shield className="h-5 w-5 text-amber-500" />
+                              <span className="text-lg font-semibold">Panel de Administración</span>
+                              <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
+                                Solo Administradores
+                              </span>
+                            </div>
+                            <div className="bg-amber-50 p-4 rounded-lg">
+                              <p className="text-sm text-amber-700">
+                                🚧 <strong>Panel de Administración General</strong> estará disponible próximamente.
+                                Incluirá gestión de usuarios, planes y analytics del sistema.
+                              </p>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="seguridad">
+                <div className="space-y-8">
+                  {/* Cambio de Contraseña */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Lock className="h-5 w-5 text-green-500" />
+                      <span className="text-lg font-semibold">Cambiar Contraseña</span>
                     </div>
                     
-                    <Separator />
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="recomendacionesSimilares" className="text-base">
-                          <div className="flex items-center gap-2">
-                            <LightbulbIcon className="h-4 w-4 text-yellow-500" />
-                            Mostrar servicios similares
-                          </div>
-                        </Label>
+                    <form onSubmit={handlePasswordChange} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="currentPassword">Contraseña Actual</Label>
+                        <div className="relative">
+                          <Input
+                            id="currentPassword"
+                            type={showPasswords.current ? "text" : "password"}
+                            value={passwordData.currentPassword}
+                            onChange={(e) => setPasswordData(prev => ({
+                              ...prev,
+                              currentPassword: e.target.value
+                            }))}
+                            placeholder="Ingresa tu contraseña actual"
+                            required
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 h-auto p-1"
+                            onClick={() => togglePasswordVisibility('current')}
+                          >
+                            {showPasswords.current ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="newPassword">Nueva Contraseña</Label>
+                        <div className="relative">
+                          <Input
+                            id="newPassword"
+                            type={showPasswords.new ? "text" : "password"}
+                            value={passwordData.newPassword}
+                            onChange={(e) => setPasswordData(prev => ({
+                              ...prev,
+                              newPassword: e.target.value
+                            }))}
+                            placeholder="Ingresa tu nueva contraseña"
+                            required
+                            minLength={6}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 h-auto p-1"
+                            onClick={() => togglePasswordVisibility('new')}
+                          >
+                            {showPasswords.new ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </Button>
+                        </div>
                         <p className="text-sm text-muted-foreground">
-                          Incluir servicios alternativos al buscar recomendaciones de ahorro
+                          Mínimo 6 caracteres
                         </p>
                       </div>
-                      <Switch
-                        id="recomendacionesSimilares"
-                        checked={formData.recomendacionesSimilares}
-                        onCheckedChange={() => handleSwitchChange("recomendacionesSimilares")}
-                      />
-                    </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="confirmPassword">Confirmar Nueva Contraseña</Label>
+                        <div className="relative">
+                          <Input
+                            id="confirmPassword"
+                            type={showPasswords.confirm ? "text" : "password"}
+                            value={passwordData.confirmPassword}
+                            onChange={(e) => setPasswordData(prev => ({
+                              ...prev,
+                              confirmPassword: e.target.value
+                            }))}
+                            placeholder="Confirma tu nueva contraseña"
+                            required
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 h-auto p-1"
+                            onClick={() => togglePasswordVisibility('confirm')}
+                          >
+                            {showPasswords.confirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <Button type="submit" disabled={loading} className="w-full">
+                        {loading ? "Cambiando..." : (
+                          <>
+                            <Lock className="mr-2 h-4 w-4" />
+                            Cambiar Contraseña
+                          </>
+                        )}
+                      </Button>
+                    </form>
                   </div>
                   
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Guardando..." : (
-                      <>
-                        <Save className="mr-2 h-4 w-4" />
-                        Guardar cambios
-                      </>
-                    )}
-                  </Button>
-                </form>
+                  <Separator />
+                  
+                  {/* Eliminar Cuenta */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <AlertTriangle className="h-5 w-5 text-red-500" />
+                      <span className="text-lg font-semibold text-red-600">Zona Peligrosa</span>
+                    </div>
+                    
+                    <div className="border border-red-200 rounded-lg p-4 bg-red-50 dark:bg-red-950/30">
+                      <h3 className="font-semibold text-red-800 dark:text-red-200 mb-2">
+                        Eliminar Cuenta Permanentemente
+                      </h3>
+                      <p className="text-sm text-red-700 dark:text-red-300 mb-4">
+                        Esta acción no se puede deshacer. Se eliminarán todos tus datos:
+                        transacciones, presupuestos, inversiones, préstamos y configuraciones.
+                      </p>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" className="gap-2">
+                            <Trash2 className="h-4 w-4" />
+                            Eliminar Mi Cuenta
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="text-red-600">
+                              ¿Estás completamente seguro?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription className="space-y-3">
+                              <p>
+                                Esta acción eliminará permanentemente tu cuenta y todos los datos asociados.
+                                Esto incluye:
+                              </p>
+                              <ul className="list-disc list-inside text-sm space-y-1">
+                                <li>Todas tus transacciones y gastos</li>
+                                <li>Presupuestos e inversiones</li>
+                                <li>Préstamos y gastos recurrentes</li>
+                                <li>Alertas y configuraciones</li>
+                                <li>Datos de grupos familiares</li>
+                              </ul>
+                              <p className="font-semibold text-red-600">
+                                Esta acción NO se puede deshacer.
+                              </p>
+                              <div className="space-y-2">
+                                <Label htmlFor="deleteConfirm">
+                                  Para confirmar, escribe <strong>ELIMINAR</strong> en el campo:
+                                </Label>
+                                <Input
+                                  id="deleteConfirm"
+                                  value={deleteConfirmText}
+                                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                  placeholder="Escribe ELIMINAR"
+                                />
+                              </div>
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => setDeleteConfirmText("")}>
+                              Cancelar
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={handleDeleteAccount}
+                              disabled={deleteConfirmText !== "ELIMINAR" || loading}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              {loading ? "Eliminando..." : "Eliminar Cuenta"}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                </div>
               </TabsContent>
               
               <TabsContent value="suscripcion">
@@ -317,45 +718,6 @@ export default function ConfiguracionPage() {
                       </div>
                     </div>
                   </div>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="general">
-                <div className="space-y-6">
-                  {loadingAdmin ? (
-                    <div className="py-8 text-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                      <p className="text-muted-foreground">Cargando configuración...</p>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-center gap-2 mb-4">
-                        <Settings className="h-5 w-5 text-blue-500" />
-                        <span className="text-lg font-semibold">Gestión de Categorías</span>
-                      </div>
-                      <CategoriasFamiliaresManager />
-                      
-                      {userIsAdmin && (
-                        <>
-                          <div className="border-t pt-6">
-                            <div className="flex items-center gap-2 mb-4">
-                              <Shield className="h-5 w-5 text-amber-500" />
-                              <span className="text-lg font-semibold">Panel de Administración</span>
-                              <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
-                                Solo Administradores
-                              </span>
-                            </div>
-                            <div className="bg-amber-50 p-4 rounded-lg">
-                              <p className="text-sm text-amber-700">
-                                🚧 <strong>Panel de Administración General</strong> estará disponible próximamente.
-                                Incluirá gestión de usuarios, planes y analytics del sistema.
-                              </p>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </>
-                  )}
                 </div>
               </TabsContent>
             </Tabs>

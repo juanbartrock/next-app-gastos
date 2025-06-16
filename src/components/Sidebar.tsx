@@ -123,51 +123,7 @@ export function Sidebar() {
             {isOpen && <span className="ml-3">Dashboard</span>}
           </Button>
           
-          {/* 2. Transacciones */}
-          <Button 
-            variant={isActive("/transacciones") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-            onClick={() => handleNavigation('/transacciones')}
-          >
-            <DollarSign className="w-5 h-5 text-blue-500" />
-            {isOpen && <span className="ml-3">Transacciones</span>}
-          </Button>
-          
-          {/* 3. Recurrentes */}
-          <Button 
-            variant={isActive("/recurrentes") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-            onClick={() => handleNavigation('/recurrentes')}
-          >
-            <Repeat className="w-5 h-5" />
-            {isOpen && <span className="ml-3">Recurrentes</span>}
-          </Button>
-          
-          {/* 4. Financiación */}
-          <Button 
-            variant={isActive("/financiacion") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-            onClick={() => handleNavigation('/financiacion')}
-          >
-            <CreditCard className="w-5 h-5" />
-            {isOpen && <span className="ml-3">Financiación</span>}
-          </Button>
-          
-          {/* 5. Préstamos */}
-          <Button 
-            variant={isActive("/prestamos") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-            onClick={() => handleNavigation('/prestamos')}
-          >
-            <Building2 className="w-5 h-5 text-blue-500" />
-            {isOpen && <span className="ml-3">Préstamos</span>}
-          </Button>
-          
-          {/* 6. Informes */}
+          {/* 2. Informes */}
           <Button 
             variant={isActive("/informes") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
@@ -178,40 +134,62 @@ export function Sidebar() {
             {isOpen && <span className="ml-3">Informes</span>}
           </Button>
           
-          {/* 7. Grupos */}
+          {/* 3. Transacciones */}
           <Button 
-            variant={isActive("/grupos") ? "secondary" : "ghost"}
+            variant={isActive("/transacciones") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
             style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-            onClick={() => handleNavigation('/grupos')}
+            onClick={() => handleNavigation('/transacciones')}
           >
-            <Users className="w-5 h-5" />
-            {isOpen && <span className="ml-3">Grupos</span>}
+            <DollarSign className="w-5 h-5 text-blue-500" />
+            {isOpen && <span className="ml-3">Transacciones</span>}
           </Button>
           
-          {/* 8. Alertas */}
+          {/* 4. Recurrentes */}
           <Button 
-            variant={isActive("/alertas") ? "secondary" : "ghost"}
+            variant={isActive("/recurrentes") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
             style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-            onClick={() => handleNavigation('/alertas')}
+            onClick={() => handleNavigation('/recurrentes')}
           >
-            <Bell className="w-5 h-5 text-amber-500" />
-            {isOpen && <span className="ml-3">Alertas</span>}
+            <Repeat className="w-5 h-5" />
+            {isOpen && <span className="ml-3">Recurrentes</span>}
           </Button>
           
-          {/* 9. Tareas */}
+          {/* 5. Financiación */}
           <Button 
-            variant={isActive("/tareas") ? "secondary" : "ghost"}
+            variant={isActive("/financiacion") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
             style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-            onClick={() => handleNavigation('/tareas')}
+            onClick={() => handleNavigation('/financiacion')}
           >
-            <CheckSquare2 className="w-5 h-5 text-purple-500" />
-            {isOpen && <span className="ml-3">Tareas</span>}
+            <CreditCard className="w-5 h-5" />
+            {isOpen && <span className="ml-3">Financiación</span>}
           </Button>
           
-          {/* 10. Presupuestos */}
+          {/* 6. Inversiones */}
+          <Button 
+            variant={isActive("/inversiones") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/inversiones')}
+          >
+            <TrendingUp className="w-5 h-5 text-green-500" />
+            {isOpen && <span className="ml-3">Inversiones</span>}
+          </Button>
+          
+          {/* 7. Préstamos */}
+          <Button 
+            variant={isActive("/prestamos") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/prestamos')}
+          >
+            <Building2 className="w-5 h-5 text-blue-500" />
+            {isOpen && <span className="ml-3">Préstamos</span>}
+          </Button>
+          
+          {/* 8. Presupuestos */}
           <Button 
             variant={isActive("/presupuestos") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
@@ -222,15 +200,37 @@ export function Sidebar() {
             {isOpen && <span className="ml-3">Presupuestos</span>}
           </Button>
           
-          {/* 11. Inversiones */}
+          {/* 9. Grupos */}
           <Button 
-            variant={isActive("/inversiones") ? "secondary" : "ghost"}
+            variant={isActive("/grupos") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
             style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
-            onClick={() => handleNavigation('/inversiones')}
+            onClick={() => handleNavigation('/grupos')}
           >
-            <TrendingUp className="w-5 h-5 text-green-500" />
-            {isOpen && <span className="ml-3">Inversiones</span>}
+            <Users className="w-5 h-5" />
+            {isOpen && <span className="ml-3">Grupos</span>}
+          </Button>
+          
+          {/* 10. Tareas */}
+          <Button 
+            variant={isActive("/tareas") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/tareas')}
+          >
+            <CheckSquare2 className="w-5 h-5 text-purple-500" />
+            {isOpen && <span className="ml-3">Tareas</span>}
+          </Button>
+          
+          {/* 11. Alertas */}
+          <Button 
+            variant={isActive("/alertas") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/alertas')}
+          >
+            <Bell className="w-5 h-5 text-amber-500" />
+            {isOpen && <span className="ml-3">Alertas</span>}
           </Button>
           
           {/* 12. Buzón de Comprobantes */}
@@ -274,12 +274,12 @@ export function Sidebar() {
           {isOpen && (
             <div className="my-4 border-t border-gray-200 dark:border-gray-600 pt-2">
               <span className="text-xs text-gray-400 dark:text-gray-500 px-3 font-medium">
-                Configuración & Suscripción
+                Gestión de Datos
               </span>
             </div>
           )}
           
-          {/* 15. Importar Datos */}
+          {/* 13. Importar Datos */}
           <Button 
             variant={isActive("/importar-datos") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
@@ -290,7 +290,7 @@ export function Sidebar() {
             {isOpen && <span className="ml-3">Importar Datos</span>}
           </Button>
           
-          {/* 16. Exportar Datos */}
+          {/* 14. Exportar Datos */}
           <Button 
             variant={isActive("/exportar-datos") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"

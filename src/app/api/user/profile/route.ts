@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
       );
     }
     
+    // Obtener información del usuario
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
@@ -22,7 +23,9 @@ export async function GET(request: NextRequest) {
         name: true,
         email: true,
         phoneNumber: true,
-      },
+        image: true,
+        fechaRegistro: true
+      }
     });
     
     if (!user) {
@@ -32,12 +35,26 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    return NextResponse.json(user);
+    console.log(`✅ Perfil obtenido para usuario: ${user.email}`);
+    
+    return NextResponse.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phoneNumber || '',
+      timezone: 'America/Argentina/Buenos_Aires', // Por defecto
+      currency: 'ARS', // Por defecto
+      dateFormat: 'DD/MM/YYYY', // Por defecto
+      language: 'es-AR', // Por defecto
+      image: user.image,
+      createdAt: user.fechaRegistro,
+      updatedAt: user.fechaRegistro
+    });
   } catch (error: any) {
-    console.error("Error al obtener perfil de usuario:", error);
+    console.error("Error obteniendo perfil:", error);
     
     return NextResponse.json(
-      { error: "Error al obtener el perfil" },
+      { error: "Error interno del servidor" },
       { status: 500 }
     );
   }
