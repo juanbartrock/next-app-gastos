@@ -6,19 +6,23 @@ import { useRouter, useParams } from "next/navigation"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { 
-  ArrowLeft, TrendingUp, LineChart, Pencil, AlertTriangle, 
-  BarChart4, PiggyBank, ArrowDown, ArrowUp, Clock, Loader2,
-  CalendarClock, Building, AlertCircle
+  ArrowLeft, TrendingUp, Plus, Minus, Loader2, PiggyBank,
+  CalendarClock, Building, DollarSign, AlertCircle, Check
 } from "lucide-react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { useCurrency } from "@/contexts/CurrencyContext"
+import { toast } from "sonner"
 import Link from "next/link"
 
-// Tipo de datos para la inversión (simulado por ahora)
+// Tipos de datos reales
 interface Inversion {
   id: string
   nombre: string
@@ -26,6 +30,7 @@ interface Inversion {
   tipo: {
     id: string
     nombre: string
+    descripcion?: string
   }
   montoInicial: number
   montoActual: number
@@ -39,32 +44,37 @@ interface Inversion {
   createdAt: string
 }
 
-// Tipo de datos para transacciones
-interface Transaccion {
+interface TransaccionInversion {
   id: string
-  tipo: "deposito" | "retiro" | "dividendo" | "interes" | "comision"
+  tipo: string
   monto: number
   fecha: string
   descripcion?: string
 }
 
-// Tipo de datos para historial de cotizaciones
-interface Cotizacion {
-  id: string
-  valor: number
-  fecha: string
-  fuente?: string
-}
-
 export default function DetalleInversionPage() {
-  // Utiliza el hook useParams para acceder a los parámetros de forma segura
   const params = useParams();
   const id = params?.id as string;
   
   const [inversion, setInversion] = useState<Inversion | null>(null)
-  const [transacciones, setTransacciones] = useState<Transaccion[]>([])
-  const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>([])
+  const [transacciones, setTransacciones] = useState<TransaccionInversion[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingAction, setIsLoadingAction] = useState(false)
+  
+  // Estados para modales
+  const [modalAporte, setModalAporte] = useState(false)
+  const [modalRetiro, setModalRetiro] = useState(false)
+  
+  // Estados para formularios
+  const [montoAporte, setMontoAporte] = useState("")
+  const [fechaAporte, setFechaAporte] = useState("")
+  const [notasAporte, setNotasAporte] = useState("")
+  
+  const [montoRetiro, setMontoRetiro] = useState("")
+  const [tipoRetiro, setTipoRetiro] = useState<'parcial' | 'total'>('parcial')
+  const [fechaRetiro, setFechaRetiro] = useState("")
+  const [notasRetiro, setNotasRetiro] = useState("")
+  
   const { formatMoney } = useCurrency()
   const { status } = useSession()
   const router = useRouter()
@@ -76,146 +86,144 @@ export default function DetalleInversionPage() {
     }
   }, [status, router])
 
-  // Función para cargar los datos de la inversión (simulada por ahora)
+  // Cargar datos reales de la inversión
   useEffect(() => {
     const cargarDatos = async () => {
       setIsLoading(true)
       try {
-        // Simulamos la carga de datos - se reemplazará por llamadas a API
-        setTimeout(() => {
-          // Inversión de ejemplo
-          setInversion({
-            id: id,
-            nombre: "Plazo Fijo UVA",
-            descripcion: "Plazo fijo ajustado por inflación con rendimiento real superior a un plazo fijo tradicional.",
-            tipo: {
-              id: "2",
-              nombre: "Plazo Fijo UVA"
-            },
-            montoInicial: 500000,
-            montoActual: 530000,
-            rendimientoTotal: 30000,
-            rendimientoAnual: 9.5,
-            fechaInicio: "2023-12-01",
-            fechaVencimiento: "2024-06-01",
-            estado: "activa",
-            plataforma: "Banco Nación",
-            notas: "Renovación automática activada. Intereses mensuales.",
-            createdAt: "2023-12-01"
-          })
+        // Cargar inversión
+        const inversionResponse = await fetch(`/api/inversiones`)
+        if (!inversionResponse.ok) throw new Error('Error al cargar inversión')
+        
+        const inversionesData = await inversionResponse.json()
+        const inversionEncontrada = inversionesData.inversiones?.find((inv: any) => inv.id === id)
+        
+        if (!inversionEncontrada) {
+          toast.error("Inversión no encontrada")
+          router.push('/inversiones')
+          return
+        }
+        
+        setInversion(inversionEncontrada)
 
-          // Transacciones de ejemplo
-          setTransacciones([
-            {
-              id: "t1",
-              tipo: "deposito",
-              monto: 500000,
-              fecha: "2023-12-01",
-              descripcion: "Depósito inicial"
-            },
-            {
-              id: "t2",
-              tipo: "interes",
-              monto: 4000,
-              fecha: "2024-01-01",
-              descripcion: "Interés mensual"
-            },
-            {
-              id: "t3",
-              tipo: "interes",
-              monto: 4200,
-              fecha: "2024-02-01",
-              descripcion: "Interés mensual"
-            },
-            {
-              id: "t4",
-              tipo: "interes",
-              monto: 4300,
-              fecha: "2024-03-01",
-              descripcion: "Interés mensual"
-            }
-          ])
-
-          // Cotizaciones de ejemplo
-          setCotizaciones([
-            {
-              id: "c1",
-              valor: 500000,
-              fecha: "2023-12-01",
-              fuente: "Depósito inicial"
-            },
-            {
-              id: "c2",
-              valor: 504000,
-              fecha: "2024-01-01",
-              fuente: "Banco Nación"
-            },
-            {
-              id: "c3",
-              valor: 515000,
-              fecha: "2024-02-01",
-              fuente: "Banco Nación"
-            },
-            {
-              id: "c4",
-              valor: 530000,
-              fecha: "2024-03-01",
-              fuente: "Banco Nación"
-            }
-          ])
-
-          setIsLoading(false)
-        }, 1000)
+        // Cargar transacciones de la inversión
+        const transaccionesResponse = await fetch(`/api/inversiones/${id}/transacciones`)
+        if (transaccionesResponse.ok) {
+          const transaccionesData = await transaccionesResponse.json()
+          setTransacciones(transaccionesData.transacciones || [])
+        }
+        
       } catch (error) {
-        console.error("Error al cargar datos de la inversión:", error)
+        console.error("Error al cargar datos:", error)
+        toast.error("Error al cargar los datos de la inversión")
+      } finally {
         setIsLoading(false)
       }
     }
 
-    if (status === "authenticated") {
+    if (status === "authenticated" && id) {
       cargarDatos()
     }
-  }, [status, id])
+  }, [status, id, router])
 
-  // Función para volver
+  // Función para aportar dinero
+  const handleAporte = async () => {
+    if (!montoAporte || parseFloat(montoAporte) <= 0) {
+      toast.error("Ingrese un monto válido")
+      return
+    }
+
+    setIsLoadingAction(true)
+    try {
+      const response = await fetch(`/api/inversiones/${id}/aportar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          montoAporte: parseFloat(montoAporte),
+          fecha: fechaAporte || undefined,
+          notas: notasAporte || undefined
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Error al realizar aporte')
+      }
+
+      const result = await response.json()
+      toast.success(result.message)
+      
+      // Actualizar datos
+      setInversion(result.inversion)
+      setTransacciones(prev => [result.transaccion, ...prev])
+      
+      // Limpiar formulario
+      setMontoAporte("")
+      setFechaAporte("")
+      setNotasAporte("")
+      setModalAporte(false)
+      
+    } catch (error: any) {
+      console.error("Error en aporte:", error)
+      toast.error(error.message || "Error al realizar el aporte")
+    } finally {
+      setIsLoadingAction(false)
+    }
+  }
+
+  // Función para retirar dinero
+  const handleRetiro = async () => {
+    if (!montoRetiro || parseFloat(montoRetiro) <= 0) {
+      toast.error("Ingrese un monto válido")
+      return
+    }
+
+    if (inversion && parseFloat(montoRetiro) > inversion.montoActual) {
+      toast.error(`Monto excede el disponible: ${formatMoney(inversion.montoActual)}`)
+      return
+    }
+
+    setIsLoadingAction(true)
+    try {
+      const response = await fetch(`/api/inversiones/${id}/retirar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          montoRetiro: parseFloat(montoRetiro),
+          tipoRetiro,
+          fecha: fechaRetiro || undefined,
+          notas: notasRetiro || undefined
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Error al realizar retiro')
+      }
+
+      const result = await response.json()
+      toast.success(result.message)
+      
+      // Actualizar datos
+      setInversion(result.inversion)
+      setTransacciones(prev => [result.transaccion, ...prev])
+      
+      // Limpiar formulario
+      setMontoRetiro("")
+      setFechaRetiro("")
+      setNotasRetiro("")
+      setModalRetiro(false)
+      
+    } catch (error: any) {
+      console.error("Error en retiro:", error)
+      toast.error(error.message || "Error al realizar el retiro")
+    } finally {
+      setIsLoadingAction(false)
+    }
+  }
+
   const goBack = () => {
     router.back()
-  }
-
-  // Iconos para los tipos de transacción
-  const transaccionIcon = (tipo: string) => {
-    switch (tipo) {
-      case "deposito":
-        return <ArrowDown className="h-4 w-4 text-green-500" />
-      case "retiro":
-        return <ArrowUp className="h-4 w-4 text-red-500" />
-      case "dividendo":
-        return <PiggyBank className="h-4 w-4 text-green-500" />
-      case "interes":
-        return <BarChart4 className="h-4 w-4 text-green-500" />
-      case "comision":
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />
-      default:
-        return <Clock className="h-4 w-4" />
-    }
-  }
-
-  // Texto descriptivo para los tipos de transacción
-  const transaccionText = (tipo: string) => {
-    switch (tipo) {
-      case "deposito":
-        return "Depósito"
-      case "retiro":
-        return "Retiro"
-      case "dividendo":
-        return "Dividendo"
-      case "interes":
-        return "Interés"
-      case "comision":
-        return "Comisión"
-      default:
-        return tipo.charAt(0).toUpperCase() + tipo.slice(1)
-    }
   }
 
   if (status === "loading" || isLoading) {
@@ -228,332 +236,335 @@ export default function DetalleInversionPage() {
 
   if (!inversion) {
     return (
-      <div className="container mx-auto p-4 space-y-6">
-        <div className="flex items-center mb-6">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="flex items-center gap-1 mr-4" 
-            onClick={goBack}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span>Volver</span>
-          </Button>
+      <div className="container mx-auto p-4">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Inversión no encontrada</h1>
+          <Button onClick={goBack}>Volver</Button>
         </div>
-        <Card className="max-w-3xl mx-auto">
-          <CardContent className="flex flex-col items-center justify-center py-10">
-            <AlertCircle className="h-12 w-12 text-destructive mb-4" />
-            <h3 className="text-lg font-medium mb-1">Inversión no encontrada</h3>
-            <p className="text-muted-foreground text-center mb-4">
-              No se encontró la inversión solicitada o no tienes acceso a ella.
-            </p>
-            <Button asChild>
-              <Link href="/inversiones">Ver todas mis inversiones</Link>
-            </Button>
-          </CardContent>
-        </Card>
       </div>
     )
   }
 
-  // Calcular días restantes para inversiones con vencimiento
-  const diasRestantes = inversion.fechaVencimiento 
-    ? Math.max(0, Math.ceil((new Date(inversion.fechaVencimiento).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
-    : null
-
-  // Calcular rendimiento para mostrar en porcentaje
-  const rendimientoPorcentaje = ((inversion.montoActual - inversion.montoInicial) / inversion.montoInicial) * 100
+  const rendimientoPorcentaje = inversion.montoInicial > 0 
+    ? ((inversion.montoActual - inversion.montoInicial) / inversion.montoInicial) * 100 
+    : 0
 
   return (
     <div className="container mx-auto p-4 space-y-6">
-      <div className="flex items-center mb-6">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="flex items-center gap-1 mr-4" 
-          onClick={goBack}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span>Volver</span>
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-6">
+        <Button variant="ghost" size="sm" onClick={goBack}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Volver
         </Button>
-        <h1 className="text-2xl font-bold flex items-center">
-          <TrendingUp className="h-6 w-6 mr-2 text-primary" />
-          Detalle de Inversión
-        </h1>
+        <div>
+          <h1 className="text-2xl font-bold">{inversion.nombre}</h1>
+          <p className="text-muted-foreground">{inversion.tipo.nombre}</p>
+        </div>
+        <div className="ml-auto">
+          <Badge variant={inversion.estado === 'activa' ? 'default' : 'secondary'}>
+            {inversion.estado}
+          </Badge>
+        </div>
       </div>
 
-      {/* Encabezado y resumen */}
-      <Card className="mb-6">
-        <CardHeader className="pb-2">
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle className="text-2xl font-bold">{inversion.nombre}</CardTitle>
-              <CardDescription className="text-sm flex items-center gap-1">
-                {inversion.tipo.nombre}
-                {inversion.plataforma && (
-                  <>
-                    <span className="mx-1">•</span>
-                    <span className="flex items-center">
-                      <Building className="h-3 w-3 mr-1" />
-                      {inversion.plataforma}
-                    </span>
-                  </>
-                )}
-              </CardDescription>
+      {/* Cards de información principal */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Monto Actual</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatMoney(inversion.montoActual)}</div>
+            <p className="text-xs text-muted-foreground">
+              Inversión inicial: {formatMoney(inversion.montoInicial)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Rendimiento</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatMoney(inversion.rendimientoTotal)}
             </div>
-            <Badge 
-              variant={
-                inversion.estado === "activa" ? "outline" : 
-                inversion.estado === "vencida" ? "secondary" : "default"
-              }
-              className="text-xs"
-            >
-              {inversion.estado.charAt(0).toUpperCase() + inversion.estado.slice(1)}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <p className="text-muted-foreground mb-1 text-sm">Monto Inicial</p>
-              <p className="text-xl font-bold">{formatMoney(inversion.montoInicial)}</p>
+            <p className="text-xs text-muted-foreground">
+              {rendimientoPorcentaje >= 0 ? '+' : ''}{rendimientoPorcentaje.toFixed(2)}%
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Rendimiento Anual</CardTitle>
+            <CalendarClock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {inversion.rendimientoAnual ? `${inversion.rendimientoAnual}%` : 'N/A'}
             </div>
-            <div>
-              <p className="text-muted-foreground mb-1 text-sm">Valor Actual</p>
-              <p className="text-xl font-bold">{formatMoney(inversion.montoActual)}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground mb-1 text-sm">Rendimiento</p>
-              <div className="flex items-center">
-                <p className="text-xl font-bold mr-2">{formatMoney(inversion.rendimientoTotal)}</p>
-                <Badge 
-                  variant={inversion.rendimientoTotal >= 0 ? "outline" : "destructive"}
-                  className="flex items-center"
-                >
-                  {inversion.rendimientoTotal >= 0 ? "+" : ""}{rendimientoPorcentaje.toFixed(2)}%
-                </Badge>
+            <p className="text-xs text-muted-foreground">
+              Esperado anual
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Botones de acción */}
+      {inversion.estado === 'activa' && (
+        <div className="flex gap-4">
+          <Dialog open={modalAporte} onOpenChange={setModalAporte}>
+            <DialogTrigger asChild>
+              <Button className="flex-1">
+                <Plus className="h-4 w-4 mr-2" />
+                Agregar Dinero
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Agregar Dinero a la Inversión</DialogTitle>
+                <DialogDescription>
+                  Agregue dinero adicional a {inversion.nombre}
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="montoAporte">Monto a Aportar</Label>
+                  <Input
+                    id="montoAporte"
+                    type="number"
+                    placeholder="0.00"
+                    value={montoAporte}
+                    onChange={(e) => setMontoAporte(e.target.value)}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="fechaAporte">Fecha (opcional)</Label>
+                  <Input
+                    id="fechaAporte"
+                    type="date"
+                    value={fechaAporte}
+                    onChange={(e) => setFechaAporte(e.target.value)}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="notasAporte">Notas (opcional)</Label>
+                  <Textarea
+                    id="notasAporte"
+                    placeholder="Notas adicionales..."
+                    value={notasAporte}
+                    onChange={(e) => setNotasAporte(e.target.value)}
+                  />
+                </div>
               </div>
-            </div>
-            <div>
-              <p className="text-muted-foreground mb-1 text-sm">
-                {inversion.rendimientoAnual ? "Rendimiento Anual Estimado" : "Fecha de Inicio"}
-              </p>
-              {inversion.rendimientoAnual ? (
-                <p className="text-xl font-bold">{inversion.rendimientoAnual}%</p>
-              ) : (
-                <p className="text-xl font-bold">
-                  {format(new Date(inversion.fechaInicio), "PPP", { locale: es })}
-                </p>
-              )}
-            </div>
-          </div>
+              
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setModalAporte(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleAporte} disabled={isLoadingAction}>
+                  {isLoadingAction ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                  Agregar Dinero
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
-          {/* Información de vencimiento */}
-          {inversion.fechaVencimiento && (
-            <div className="mt-4 p-3 bg-primary/5 rounded-lg flex items-start gap-3">
-              <CalendarClock className="h-5 w-5 text-primary mt-1" />
-              <div>
-                <p className="font-medium mb-1">
-                  Vence el {format(new Date(inversion.fechaVencimiento), "PPP", { locale: es })}
-                </p>
-                {diasRestantes !== null && (
-                  <p className="text-sm text-muted-foreground">
-                    {diasRestantes === 0 
-                      ? "¡Vence hoy!" 
-                      : `Faltan ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'} para el vencimiento`}
-                  </p>
-                )}
+          <Dialog open={modalRetiro} onOpenChange={setModalRetiro}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="flex-1">
+                <Minus className="h-4 w-4 mr-2" />
+                Retirar Dinero
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Retirar Dinero de la Inversión</DialogTitle>
+                <DialogDescription>
+                  Retire dinero de {inversion.nombre}. Disponible: {formatMoney(inversion.montoActual)}
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="montoRetiro">Monto a Retirar</Label>
+                  <Input
+                    id="montoRetiro"
+                    type="number"
+                    placeholder="0.00"
+                    max={inversion.montoActual}
+                    value={montoRetiro}
+                    onChange={(e) => setMontoRetiro(e.target.value)}
+                  />
+                </div>
+                
+                <div>
+                  <Label>Tipo de Retiro</Label>
+                  <div className="flex gap-2 mt-2">
+                    <Button
+                      type="button"
+                      variant={tipoRetiro === 'parcial' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTipoRetiro('parcial')}
+                    >
+                      Parcial
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={tipoRetiro === 'total' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => {
+                        setTipoRetiro('total')
+                        setMontoRetiro(inversion.montoActual.toString())
+                      }}
+                    >
+                      Total
+                    </Button>
+                  </div>
+                </div>
+                
+                <div>
+                  <Label htmlFor="fechaRetiro">Fecha (opcional)</Label>
+                  <Input
+                    id="fechaRetiro"
+                    type="date"
+                    value={fechaRetiro}
+                    onChange={(e) => setFechaRetiro(e.target.value)}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="notasRetiro">Notas (opcional)</Label>
+                  <Textarea
+                    id="notasRetiro"
+                    placeholder="Notas adicionales..."
+                    value={notasRetiro}
+                    onChange={(e) => setNotasRetiro(e.target.value)}
+                  />
+                </div>
               </div>
-            </div>
-          )}
+              
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setModalRetiro(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleRetiro} disabled={isLoadingAction} variant="destructive">
+                  {isLoadingAction ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Minus className="h-4 w-4 mr-2" />}
+                  Retirar Dinero
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      )}
 
-          {/* Descripción */}
-          {inversion.descripcion && (
-            <div className="mt-4">
-              <p className="text-sm text-muted-foreground">{inversion.descripcion}</p>
-            </div>
-          )}
-        </CardContent>
-        <CardFooter className="flex justify-end pt-2">
-          <Button variant="outline" size="sm" className="flex items-center gap-1" asChild>
-            <Link href={`/inversiones/${inversion.id}/editar`}>
-              <Pencil className="h-3.5 w-3.5 mr-1" />
-              Editar Inversión
-            </Link>
-          </Button>
-        </CardFooter>
-      </Card>
-
-      {/* Tabs con transacciones y cotizaciones */}
-      <Tabs defaultValue="transacciones">
+      {/* Tabs con información detallada */}
+      <Tabs defaultValue="info" className="w-full">
         <TabsList>
+          <TabsTrigger value="info">Información</TabsTrigger>
           <TabsTrigger value="transacciones">Transacciones</TabsTrigger>
-          <TabsTrigger value="cotizaciones">Historial de Valor</TabsTrigger>
-          <TabsTrigger value="notas">Notas</TabsTrigger>
         </TabsList>
         
-        {/* Contenido: Transacciones */}
-        <TabsContent value="transacciones" className="mt-4">
+        <TabsContent value="info">
           <Card>
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-lg">Historial de Transacciones</CardTitle>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/inversiones/${inversion.id}/transaccion/nueva`}>
-                    Registrar Transacción
-                  </Link>
-                </Button>
+            <CardHeader>
+              <CardTitle>Detalles de la Inversión</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {inversion.descripcion && (
+                <div>
+                  <Label className="text-sm font-medium">Descripción</Label>
+                  <p className="text-sm text-muted-foreground">{inversion.descripcion}</p>
+                </div>
+              )}
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium">Fecha de Inicio</Label>
+                  <p className="text-sm">{format(new Date(inversion.fechaInicio), 'dd/MM/yyyy', { locale: es })}</p>
+                </div>
+                
+                {inversion.fechaVencimiento && (
+                  <div>
+                    <Label className="text-sm font-medium">Fecha de Vencimiento</Label>
+                    <p className="text-sm">{format(new Date(inversion.fechaVencimiento), 'dd/MM/yyyy', { locale: es })}</p>
+                  </div>
+                )}
+                
+                {inversion.plataforma && (
+                  <div>
+                    <Label className="text-sm font-medium">Plataforma</Label>
+                    <p className="text-sm">{inversion.plataforma}</p>
+                  </div>
+                )}
               </div>
+              
+              {inversion.notas && (
+                <div>
+                  <Label className="text-sm font-medium">Notas</Label>
+                  <p className="text-sm text-muted-foreground">{inversion.notas}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="transacciones">
+          <Card>
+            <CardHeader>
+              <CardTitle>Historial de Transacciones</CardTitle>
               <CardDescription>
-                Depósitos, retiros, intereses y otras operaciones
+                Movimientos realizados en esta inversión
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {transacciones.length > 0 ? (
+              {transacciones.length === 0 ? (
+                <div className="text-center py-8">
+                  <PiggyBank className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No hay transacciones registradas</p>
+                </div>
+              ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Fecha</TableHead>
                       <TableHead>Tipo</TableHead>
+                      <TableHead>Monto</TableHead>
                       <TableHead>Descripción</TableHead>
-                      <TableHead className="text-right">Monto</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {transacciones.map((transaccion) => (
                       <TableRow key={transaccion.id}>
-                        <TableCell className="font-medium">
-                          {format(new Date(transaccion.fecha), "dd/MM/yyyy")}
+                        <TableCell>
+                          {format(new Date(transaccion.fecha), 'dd/MM/yyyy', { locale: es })}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            {transaccionIcon(transaccion.tipo)}
-                            <span>{transaccionText(transaccion.tipo)}</span>
-                          </div>
+                          <Badge variant="outline">
+                            {transaccion.tipo}
+                          </Badge>
                         </TableCell>
-                        <TableCell>{transaccion.descripcion || "-"}</TableCell>
-                        <TableCell className="text-right font-medium">
-                          {formatMoney(transaccion.monto)}
+                        <TableCell>{formatMoney(transaccion.monto)}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {transaccion.descripcion || '-'}
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              ) : (
-                <div className="py-8 text-center">
-                  <p className="text-muted-foreground">No hay transacciones registradas</p>
-                </div>
               )}
             </CardContent>
-          </Card>
-        </TabsContent>
-        
-        {/* Contenido: Cotizaciones */}
-        <TabsContent value="cotizaciones" className="mt-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-lg">Historial de Valor</CardTitle>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/inversiones/${inversion.id}/cotizacion/nueva`}>
-                    Actualizar Valor
-                  </Link>
-                </Button>
-              </div>
-              <CardDescription>
-                Evolución del valor de tu inversión a lo largo del tiempo
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {cotizaciones.length > 0 ? (
-                <>
-                  <div className="h-60 mb-6 border-b pb-4">
-                    <div className="flex h-full items-center justify-center">
-                      <LineChart className="h-12 w-12 text-muted-foreground" />
-                      <p className="ml-2 text-muted-foreground">
-                        El gráfico de evolución estará disponible pronto
-                      </p>
-                    </div>
-                  </div>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Fuente</TableHead>
-                        <TableHead className="text-right">Valor</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {cotizaciones.map((cotizacion) => (
-                        <TableRow key={cotizacion.id}>
-                          <TableCell className="font-medium">
-                            {format(new Date(cotizacion.fecha), "dd/MM/yyyy")}
-                          </TableCell>
-                          <TableCell>{cotizacion.fuente || "-"}</TableCell>
-                          <TableCell className="text-right font-medium">
-                            {formatMoney(cotizacion.valor)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </>
-              ) : (
-                <div className="py-8 text-center">
-                  <p className="text-muted-foreground">No hay cotizaciones registradas</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        {/* Contenido: Notas */}
-        <TabsContent value="notas" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Notas y Comentarios</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {inversion.notas ? (
-                <div className="p-4 bg-muted rounded-md whitespace-pre-wrap">
-                  {inversion.notas}
-                </div>
-              ) : (
-                <div className="py-8 text-center">
-                  <p className="text-muted-foreground">No hay notas registradas</p>
-                </div>
-              )}
-            </CardContent>
-            <CardFooter className="pt-0 justify-end">
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/inversiones/${inversion.id}/editar`}>
-                  Editar Notas
-                </Link>
-              </Button>
-            </CardFooter>
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Integración con el asesor financiero */}
-      <Card className="mt-8 border-primary/20 bg-primary/5">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center text-lg">
-            <AlertCircle className="mr-2 h-5 w-5 text-primary" />
-            Análisis del Asesor Financiero
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground mb-4">
-            Obtén un análisis personalizado de esta inversión y recomendaciones para optimizar su rendimiento.
-          </p>
-          <Button asChild>
-            <Link href={`/financial-advisor?investment=${inversion.id}`}>
-              Consultar sobre esta inversión
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
     </div>
   )
 } 

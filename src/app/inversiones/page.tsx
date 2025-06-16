@@ -4,12 +4,12 @@ import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { 
-  PieChart, TrendingUp, Plus, ArrowUpRight, ArrowDownRight, 
-  Loader2, RefreshCw, Filter, FilePieChart, AlertCircle, ArrowLeft
+  TrendingUp, Plus, ArrowUpRight, ArrowDownRight, 
+  Loader2, RefreshCw, Filter, FilePieChart, ArrowLeft
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useCurrency } from "@/contexts/CurrencyContext"
 import { Badge } from "@/components/ui/badge"
@@ -222,12 +222,7 @@ export default function InversionesPage() {
       </div>
 
       {/* Lista de inversiones */}
-      <Tabs defaultValue="lista">
-        <TabsList>
-          <TabsTrigger value="lista">Lista</TabsTrigger>
-          <TabsTrigger value="grafico">Distribución</TabsTrigger>
-        </TabsList>
-        <TabsContent value="lista" className="mt-4">
+      <div className="mt-4">
           {isLoading ? (
             <div className="flex justify-center py-10">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -317,44 +312,9 @@ export default function InversionesPage() {
               </CardContent>
             </Card>
           )}
-        </TabsContent>
-        
-        <TabsContent value="grafico">
-          <Card className="bg-muted/40">
-            <CardContent className="flex flex-col items-center justify-center py-20">
-              <PieChart className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium">Visualización de distribución</h3>
-              <p className="text-muted-foreground text-center max-w-md mt-2 mb-4">
-                La visualización gráfica de la distribución de tus inversiones estará disponible pronto.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
 
-      {/* Integración con el asesor financiero */}
-      <Card className="mt-8 border-primary/20 bg-primary/5">
-        <CardHeader>
-          <CardTitle className="flex items-center text-lg">
-            <AlertCircle className="mr-2 h-5 w-5 text-primary" />
-            Recomendaciones de tu asesor financiero
-          </CardTitle>
-          <CardDescription>
-            Obtén consejos personalizados para mejorar tu cartera de inversiones
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground mb-4">
-            Nuestro asesor financiero puede analizar tu cartera actual y brindarte recomendaciones personalizadas
-            para optimizar tus inversiones según tus objetivos.
-          </p>
-          <Button asChild>
-            <Link href="/financial-advisor">
-              Consultar a mi asesor financiero
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
+
     </div>
   )
 } 

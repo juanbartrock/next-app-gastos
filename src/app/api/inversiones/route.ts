@@ -79,46 +79,69 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verificar que el usuario exista
-    const usuario = await prisma.user.findUnique({
+    // Buscar la categoría "Inversiones" (creada anteriormente)
+    const categoriaInversiones = await prisma.categoria.findFirst({
       where: {
-        id: session.user.id
+        descripcion: 'Inversiones',
+        status: true
       }
     });
 
-    console.log("Usuario encontrado:", usuario ? "Sí" : "No");
-
-    /*
-    if (!usuario) {
+    if (!categoriaInversiones) {
       return NextResponse.json(
-        { error: 'Usuario no encontrado. Inicia sesión nuevamente.' },
-        { status: 400 }
+        { error: 'Categoría "Inversiones" no encontrada. Contacte al administrador.' },
+        { status: 500 }
       );
     }
-    */
 
-    // Crear la nueva inversión
-    const nuevaInversion = await prisma.inversion.create({
-      data: {
-        nombre: data.nombre,
-        descripcion: data.descripcion,
-        montoInicial: parseFloat(data.montoInicial),
-        montoActual: parseFloat(data.montoInicial), // Inicialmente igual al monto inicial
-        rendimientoTotal: 0,
-        rendimientoAnual: data.rendimientoAnual ? parseFloat(data.rendimientoAnual) : null,
-        fechaInicio: data.fechaInicio ? new Date(data.fechaInicio) : new Date(),
-        fechaVencimiento: data.fechaVencimiento ? new Date(data.fechaVencimiento) : null,
-        tipoId: data.tipoId,
-        userId: session.user.id as string,
-        plataforma: data.plataforma,
-        notas: data.notas,
-      },
+    // Usar transacción para crear inversión y gasto automáticamente
+    const resultado = await prisma.$transaction(async (tx) => {
+      // 1. Crear la nueva inversión
+      const nuevaInversion = await tx.inversion.create({
+        data: {
+          nombre: data.nombre,
+          descripcion: data.descripcion,
+          montoInicial: parseFloat(data.montoInicial),
+          montoActual: parseFloat(data.montoInicial), // Inicialmente igual al monto inicial
+          rendimientoTotal: 0,
+          rendimientoAnual: data.rendimientoAnual ? parseFloat(data.rendimientoAnual) : null,
+          fechaInicio: data.fechaInicio ? new Date(data.fechaInicio) : new Date(),
+          fechaVencimiento: data.fechaVencimiento ? new Date(data.fechaVencimiento) : null,
+          tipoId: data.tipoId,
+          userId: session.user.id as string,
+          plataforma: data.plataforma,
+          notas: data.notas,
+        },
+      });
+
+      // 2. Crear gasto automático por la inversión realizada
+      const gastoInversion = await tx.gasto.create({
+        data: {
+          concepto: `Inversión: ${data.nombre} (${tipoInversion.nombre})`,
+          monto: parseFloat(data.montoInicial),
+          fecha: data.fechaInicio ? new Date(data.fechaInicio) : new Date(),
+          categoria: categoriaInversiones.descripcion, // Campo legacy
+          categoriaId: categoriaInversiones.id,
+          tipoTransaccion: 'expense', // Es un gasto (salida de dinero)
+          tipoMovimiento: 'digital', // Por defecto digital
+          userId: session.user.id as string,
+          incluirEnFamilia: true,
+          fechaImputacion: data.fechaInicio ? new Date(data.fechaInicio) : new Date()
+        }
+      });
+
+      console.log('✅ Inversión creada:', nuevaInversion.id);
+      console.log('✅ Gasto automático creado:', gastoInversion.id);
+
+      return { inversion: nuevaInversion, gastoGenerado: gastoInversion };
     });
 
     return NextResponse.json({ 
-      inversion: nuevaInversion,
-      message: 'Inversión creada con éxito' 
+      inversion: resultado.inversion,
+      gastoGenerado: resultado.gastoGenerado,
+      message: 'Inversión creada con éxito. Se generó automáticamente el registro del gasto.' 
     }, { status: 201 });
+
   } catch (error) {
     console.error('Error al crear inversión:', error);
     return NextResponse.json(

@@ -28,7 +28,7 @@ interface ConfiguracionAlerta {
 }
 
 interface Categoria {
-  id: string
+  id: number
   descripcion: string
 }
 
@@ -98,7 +98,7 @@ export function ConfiguracionAlertas() {
 
   const cargarCategorias = async () => {
     try {
-      const response = await fetch('/api/categorias/familiares')
+      const response = await fetch('/api/categorias')
       if (response.ok) {
         const data = await response.json()
         setCategorias(data.categorias || data)
@@ -394,25 +394,32 @@ export function ConfiguracionAlertas() {
                   {tipo.value.includes("PRESUPUESTO") && categorias.length > 0 && (
                     <div>
                       <Label className="text-sm font-medium mb-2 block">
-                        Categorías Excluidas
+                        Categorías Excluidas del Cálculo
                       </Label>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        Las categorías marcadas NO se incluirán en el cálculo de este presupuesto. 
+                        Haz clic para excluir/incluir una categoría.
+                      </p>
                       <div className="flex flex-wrap gap-2">
                         {categorias.map((categoria) => {
-                          const isExcluida = config.categoriasExcluidas?.includes(categoria.id)
+                          const categoriaIdStr = categoria.id.toString()
+                          const isExcluida = config.categoriasExcluidas?.includes(categoriaIdStr)
                           
                           return (
                             <Badge
                               key={categoria.id}
                               variant={isExcluida ? "default" : "outline"}
-                              className="cursor-pointer"
+                              className="cursor-pointer hover:opacity-80 transition-opacity"
                               onClick={() => {
+                                console.log('Toggle categoría:', categoria.descripcion, 'isExcluida:', isExcluida)
                                 const nuevasExcluidas = isExcluida
-                                  ? config.categoriasExcluidas?.filter(id => id !== categoria.id) || []
-                                  : [...(config.categoriasExcluidas || []), categoria.id]
+                                  ? config.categoriasExcluidas?.filter(id => id !== categoriaIdStr) || []
+                                  : [...(config.categoriasExcluidas || []), categoriaIdStr]
                                 actualizarConfiguracion(tipo.value, 'categoriasExcluidas', nuevasExcluidas)
                               }}
                             >
                               {categoria.descripcion}
+                              {isExcluida && <span className="ml-1">✓</span>}
                             </Badge>
                           )
                         })}
