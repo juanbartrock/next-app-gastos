@@ -64,7 +64,7 @@ import { CurrencySelector } from "@/components/CurrencySelector"
 import { PlanWelcome } from "@/components/PlanWelcome"
 
 import { WelcomeModal } from "@/components/onboarding/WelcomeModal"
-import { InteractiveTour } from "@/components/onboarding/InteractiveTour"
+import { CustomTour } from "@/components/onboarding/CustomTour"
 import { useCurrency } from "@/contexts/CurrencyContext"
 import { useOnboarding } from "@/contexts/OnboardingContext"
 
@@ -986,7 +986,7 @@ export default function DashboardRedesigned() {
       />
       
       {/* Tour interactivo */}
-      <InteractiveTour />
+      <CustomTour />
       
 
     </div>
