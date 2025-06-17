@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { CheckCircle } from "lucide-react"
 import { FcGoogle } from "react-icons/fc"
 
 // Componente interno que usa useSearchParams
@@ -22,6 +24,9 @@ function LoginForm() {
     
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  
+  // Verificar si viene del registro exitoso
+  const registered = searchParams.get("registered")
 
   // Redirigir si ya está autenticado
   useEffect(() => {
@@ -53,6 +58,11 @@ function LoginForm() {
         redirect: false,
         callbackUrl,
       })
+      
+      // Si es un login exitoso, marcar como primer login para mostrar bienvenida
+      if (!result?.error && registered) {
+        sessionStorage.setItem('firstLogin', 'true')
+      }
 
       if (result?.error) {
         if (result.error === 'Usuario no encontrado') {
@@ -110,6 +120,15 @@ function LoginForm() {
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Bienvenido</h2>
           <p className="mt-2 text-gray-600 dark:text-gray-400">Inicia sesión en tu cuenta</p>
         </div>
+
+        {registered && (
+          <Alert className="border-green-200 bg-green-50 text-green-800">
+            <CheckCircle className="h-4 w-4" />
+            <AlertDescription>
+              ¡Cuenta creada exitosamente! Ya puedes iniciar sesión con tu plan seleccionado.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">

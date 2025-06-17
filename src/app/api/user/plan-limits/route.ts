@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { options } from '@/app/api/auth/[...nextauth]/options'
+import prisma from '@/lib/prisma'
 
 // ✅ OBTENER ESTADO DE LÍMITES DEL USUARIO
 export async function GET(request: NextRequest) {
@@ -10,84 +11,38 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    // Por ahora devolvemos un estado mock hasta que se resuelvan los errores de Prisma
-    // TODO: Implementar getLimitsStatus cuando se regenere el cliente Prisma
-    
-    const mockStatus = {
-      plan: 'gratuito' as const,
-      limits: {
-        transacciones_mes: {
-          allowed: true,
-          limit: 50,
-          usage: 12,
-          remaining: 38
-        },
-        gastos_recurrentes: {
-          allowed: true,
-          limit: 2,
-          usage: 1,
-          remaining: 1
-        },
-        consultas_ia_mes: {
-          allowed: true,
-          limit: 3,
-          usage: 0,
-          remaining: 3
-        },
-        presupuestos_activos: {
-          allowed: true,
-          limit: 1,
-          usage: 0,
-          remaining: 1
-        },
-        categorias_personalizadas: {
-          allowed: false,
-          limit: 0,
-          usage: 0,
-          remaining: 0
-        },
-        modo_familiar: {
-          allowed: false,
-          limit: 0,
-          usage: 0,
-          remaining: 0
-        },
-        alertas_automaticas: {
-          allowed: false,
-          limit: 0,
-          usage: 0,
-          remaining: 0
-        },
-        prestamos_inversiones: {
-          allowed: false,
-          limit: 0,
-          usage: 0,
-          remaining: 0
-        },
-        exportacion: {
-          allowed: false,
-          limit: 0,
-          usage: 0,
-          remaining: 0
-        },
-        tareas: {
-          allowed: false,
-          limit: 0,
-          usage: 0,
-          remaining: 0
-        },
-        miembros_familia: {
-          allowed: false,
-          limit: 0,
-          usage: 0,
-          remaining: 0
-        }
-      },
-      needsUpgrade: false,
-      blockedFeatures: ['categorias_personalizadas', 'modo_familiar', 'alertas_automaticas', 'prestamos_inversiones', 'exportacion', 'tareas']
+    // ✅ REEMPLAZAR DATOS MOCK POR DATOS REALES
+    const usuario = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: { plan: true }
+    })
+
+    if (!usuario) {
+      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
     }
 
-    return NextResponse.json(mockStatus)
+    try {
+      // Importar la función getLimitsStatus dinámicamente
+      const { getLimitsStatus } = await import('@/lib/plan-limits')
+      const realStatus = await getLimitsStatus(usuario.id)
+      return NextResponse.json(realStatus)
+    } catch (error) {
+      console.error('Error obteniendo límites reales:', error)
+      
+      // Fallback con datos básicos del plan del usuario
+      const plan = usuario.plan?.nombre?.toLowerCase() || 'gratuito'
+      
+      const fallbackStatus = {
+        plan: plan as 'gratuito' | 'basico' | 'premium',
+        limits: {},
+        needsUpgrade: plan === 'gratuito',
+        blockedFeatures: plan === 'gratuito' 
+          ? ['categorias_personalizadas', 'modo_familiar', 'alertas_automaticas', 'prestamos_inversiones', 'exportacion', 'tareas']
+          : []
+      }
+      
+      return NextResponse.json(fallbackStatus)
+    }
 
   } catch (error) {
     console.error('Error obteniendo límites del plan:', error)

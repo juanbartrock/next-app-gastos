@@ -61,6 +61,7 @@ import { MultiChartWidget } from "@/components/MultiChartWidget"
 import { TareasWidget } from "@/components/TareasWidget"
 import { DollarIndicator } from "@/components/DollarIndicator"
 import { CurrencySelector } from "@/components/CurrencySelector"
+import { PlanWelcome } from "@/components/PlanWelcome"
 import { useCurrency } from "@/contexts/CurrencyContext"
 
 // Componente para mostrar estadísticas de gastos
@@ -967,6 +968,9 @@ export default function DashboardRedesigned() {
           </div>
         </div>
       </main>
+      
+      {/* Componente de bienvenida para nuevos usuarios */}
+      <PlanWelcome />
     </div>
   )
 } 

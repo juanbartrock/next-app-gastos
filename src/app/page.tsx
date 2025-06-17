@@ -97,7 +97,7 @@ export default function LandingPage() {
               </Link>
               <Link href="/register">
                 <Button className="bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700">
-                  Empezar Gratis
+                  Elegir Plan
                 </Button>
               </Link>
             </div>
@@ -114,8 +114,8 @@ export default function LandingPage() {
                 🚀 Control Total de tus Finanzas
               </Badge>
               <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
-                Toma control total
-                <span className="bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent"> de tu dinero</span>
+                Toma control
+                <span className="bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent"> de tu economía</span>
               </h1>
               <p className="mx-auto max-w-[600px] text-xl text-gray-600 dark:text-gray-300 lg:mx-0 leading-relaxed">
                 La herramienta más completa para gestionar tus gastos, presupuestos y finanzas familiares. 
@@ -126,7 +126,7 @@ export default function LandingPage() {
             <div className="flex flex-col gap-4 min-[400px]:flex-row lg:justify-start">
               <Link href="/register">
                 <Button size="lg" className="bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white border-0 px-8 py-3 text-lg font-semibold shadow-xl">
-                  Empezar Gratis Ahora
+                  Comenzar - Elegir Plan
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>

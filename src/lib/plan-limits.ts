@@ -40,6 +40,19 @@ export const PLAN_LIMITS = {
     exportacion: true,
     tareas: true,
     miembros_familia: 10
+  },
+  lifetime: {
+    transacciones_mes: -1, // Ilimitado
+    gastos_recurrentes: -1, // Ilimitado
+    consultas_ia_mes: -1, // Ilimitado
+    presupuestos_activos: -1, // Ilimitado
+    categorias_personalizadas: true,
+    modo_familiar: true,
+    alertas_automaticas: true,
+    prestamos_inversiones: true,
+    exportacion: true,
+    tareas: true,
+    miembros_familia: 20 // Más generoso para lifetime
   }
 } as const
 
@@ -65,6 +78,7 @@ export async function getUserPlan(userId: string): Promise<PlanType> {
 
     if (suscripcion?.plan) {
       const planNombre = suscripcion.plan.nombre.toLowerCase()
+      if (planNombre.includes('lifetime') || planNombre.includes('vida')) return 'lifetime'
       if (planNombre.includes('premium')) return 'premium'
       if (planNombre.includes('basico') || planNombre.includes('básico')) return 'basico'
     }

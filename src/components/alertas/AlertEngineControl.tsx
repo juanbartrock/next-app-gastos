@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Play, Eye, AlertTriangle, CheckCircle, Clock, Bell, Square, Zap } from 'lucide-react'
+import { Loader2, Play, Eye, AlertTriangle, CheckCircle, Clock, Bell, Square, Zap, TrendingUp, CreditCard } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
+import { Progress } from "@/components/ui/progress"
 
 interface AlertaEvaluada {
   tipo: string
@@ -14,15 +15,26 @@ interface AlertaEvaluada {
 }
 
 interface EstadisticasEvaluacion {
-  alertasPotenciales: number
-  detalles: AlertaEvaluada[]
+  totalCondicionesEvaluadas: number
+  alertasCreadas: number
+  tiempoEjecucion: number
+  distribuciones: {
+    [key: string]: number
+  }
+}
+
+interface SchedulerStatus {
+  isRunning: boolean
+  hasInterval: boolean
+  lastSubscriptionTasksDate: string
+  subscriptionTasksExecutedToday: boolean
 }
 
 export function AlertEngineControl() {
   const [loading, setLoading] = useState(false)
   const [evaluando, setEvaluando] = useState(false)
   const [schedulerLoading, setSchedulerLoading] = useState(false)
-  const [schedulerStatus, setSchedulerStatus] = useState<{ isRunning: boolean; hasInterval: boolean } | null>(null)
+  const [schedulerStatus, setSchedulerStatus] = useState<SchedulerStatus | null>(null)
   const [estadisticas, setEstadisticas] = useState<EstadisticasEvaluacion | null>(null)
   const { toast } = useToast()
 
@@ -118,7 +130,10 @@ export function AlertEngineControl() {
     setEvaluando(true)
     try {
       const response = await fetch('/api/alertas/evaluate', {
-        method: 'GET',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       })
 
       if (!response.ok) {
@@ -126,17 +141,17 @@ export function AlertEngineControl() {
       }
 
       const data = await response.json()
-      setEstadisticas(data)
-
+      setEstadisticas(data.estadisticas)
+      
       toast({
         title: "Evaluación Completada",
-        description: `Se encontraron ${data.alertasPotenciales} condiciones que pueden generar alertas.`,
+        description: `${data.estadisticas.alertasCreadas} nueva${data.estadisticas.alertasCreadas === 1 ? '' : 's'} alerta${data.estadisticas.alertasCreadas === 1 ? '' : 's'} creada${data.estadisticas.alertasCreadas === 1 ? '' : 's'}`,
       })
     } catch (error) {
-      console.error('Error evaluando condiciones:', error)
+      console.error('Error evaluating conditions:', error)
       toast({
         title: "Error",
-        description: "Error al evaluar las condiciones de alerta.",
+        description: "Error al evaluar las condiciones automáticas.",
         variant: "destructive",
       })
     } finally {
@@ -176,111 +191,139 @@ export function AlertEngineControl() {
     }
   }
 
+  const limpiarAlertas = async () => {
+    setLoading(true)
+    try {
+      const response = await fetch('/api/alertas', {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Error al limpiar alertas')
+      }
+
+      const data = await response.json()
+      
+      toast({
+        title: "Alertas Eliminadas",
+        description: `${data.count} alerta${data.count === 1 ? '' : 's'} eliminada${data.count === 1 ? '' : 's'}`,
+      })
+    } catch (error) {
+      console.error('Error clearing alerts:', error)
+      toast({
+        title: "Error",
+        description: "Error al eliminar las alertas.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            Motor de Alertas Automático
-          </CardTitle>
-          <CardDescription>
-            Evalúa automáticamente las condiciones y genera alertas inteligentes para el usuario.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-3">
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Control de Evaluación Manual */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5" />
+              Evaluación Manual
+            </CardTitle>
+            <CardDescription>
+              Ejecuta la evaluación de alertas para todos los usuarios inmediatamente.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <Button 
               onClick={evaluarCondiciones}
-              disabled={evaluando}
-              variant="outline"
-              className="flex items-center gap-2"
+              disabled={evaluando || loading}
+              className="w-full flex items-center gap-2"
             >
               {evaluando ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Eye className="h-4 w-4" />
+                <Zap className="h-4 w-4" />
               )}
-              Evaluar Condiciones
+              {evaluando ? 'Evaluando...' : 'Evaluar Condiciones'}
             </Button>
 
             <Button 
-              onClick={ejecutarMotor}
+              onClick={limpiarAlertas}
               disabled={loading || evaluando}
-              className="flex items-center gap-2"
+              variant="outline"
+              className="w-full flex items-center gap-2"
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Play className="h-4 w-4" />
+                <AlertTriangle className="h-4 w-4" />
               )}
-              Ejecutar Motor
+              {loading ? 'Limpiando...' : 'Limpiar Todas las Alertas'}
             </Button>
-          </div>
+          </CardContent>
+        </Card>
 
-          {estadisticas && (
-            <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-medium">Evaluación de Condiciones</h4>
-                <Badge variant="secondary">
-                  {estadisticas.alertasPotenciales} condiciones detectadas
-                </Badge>
-              </div>
-
-              {estadisticas.alertasPotenciales > 0 ? (
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    Condiciones que pueden generar alertas:
-                  </p>
-                  <div className="grid gap-2">
-                    {estadisticas.detalles.map((alerta, index) => (
-                      <div 
-                        key={index}
-                        className="flex items-center justify-between p-2 bg-white dark:bg-gray-700 rounded border"
-                      >
-                        <div className="flex items-center gap-3">
-                          {getPriorityIcon(alerta.prioridad)}
-                          <span className="text-sm font-medium">{alerta.titulo}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge 
-                            variant="outline" 
-                            className={`text-xs ${getPriorityColor(alerta.prioridad)}`}
-                          >
-                            {alerta.prioridad}
-                          </Badge>
-                          <Badge variant="secondary" className="text-xs">
-                            {alerta.tipo.replace('_', ' ')}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
+        {/* Estadísticas de Última Evaluación */}
+        {estadisticas && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Última Evaluación
+              </CardTitle>
+              <CardDescription>
+                Resultados de la evaluación más reciente.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {estadisticas.alertasCreadas}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Alertas Creadas
                   </div>
                 </div>
-              ) : (
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  ✅ No se encontraron condiciones que requieran alertas automáticas.
-                </p>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">
+                    {estadisticas.totalCondicionesEvaluadas}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Condiciones Evaluadas
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Tiempo de Ejecución</span>
+                  <span className="font-medium">{estadisticas.tiempoEjecucion}ms</span>
+                </div>
+              </div>
+
+              {/* Distribución por Prioridad */}
+              {Object.keys(estadisticas.distribuciones).length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Distribución por Prioridad</div>
+                  {Object.entries(estadisticas.distribuciones).map(([prioridad, cantidad]) => (
+                    <div key={prioridad} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        {getPriorityIcon(prioridad)}
+                        <span className="capitalize">{prioridad.toLowerCase()}</span>
+                      </div>
+                      <Badge variant="outline">{cantidad}</Badge>
+                    </div>
+                  ))}
+                </div>
               )}
-            </div>
-          )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
-          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <h5 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
-              ¿Cómo funciona el Motor de Alertas?
-            </h5>
-            <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-              <li>• <strong>Presupuestos:</strong> Alertas al 80%, 90% y 100% del presupuesto usado</li>
-              <li>• <strong>Préstamos:</strong> Cuotas próximas a vencer (próximos 7 días)</li>
-              <li>• <strong>Inversiones:</strong> Vencimientos próximos (próximos 30 días)</li>
-              <li>• <strong>Gastos Recurrentes:</strong> Pagos próximos (próximos 3 días)</li>
-              <li>• <strong>Tareas:</strong> Tareas vencidas sin completar</li>
-              <li>• <strong>Gastos Anómalos:</strong> Gastos 3x mayores que el promedio histórico</li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
-
+      {/* Control del Scheduler Automático */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -288,29 +331,51 @@ export function AlertEngineControl() {
             Programación Automática
           </CardTitle>
           <CardDescription>
-            Controla la ejecución automática del motor de alertas para todos los usuarios.
+            Controla la ejecución automática del motor de alertas y tareas de suscripciones para todos los usuarios.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {schedulerStatus && (
-            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <div className="flex items-center gap-2">
-                <div 
-                  className={`h-3 w-3 rounded-full ${
-                    schedulerStatus.isRunning ? 'bg-green-500' : 'bg-gray-400'
-                  }`}
-                />
-                <span className="font-medium">
-                  Estado: {schedulerStatus.isRunning ? 'Activo' : 'Inactivo'}
-                </span>
+            <>
+              {/* Estado del Scheduler */}
+              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <div 
+                    className={`h-3 w-3 rounded-full ${
+                      schedulerStatus.isRunning ? 'bg-green-500' : 'bg-gray-400'
+                    }`}
+                  />
+                  <span className="font-medium">
+                    Estado: {schedulerStatus.isRunning ? 'Activo' : 'Inactivo'}
+                  </span>
+                </div>
+                <Badge variant={schedulerStatus.isRunning ? 'default' : 'secondary'}>
+                  {schedulerStatus.isRunning ? 'Ejecutándose cada 60min' : 'Detenido'}
+                </Badge>
               </div>
-              <Badge variant={schedulerStatus.isRunning ? 'default' : 'secondary'}>
-                {schedulerStatus.isRunning ? 'Ejecutándose' : 'Detenido'}
-              </Badge>
-            </div>
+
+              {/* Estado de Tareas de Suscripciones */}
+              <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-blue-600" />
+                  <span className="font-medium text-blue-800 dark:text-blue-200">
+                    Tareas de Suscripciones
+                  </span>
+                </div>
+                <Badge variant={schedulerStatus.subscriptionTasksExecutedToday ? 'default' : 'secondary'}>
+                  {schedulerStatus.subscriptionTasksExecutedToday ? 'Ejecutadas Hoy' : 'Pendientes'}
+                </Badge>
+              </div>
+
+              {schedulerStatus.lastSubscriptionTasksDate && (
+                <div className="text-xs text-muted-foreground">
+                  Última ejecución de suscripciones: {schedulerStatus.lastSubscriptionTasksDate}
+                </div>
+              )}
+            </>
           )}
 
-          <div className="flex gap-3 flex-wrap">
+          <div className="flex gap-2">
             <Button 
               onClick={() => controlScheduler('start', 60)}
               disabled={schedulerLoading || schedulerStatus?.isRunning}
@@ -322,7 +387,7 @@ export function AlertEngineControl() {
               ) : (
                 <Play className="h-4 w-4" />
               )}
-              Iniciar Scheduler (60min)
+              Iniciar Sistema Automático
             </Button>
 
             <Button 
@@ -336,7 +401,7 @@ export function AlertEngineControl() {
               ) : (
                 <Square className="h-4 w-4" />
               )}
-              Detener Scheduler
+              Detener Sistema
             </Button>
 
             <Button 
@@ -354,16 +419,10 @@ export function AlertEngineControl() {
             </Button>
           </div>
 
-          <div className="mt-4 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
-            <h5 className="font-medium text-orange-900 dark:text-orange-100 mb-2">
-              ⚡ Programación Automática
-            </h5>
-            <ul className="text-sm text-orange-800 dark:text-orange-200 space-y-1">
-              <li>• <strong>Intervalo por defecto:</strong> Cada 60 minutos</li>
-              <li>• <strong>Usuarios evaluados:</strong> Solo usuarios activos (con actividad en 30 días)</li>
-              <li>• <strong>Limpieza automática:</strong> Elimina alertas expiradas</li>
-              <li>• <strong>Logging completo:</strong> Registra todas las evaluaciones y resultados</li>
-            </ul>
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p>• <strong>Alertas:</strong> Se evalúan cada 60 minutos (máximo 24 veces al día)</p>
+            <p>• <strong>Suscripciones:</strong> Se procesan una vez por día (renovaciones y downgrades)</p>
+            <p>• <strong>Sistema integrado:</strong> Ambas tareas se ejecutan automáticamente sin CRON jobs externos</p>
           </div>
         </CardContent>
       </Card>

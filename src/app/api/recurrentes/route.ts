@@ -87,7 +87,8 @@ export async function POST(request: Request) {
     
     // Buscar al usuario por email
     const usuario = await prisma.user.findUnique({
-      where: { email: session.user.email }
+      where: { email: session.user.email },
+      include: { plan: true }
     })
     
     // Si no se encuentra al usuario, devolver error
@@ -96,6 +97,27 @@ export async function POST(request: Request) {
         { error: 'Usuario no encontrado' },
         { status: 404 }
       )
+    }
+
+    // ✅ VALIDAR LÍMITES ANTES DE CREAR
+    try {
+      const { validateLimit } = await import('@/lib/plan-limits')
+      const validacionRecurrentes = await validateLimit(usuario.id, 'gastos_recurrentes')
+      
+      if (!validacionRecurrentes.allowed) {
+        return NextResponse.json({
+          error: 'Límite de gastos recurrentes alcanzado',
+          codigo: 'LIMIT_REACHED',
+          limite: validacionRecurrentes.limit,
+          uso: validacionRecurrentes.usage,
+          upgradeRequired: true,
+          mensaje: `Has alcanzado el límite de ${validacionRecurrentes.limit} gastos recurrentes. Upgrade al Plan Básico para más gastos recurrentes.`,
+          planActual: usuario.plan?.nombre || 'Sin plan'
+        }, { status: 403 })
+      }
+    } catch (limitError) {
+      console.error('Error validando límites (no crítico):', limitError)
+      // Continuar con la creación si no se puede validar límites
     }
     
     // Obtener los datos del request

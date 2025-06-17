@@ -87,6 +87,13 @@ export default function PlanesPage() {
       icono: <Brain className="h-4 w-4" />
     },
     {
+      nombre: 'Presupuestos activos',
+      gratuito: '1',
+      basico: '3',
+      premium: 'Ilimitados',
+      icono: <TrendingUp className="h-4 w-4" />
+    },
+    {
       nombre: 'Modo familiar',
       gratuito: false,
       basico: '5 miembros',
@@ -115,6 +122,13 @@ export default function PlanesPage() {
       icono: <TrendingUp className="h-4 w-4" />
     },
     {
+      nombre: 'Sistema de tareas',
+      gratuito: false,
+      basico: false,
+      premium: true,
+      icono: <Clock className="h-4 w-4" />
+    },
+    {
       nombre: 'Exportación de datos',
       gratuito: false,
       basico: 'CSV',
@@ -122,10 +136,10 @@ export default function PlanesPage() {
       icono: <ArrowRight className="h-4 w-4" />
     },
     {
-      nombre: 'Soporte',
-      gratuito: 'Email',
-      basico: 'Email + Chat',
-      premium: 'Prioritario 24/7',
+      nombre: 'Soporte técnico',
+      gratuito: 'Comunidad',
+      basico: 'Email',
+      premium: 'Email + Chat',
       icono: <Shield className="h-4 w-4" />
     }
   ]

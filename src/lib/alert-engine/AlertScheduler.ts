@@ -7,6 +7,7 @@ export class AlertScheduler {
   private static instance: AlertScheduler | null = null
   private isRunning = false
   private intervalId: NodeJS.Timeout | null = null
+  private lastSubscriptionTasksDate: string = ''
 
   private constructor() {}
 
@@ -122,6 +123,9 @@ export class AlertScheduler {
       // Opcional: Limpiar alertas expiradas
       await this.cleanupExpiredAlerts()
 
+      // ✨ NUEVA FUNCIONALIDAD: Ejecutar tareas de suscripciones una vez por día
+      await this.runDailySubscriptionTasks()
+
     } catch (error) {
       console.error('❌ Error en evaluación automática de alertas:', error)
     }
@@ -151,6 +155,236 @@ export class AlertScheduler {
   }
 
   /**
+   * Ejecuta tareas de suscripciones una vez por día
+   * Se ejecuta junto con las alertas pero con control diario
+   */
+  private async runDailySubscriptionTasks() {
+    try {
+      const today = new Date().toDateString()
+      
+      // Solo ejecutar una vez por día
+      if (this.lastSubscriptionTasksDate === today) {
+        console.log('💳 Tareas de suscripciones ya ejecutadas hoy, omitiendo...')
+        return
+      }
+
+      console.log('💳 Iniciando tareas diarias de suscripciones...')
+      
+      // 1. Procesar renovaciones automáticas
+      const renovaciones = await this.processSubscriptionRenewals()
+      
+      // 2. Limpiar suscripciones vencidas (downgrade)
+      const downgrades = await this.processExpiredSubscriptions()
+      
+      // Marcar como ejecutado hoy
+      this.lastSubscriptionTasksDate = today
+      
+      console.log(`✅ Tareas de suscripciones completadas:`)
+      console.log(`   - Renovaciones procesadas: ${renovaciones.procesadas}`)
+      console.log(`   - Downgrades realizados: ${downgrades.downgrades}`)
+      
+    } catch (error) {
+      console.error('❌ Error en tareas diarias de suscripciones:', error)
+    }
+  }
+
+  /**
+   * Procesa renovaciones automáticas de suscripciones
+   */
+  private async processSubscriptionRenewals() {
+    try {
+      console.log('🔄 Procesando renovaciones automáticas...')
+      
+      const hoy = new Date()
+      const mañana = new Date(hoy)
+      mañana.setDate(mañana.getDate() + 1)
+
+      // Buscar suscripciones que necesitan renovación
+      const suscripcionesARenovar = await prisma.suscripcion.findMany({
+        where: {
+          estado: 'activa',
+          autoRenovacion: true,
+          fechaVencimiento: {
+            lte: mañana // Vencen hoy o mañana
+          }
+        },
+        include: {
+          plan: {
+            select: {
+              nombre: true,
+              esPago: true,
+              precioMensual: true
+            }
+          }
+        }
+      })
+
+      let renovacionesExitosas = 0
+      
+      for (const suscripcion of suscripcionesARenovar) {
+        try {
+          // Solo procesar planes de pago con precio
+          if (suscripcion.plan.esPago && suscripcion.plan.precioMensual) {
+            // Dar período de gracia de 7 días
+            const nuevaFechaVencimiento = new Date(hoy)
+            nuevaFechaVencimiento.setDate(nuevaFechaVencimiento.getDate() + 7)
+
+            await prisma.suscripcion.update({
+              where: { id: suscripcion.id },
+              data: {
+                fechaVencimiento: nuevaFechaVencimiento,
+                estado: 'pendiente_renovacion',
+                intentosFallidos: (suscripcion.intentosFallidos || 0) + 1,
+                observaciones: `Renovación automática iniciada el ${hoy.toLocaleString('es-AR')} - Período de gracia hasta ${nuevaFechaVencimiento.toLocaleString('es-AR')}`,
+                updatedAt: new Date()
+              }
+            })
+            
+            renovacionesExitosas++
+            console.log(`💳 Renovación iniciada: ${suscripcion.plan.nombre} - Usuario ID: ${suscripcion.userId}`)
+          } else {
+            // Planes gratuitos/lifetime se renuevan automáticamente
+            const nuevaFechaVencimiento = new Date(hoy)
+            nuevaFechaVencimiento.setFullYear(nuevaFechaVencimiento.getFullYear() + 1)
+
+            await prisma.suscripcion.update({
+              where: { id: suscripcion.id },
+              data: {
+                fechaVencimiento: nuevaFechaVencimiento,
+                updatedAt: new Date()
+              }
+            })
+            
+            renovacionesExitosas++
+          }
+        } catch (error) {
+          console.error(`❌ Error renovando suscripción ${suscripcion.id}:`, error)
+        }
+      }
+
+      return {
+        procesadas: suscripcionesARenovar.length,
+        exitosas: renovacionesExitosas
+      }
+      
+    } catch (error) {
+      console.error('❌ Error procesando renovaciones:', error)
+      return { procesadas: 0, exitosas: 0 }
+    }
+  }
+
+  /**
+   * Procesa suscripciones vencidas (downgrade a plan gratuito)
+   */
+  private async processExpiredSubscriptions() {
+    try {
+      console.log('⬇️ Procesando suscripciones vencidas (downgrade)...')
+      
+      const hoy = new Date()
+
+      // Buscar suscripciones vencidas
+      const suscripcionesVencidas = await prisma.suscripcion.findMany({
+        where: {
+          estado: {
+            in: ['activa', 'pendiente_renovacion']
+          },
+          fechaVencimiento: {
+            lt: hoy // Vencidas
+          }
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true
+            }
+          },
+          plan: {
+            select: {
+              nombre: true,
+              esPago: true
+            }
+          }
+        }
+      })
+
+      // Buscar plan gratuito para downgrade
+      const planGratuito = await prisma.plan.findFirst({
+        where: {
+          nombre: {
+            contains: 'Gratuito',
+            mode: 'insensitive'
+          },
+          activo: true
+        }
+      })
+
+      if (!planGratuito) {
+        console.error('❌ No se encontró plan gratuito para downgrade')
+        return { procesadas: 0, downgrades: 0 }
+      }
+
+      let downgradesRealizados = 0
+
+      for (const suscripcion of suscripcionesVencidas) {
+        try {
+          // Solo hacer downgrade de planes de pago
+          if (suscripcion.plan.esPago) {
+            // Marcar suscripción como expirada
+            await prisma.suscripcion.update({
+              where: { id: suscripcion.id },
+              data: {
+                estado: 'expirada',
+                observaciones: `Suscripción expirada y usuario downgradeado a plan gratuito el ${hoy.toLocaleString('es-AR')}`,
+                updatedAt: new Date()
+              }
+            })
+
+            // Cambiar usuario a plan gratuito
+            await prisma.user.update({
+              where: { id: suscripcion.user.id },
+              data: {
+                planId: planGratuito.id
+              }
+            })
+
+            // Crear nueva suscripción gratuita
+            await prisma.suscripcion.create({
+              data: {
+                userId: suscripcion.user.id,
+                planId: planGratuito.id,
+                estado: 'activa',
+                fechaInicio: hoy,
+                fechaVencimiento: new Date(hoy.getFullYear() + 1, hoy.getMonth(), hoy.getDate()),
+                metodoPago: 'gratuito',
+                referenciaPago: 'downgrade_automatico',
+                autoRenovacion: false,
+                montoMensual: 0,
+                montoTotal: 0,
+                observaciones: `Downgrade automático desde ${suscripcion.plan.nombre} por expiración`
+              }
+            })
+
+            downgradesRealizados++
+            console.log(`⬇️ Downgrade realizado: ${suscripcion.user.email} de ${suscripcion.plan.nombre} a ${planGratuito.nombre}`)
+          }
+        } catch (error) {
+          console.error(`❌ Error downgradeando suscripción ${suscripcion.id}:`, error)
+        }
+      }
+
+      return {
+        procesadas: suscripcionesVencidas.length,
+        downgrades: downgradesRealizados
+      }
+      
+    } catch (error) {
+      console.error('❌ Error procesando suscripciones vencidas:', error)
+      return { procesadas: 0, downgrades: 0 }
+    }
+  }
+
+  /**
    * Ejecuta evaluación manual para un usuario específico
    */
   async runEvaluationForUser(userId: string): Promise<number> {
@@ -175,6 +409,8 @@ export class AlertScheduler {
     return {
       isRunning: this.isRunning,
       hasInterval: this.intervalId !== null,
+      lastSubscriptionTasksDate: this.lastSubscriptionTasksDate,
+      subscriptionTasksExecutedToday: this.lastSubscriptionTasksDate === new Date().toDateString()
     }
   }
 
