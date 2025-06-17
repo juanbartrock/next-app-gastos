@@ -40,6 +40,7 @@ interface OnboardingContextType {
   resumeTour: () => void
   resetTour: () => void
   completeTour: () => void
+  closeWelcomeModal: () => void
   
   // Asistente virtual
   assistantVisible: boolean
@@ -271,11 +272,17 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   
   const totalSteps = getTourSteps().length
   
+  // Cerrar modal de bienvenida sin saltar onboarding
+  const closeWelcomeModal = () => {
+    setIsFirstTime(false)
+  }
+
   // Iniciar tour
   const startTour = (type: 'full' | 'quick' = 'full') => {
     setTourType(type)
     setCurrentStep(0)
     setTourActive(true)
+    setIsFirstTime(false) // Cerrar modal al iniciar tour
     updateUserProgress()
   }
   
@@ -411,6 +418,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     resumeTour,
     resetTour,
     completeTour,
+    closeWelcomeModal,
     
     // Asistente virtual
     assistantVisible,

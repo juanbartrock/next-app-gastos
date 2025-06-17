@@ -383,7 +383,7 @@ export default function DashboardRedesigned() {
     loading: permisosLoading,
     error: permisosError
   } = usePermisosFamiliares()
-  const { isFirstTime, tourActive } = useOnboarding()
+  const { isFirstTime, tourActive, closeWelcomeModal } = useOnboarding()
   
   // Estados de la interfaz de usuario
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
@@ -982,7 +982,7 @@ export default function DashboardRedesigned() {
       {/* Modal de bienvenida para onboarding */}
       <WelcomeModal 
         isOpen={isFirstTime}
-        onClose={() => {}}
+        onClose={closeWelcomeModal}
       />
       
       {/* Tour interactivo */}
