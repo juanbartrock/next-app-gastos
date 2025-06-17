@@ -48,7 +48,7 @@ export function Sidebar() {
   }
 
   return (
-    <div className={`${isOpen ? 'w-64' : 'w-20'} transition-all duration-300 border-r border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg flex flex-col fixed h-screen z-10`}>
+    <div className={`${isOpen ? 'w-64' : 'w-20'} transition-all duration-300 border-r border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg flex flex-col fixed h-screen z-10`} data-tour="sidebar">
       {/* Botón toggle */}
       <Button 
         variant="outline" 
@@ -152,6 +152,7 @@ export function Sidebar() {
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
             style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
             onClick={() => handleNavigation('/recurrentes')}
+            data-tour="recurring"
           >
             <Repeat className="w-5 h-5" />
             {isOpen && <span className="ml-3">Recurrentes</span>}
@@ -196,6 +197,7 @@ export function Sidebar() {
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
             style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
             onClick={() => handleNavigation('/presupuestos')}
+            data-tour="budgets"
           >
             <PieChart className="w-5 h-5" />
             {isOpen && <span className="ml-3">Presupuestos</span>}
@@ -234,7 +236,19 @@ export function Sidebar() {
             {isOpen && <span className="ml-3">Alertas</span>}
           </Button>
           
-          {/* 12. Buzón de Comprobantes */}
+          {/* 12. IA Financiero */}
+          <Button 
+            variant={isActive("/ai-financiero") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/ai-financiero')}
+            data-tour="ai"
+          >
+            <LightbulbIcon className="w-5 h-5 text-cyan-500" />
+            {isOpen && <span className="ml-3">IA Financiero</span>}
+          </Button>
+          
+          {/* 13. Buzón de Comprobantes */}
           <Button 
             variant={isActive("/buzon") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
@@ -245,7 +259,7 @@ export function Sidebar() {
             {isOpen && <span className="ml-3">Buzón Comprobantes</span>}
           </Button>
           
-          {/* 13. Beta Feedback */}
+          {/* 14. Beta Feedback */}
           <Button 
             variant={isActive("/beta-feedback") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
@@ -256,7 +270,7 @@ export function Sidebar() {
             {isOpen && <span className="ml-3">Beta Feedback</span>}
           </Button>
           
-          {/* 13. Recomendaciones - DESHABILITADO: Funcionalidad deprecada */}
+          {/* 15. Recomendaciones - DESHABILITADO: Funcionalidad deprecada */}
           {false && (
             <Button 
               variant={isActive("/recomendaciones-ahorro") ? "secondary" : "ghost"}
@@ -269,7 +283,7 @@ export function Sidebar() {
             </Button>
           )}
           
-          {/* 14. Seguimiento Precios - DESHABILITADO: Funcionalidad deprecada */}
+          {/* 16. Seguimiento Precios - DESHABILITADO: Funcionalidad deprecada */}
           {false && (
             <Button 
               variant={isActive("/seguimiento-precios") ? "secondary" : "ghost"}
@@ -291,7 +305,7 @@ export function Sidebar() {
             </div>
           )}
           
-          {/* 14. Importar Datos */}
+          {/* 17. Importar Datos */}
           <Button 
             variant={isActive("/importar-datos") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
@@ -302,7 +316,7 @@ export function Sidebar() {
             {isOpen && <span className="ml-3">Importar Datos</span>}
           </Button>
           
-          {/* 15. Exportar Datos */}
+          {/* 18. Exportar Datos */}
           <Button 
             variant={isActive("/exportar-datos") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"

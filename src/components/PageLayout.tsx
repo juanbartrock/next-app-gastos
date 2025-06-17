@@ -4,7 +4,7 @@ import { ReactNode } from "react"
 import { usePathname } from "next/navigation"
 import { Sidebar } from "@/components/Sidebar"
 import { useSidebar } from "@/contexts/SidebarContext"
-import { FloatingAdvisor } from "@/components/FloatingAdvisor"
+import { UnifiedAssistant } from "@/components/UnifiedAssistant"
 import { NotificationCenter } from "@/components/alertas/NotificationCenter"
 import { Button } from "@/components/ui/button"
 import { User, Settings, Crown, CreditCard } from "lucide-react"
@@ -113,7 +113,7 @@ export function PageLayout({ children }: PageLayoutProps) {
       </div>
 
       {/* Asesor Financiero Flotante */}
-      <FloatingAdvisor />
+      <UnifiedAssistant />
     </div>
   )
 } 

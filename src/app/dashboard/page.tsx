@@ -62,7 +62,11 @@ import { TareasWidget } from "@/components/TareasWidget"
 import { DollarIndicator } from "@/components/DollarIndicator"
 import { CurrencySelector } from "@/components/CurrencySelector"
 import { PlanWelcome } from "@/components/PlanWelcome"
+
+import { WelcomeModal } from "@/components/onboarding/WelcomeModal"
+import { InteractiveTour } from "@/components/onboarding/InteractiveTour"
 import { useCurrency } from "@/contexts/CurrencyContext"
+import { useOnboarding } from "@/contexts/OnboardingContext"
 
 // Componente para mostrar estadísticas de gastos
 function BalanceCard({ 
@@ -379,6 +383,7 @@ export default function DashboardRedesigned() {
     loading: permisosLoading,
     error: permisosError
   } = usePermisosFamiliares()
+  const { isFirstTime, tourActive } = useOnboarding()
   
   // Estados de la interfaz de usuario
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
@@ -678,7 +683,9 @@ export default function DashboardRedesigned() {
                 <Moon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
               </div>
               
-              <NotificationCenter />
+              <div data-tour="notifications">
+                <NotificationCenter />
+              </div>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -780,8 +787,8 @@ export default function DashboardRedesigned() {
               </TabsList>
               
               {/* Tab Personal */}
-              <TabsContent value="personal" className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-3">
+              <TabsContent value="personal" className="space-y-6" data-tour="dashboard-main">
+                <div className="grid gap-4 md:grid-cols-3" data-tour="balance-cards">
                   <BalanceCard
                     title="Mis Ingresos"
                     amount={formatMoney(personalMonthStats.ingresos)}
@@ -837,7 +844,7 @@ export default function DashboardRedesigned() {
 
                 {/* Formulario de nuevo movimiento y últimos movimientos personales */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <Card>
+                  <Card data-tour="add-transaction">
                     <CardHeader>
                       <CardTitle>Registrar nuevo movimiento</CardTitle>
                       <CardDescription>
@@ -971,6 +978,17 @@ export default function DashboardRedesigned() {
       
       {/* Componente de bienvenida para nuevos usuarios */}
       <PlanWelcome />
+      
+      {/* Modal de bienvenida para onboarding */}
+      <WelcomeModal 
+        isOpen={isFirstTime && !tourActive}
+        onClose={() => {}}
+      />
+      
+      {/* Tour interactivo */}
+      <InteractiveTour />
+      
+
     </div>
   )
 } 

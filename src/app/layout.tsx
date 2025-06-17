@@ -8,6 +8,7 @@ import { SidebarProvider } from "@/contexts/SidebarContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { VisibilityProvider } from "@/contexts/VisibilityContext";
 import { PermisosFamiliaresProvider } from "@/contexts/PermisosFamiliaresContext";
+import { OnboardingProvider } from "@/contexts/OnboardingContext";
 import { SidebarStateManager } from "@/components/SidebarStateManager";
 
 const inter = Inter({
@@ -85,8 +86,10 @@ export default function RootLayout({
                 <CurrencyProvider>
                   <VisibilityProvider>
                     <PermisosFamiliaresProvider>
-                      <SidebarStateManager />
-                      {children}
+                      <OnboardingProvider>
+                        <SidebarStateManager />
+                        {children}
+                      </OnboardingProvider>
                     </PermisosFamiliaresProvider>
                   </VisibilityProvider>
                 </CurrencyProvider>

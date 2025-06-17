@@ -47,6 +47,14 @@ model User {
   fechaRegistro             DateTime?                  @default(now())
   rolSistema                String?                    @default("usuario")
   ultimaActividad           DateTime?
+  onboardingCompleted       Boolean                    @default(false)
+  onboardingStep            Int                        @default(0)
+  onboardingSkipped         Boolean                    @default(false)
+  onboardingStartedAt       DateTime?
+  onboardingCompletedAt     DateTime?
+  onboardingSteps           Json?                      // Array de pasos completados
+  tourPreference            String?                    @default("full") // "full", "quick", "none"
+  lastOnboardingVersion     String?                    @default("1.0")
   accounts                  Account[]
   alertas                   Alerta[]
   auditoriasAdmin           AuditoriaAdmin[]
