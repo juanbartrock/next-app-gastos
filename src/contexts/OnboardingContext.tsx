@@ -234,11 +234,10 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
           setCompletedSteps(data.completedSteps || [])
           setCurrentStep(data.currentStep || 0)
           
-          // Si es primera vez, mostrar modal de bienvenida después de un delay
+          // Si es primera vez, NO iniciar tour automáticamente
+          // El tour se inicia desde el modal de bienvenida
           if (!data.onboardingCompleted && !data.onboardingSkipped) {
-            setTimeout(() => {
-              setTourActive(true)
-            }, 1000)
+            // No hacer nada aquí, el modal se maneja desde el dashboard
           }
         } else {
           // Usuario no logueado, usar localStorage

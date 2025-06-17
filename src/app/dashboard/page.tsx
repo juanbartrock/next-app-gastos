@@ -981,7 +981,7 @@ export default function DashboardRedesigned() {
       
       {/* Modal de bienvenida para onboarding */}
       <WelcomeModal 
-        isOpen={isFirstTime && !tourActive}
+        isOpen={isFirstTime}
         onClose={() => {}}
       />
       
