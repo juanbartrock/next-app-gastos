@@ -20,7 +20,8 @@ import {
   Upload,
   Download,
   Archive,
-  Crown
+  Crown,
+  Bug
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/ui/logo"
@@ -244,6 +245,17 @@ export function Sidebar() {
             {isOpen && <span className="ml-3">Buzón Comprobantes</span>}
           </Button>
           
+          {/* 13. Beta Feedback */}
+          <Button 
+            variant={isActive("/beta-feedback") ? "secondary" : "ghost"}
+            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
+            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            onClick={() => handleNavigation('/beta-feedback')}
+          >
+            <Bug className="w-5 h-5 text-blue-500" />
+            {isOpen && <span className="ml-3">Beta Feedback</span>}
+          </Button>
+          
           {/* 13. Recomendaciones - DESHABILITADO: Funcionalidad deprecada */}
           {false && (
             <Button 
@@ -279,7 +291,7 @@ export function Sidebar() {
             </div>
           )}
           
-          {/* 13. Importar Datos */}
+          {/* 14. Importar Datos */}
           <Button 
             variant={isActive("/importar-datos") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
@@ -290,7 +302,7 @@ export function Sidebar() {
             {isOpen && <span className="ml-3">Importar Datos</span>}
           </Button>
           
-          {/* 14. Exportar Datos */}
+          {/* 15. Exportar Datos */}
           <Button 
             variant={isActive("/exportar-datos") ? "secondary" : "ghost"}
             className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
