@@ -61,10 +61,10 @@ import { MultiChartWidget } from "@/components/MultiChartWidget"
 import { TareasWidget } from "@/components/TareasWidget"
 import { DollarIndicator } from "@/components/DollarIndicator"
 import { CurrencySelector } from "@/components/CurrencySelector"
-import { PlanWelcome } from "@/components/PlanWelcome"
 
-import { WelcomeModal } from "@/components/onboarding/WelcomeModal"
+import { FinancialSummary } from "@/components/FinancialSummary"
 import { CustomTour } from "@/components/onboarding/CustomTour"
+
 import { useCurrency } from "@/contexts/CurrencyContext"
 import { useOnboarding } from "@/contexts/OnboardingContext"
 
@@ -976,16 +976,7 @@ export default function DashboardRedesigned() {
         </div>
       </main>
       
-      {/* Componente de bienvenida para nuevos usuarios */}
-      <PlanWelcome />
-      
-      {/* Modal de bienvenida para onboarding */}
-      <WelcomeModal 
-        isOpen={isFirstTime}
-        onClose={closeWelcomeModal}
-      />
-      
-      {/* Tour interactivo */}
+      {/* Tour interactivo - inicia directamente */}
       <CustomTour />
       
 

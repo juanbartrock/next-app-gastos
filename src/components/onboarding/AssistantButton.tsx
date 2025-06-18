@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -137,6 +137,7 @@ export function AssistantButton() {
               ]
             } : {}}
             transition={{ duration: 2 }}
+            data-tour="assistant-button"
           >
             <Button
               onClick={assistantVisible ? hideAssistant : showAssistant}
@@ -167,9 +168,40 @@ export function AssistantButton() {
                     animate={{ scale: 1, rotate: 0 }}
                     exit={{ scale: 0, rotate: -180 }}
                     transition={{ duration: 0.2 }}
-                    className="relative"
+                    className="relative flex items-center justify-center"
                   >
-                    <Bot className="h-6 w-6 text-white" />
+                    {/* Asistente Financiero IA - Robotito con elementos financieros */}
+                    <div className="relative">
+                      {/* Cabeza del robot */}
+                      <div className="w-8 h-6 bg-white rounded-lg relative shadow-sm">
+                        {/* Ojos brillantes */}
+                        <div className="absolute top-1.5 left-1.5 w-2 h-2 bg-gradient-to-br from-green-400 to-green-600 rounded-full"></div>
+                        <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-gradient-to-br from-green-400 to-green-600 rounded-full"></div>
+                        {/* Antenas con señal IA */}
+                        <div className="absolute -top-1 left-2 w-0.5 h-2 bg-yellow-400 rounded-full"></div>
+                        <div className="absolute -top-1 right-2 w-0.5 h-2 bg-yellow-400 rounded-full"></div>
+                        {/* Pequeños puntos de señal */}
+                        <div className="absolute -top-0.5 left-1.5 w-1 h-1 bg-yellow-300 rounded-full opacity-75"></div>
+                        <div className="absolute -top-0.5 right-1.5 w-1 h-1 bg-yellow-300 rounded-full opacity-75"></div>
+                      </div>
+                      
+                      {/* Cuerpo del robot con pantalla financiera */}
+                      <div className="w-6 h-4 bg-white rounded-md mx-auto mt-0.5 relative shadow-sm">
+                        {/* Pantalla con símbolo de dinero */}
+                        <div className="absolute inset-0.5 bg-gradient-to-br from-green-100 to-green-200 rounded-sm flex items-center justify-center">
+                          <div className="text-green-600 font-bold text-xs">$</div>
+                        </div>
+                        {/* Líneas de código/datos */}
+                        <div className="absolute bottom-0.5 left-1 w-1 h-0.5 bg-blue-400 rounded-full"></div>
+                        <div className="absolute bottom-0.5 right-1 w-1 h-0.5 bg-blue-400 rounded-full"></div>
+                      </div>
+                      
+                      {/* Brazos pequeños */}
+                      <div className="absolute top-6 -left-1 w-2 h-1 bg-white rounded-full"></div>
+                      <div className="absolute top-6 -right-1 w-2 h-1 bg-white rounded-full"></div>
+                    </div>
+                    
+                    {/* Efectos adicionales */}
                     {tourActive && (
                       <motion.div
                         className="absolute -top-1 -right-1"
@@ -179,6 +211,19 @@ export function AssistantButton() {
                         <Sparkles className="h-3 w-3 text-yellow-300" />
                       </motion.div>
                     )}
+                    
+                    {/* Efecto de IA activa */}
+                    <motion.div
+                      className="absolute inset-0 rounded-full"
+                      animate={{ 
+                        boxShadow: [
+                          "0 0 0 0 rgba(34, 197, 94, 0.4)",
+                          "0 0 0 4px rgba(34, 197, 94, 0.1)",
+                          "0 0 0 0 rgba(34, 197, 94, 0.4)"
+                        ]
+                      }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    />
                   </motion.div>
                 )}
               </AnimatePresence>

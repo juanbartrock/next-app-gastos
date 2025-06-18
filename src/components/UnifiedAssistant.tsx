@@ -1,7 +1,20 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Bot, X, Send, Loader2, User, HelpCircle, Calculator } from "lucide-react"
+import { 
+  Calculator, 
+  Bot, 
+  HelpCircle, 
+  X, 
+  Send, 
+  Loader2, 
+  User,
+  PieChart,
+  TrendingUp,
+  DollarSign,
+  Brain,
+  Sparkles
+} from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card"
@@ -267,7 +280,38 @@ export function UnifiedAssistant() {
         >
           <div className="relative">
             {mode === 'financial' ? (
-              <Calculator className="h-6 w-6 text-white" />
+              // Robotito financiero personalizado
+              <div className="relative flex items-center justify-center">
+                <div className="relative">
+                  {/* Cabeza del robot financiero */}
+                  <div className="w-7 h-5 bg-white rounded-lg relative shadow-sm">
+                    {/* Ojos verdes brillantes (financieros) */}
+                    <div className="absolute top-1 left-1 w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                    <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                    {/* Antenas con señal financiera */}
+                    <div className="absolute -top-1 left-1.5 w-0.5 h-1.5 bg-yellow-400 rounded-full"></div>
+                    <div className="absolute -top-1 right-1.5 w-0.5 h-1.5 bg-yellow-400 rounded-full"></div>
+                    {/* Puntos de señal dorados */}
+                    <div className="absolute -top-0.5 left-1 w-0.5 h-0.5 bg-yellow-300 rounded-full opacity-75"></div>
+                    <div className="absolute -top-0.5 right-1 w-0.5 h-0.5 bg-yellow-300 rounded-full opacity-75"></div>
+                  </div>
+                  
+                  {/* Cuerpo del robot con pantalla financiera */}
+                  <div className="w-5 h-3 bg-white rounded-md mx-auto mt-0.5 relative shadow-sm">
+                    {/* Pantalla con símbolo de dinero */}
+                    <div className="absolute inset-0.5 bg-gradient-to-br from-green-100 to-green-200 rounded-sm flex items-center justify-center">
+                      <div className="text-green-600 font-bold text-xs">$</div>
+                    </div>
+                    {/* Líneas de datos */}
+                    <div className="absolute bottom-0.5 left-0.5 w-0.5 h-0.5 bg-blue-400 rounded-full"></div>
+                    <div className="absolute bottom-0.5 right-0.5 w-0.5 h-0.5 bg-blue-400 rounded-full"></div>
+                  </div>
+                  
+                  {/* Brazos pequeños */}
+                  <div className="absolute top-5 -left-0.5 w-1.5 h-0.5 bg-white rounded-full"></div>
+                  <div className="absolute top-5 -right-0.5 w-1.5 h-0.5 bg-white rounded-full"></div>
+                </div>
+              </div>
             ) : (
               <HelpCircle className="h-6 w-6 text-white" />
             )}

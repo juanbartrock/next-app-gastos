@@ -87,7 +87,16 @@ export const FULL_TOUR_STEPS: OnboardingStep[] = [
   {
     id: 'welcome',
     title: '¡Bienvenido a FinanzIA! 🎉',
-    content: 'Te vamos a mostrar cómo usar todas las funcionalidades de tu nueva aplicación de finanzas inteligente.',
+    content: `<p>Tu herramienta de gestión financiera inteligente está lista.</p>
+    
+    <div style="margin: 20px 0;">
+      <p><strong>🧠 IA Integrada</strong> - Análisis automático de patrones</p>
+      <p><strong>👨‍👩‍👧‍👦 Modo Familiar</strong> - Gestión colaborativa</p>
+      <p><strong>🛡️ 100% Seguro</strong> - Datos protegidos</p>
+      <p><strong>🔔 Alertas Inteligentes</strong> - Notificaciones automáticas</p>
+    </div>
+    
+    <p>Elige cómo quieres conocer FinanzIA:</p>`,
     target: 'body',
     placement: 'center',
     disableBeacon: true,
@@ -145,9 +154,9 @@ export const FULL_TOUR_STEPS: OnboardingStep[] = [
   {
     id: 'ai-features',
     title: 'Inteligencia Artificial 🤖',
-    content: 'Tu asistente financiero inteligente puede analizar patrones, generar recomendaciones y detectar anomalías.',
-    target: '[data-tour="ai"]',
-    placement: 'right',
+    content: 'Tu asistente financiero inteligente está disponible desde este botón flotante. Puede analizar patrones, generar recomendaciones y detectar anomalías en tiempo real.',
+    target: '[data-tour="assistant-button"]',
+    placement: 'left',
     showProgress: true
   },
   {
@@ -165,8 +174,17 @@ export const FULL_TOUR_STEPS: OnboardingStep[] = [
 export const QUICK_TOUR_STEPS: OnboardingStep[] = [
   {
     id: 'welcome-quick',
-    title: '¡Bienvenido! Tour Rápido ⚡',
-    content: 'Te mostraremos solo lo esencial para empezar.',
+    title: '¡Bienvenido a FinanzIA! ⚡',
+    content: `<p>Tu herramienta de gestión financiera inteligente está lista.</p>
+    
+    <div style="margin: 20px 0;">
+      <p><strong>🧠 IA Integrada</strong> - Análisis automático de patrones</p>
+      <p><strong>👨‍👩‍👧‍👦 Modo Familiar</strong> - Gestión colaborativa</p>
+      <p><strong>🛡️ 100% Seguro</strong> - Datos protegidos</p>
+      <p><strong>🔔 Alertas Inteligentes</strong> - Notificaciones automáticas</p>
+    </div>
+    
+    <p>Elige cómo quieres conocer FinanzIA:</p>`,
     target: 'body',
     placement: 'center',
     disableBeacon: true
@@ -235,10 +253,10 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
           setCompletedSteps(data.completedSteps || [])
           setCurrentStep(data.currentStep || 0)
           
-          // Si es primera vez, NO iniciar tour automáticamente
-          // El tour se inicia desde el modal de bienvenida
+          // Si es primera vez, iniciar tour automáticamente
           if (!data.onboardingCompleted && !data.onboardingSkipped) {
-            // No hacer nada aquí, el modal se maneja desde el dashboard
+            setTourActive(true) // Iniciar tour automáticamente
+            setTourType('full') // Por defecto tour completo
           }
         } else {
           // Usuario no logueado, usar localStorage

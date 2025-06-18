@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CalendarIcon, Edit, Pencil, Repeat, Trash2, ArrowLeft, Loader2 } from "lucide-react"
+import { CalendarIcon, Edit, Pencil, Repeat, Trash2, ArrowLeft, Loader2, ChevronDown } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -30,6 +30,12 @@ import { toast } from "sonner"
 import { useCurrency } from "@/contexts/CurrencyContext"
 import { useVisibility } from "@/contexts/VisibilityContext"
 import { FinancialSummary } from "@/components/FinancialSummary"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Checkbox } from "@/components/ui/checkbox"
 
 // Tipos
 type GastoRecurrente = {
@@ -137,7 +143,7 @@ export default function RecurrentesPage() {
   // Filtros
   const [filtroConcepto, setFiltroConcepto] = useState("")
   const [filtroCategoria, setFiltroCategoria] = useState<number | undefined>(undefined)
-  const [filtroEstado, setFiltroEstado] = useState<string | undefined>(undefined)
+  const [filtroEstado, setFiltroEstado] = useState<string[]>([])
   
   // Estados para el formulario
   const [concepto, setConcepto] = useState("")
@@ -1017,19 +1023,87 @@ export default function RecurrentesPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="filtro-estado">Estado</Label>
-                <Select value={filtroEstado || "all"} onValueChange={(value) => setFiltroEstado(value !== "all" ? value : undefined)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos los estados" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos los estados</SelectItem>
-                    <SelectItem value="pendiente">Pendiente</SelectItem>
-                    <SelectItem value="pagado">Pagado</SelectItem>
-                    <SelectItem value="parcial">Parcial</SelectItem>
-                    <SelectItem value="n/a">N/A</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>Estados</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between"
+                    >
+                      {filtroEstado.length === 0 
+                        ? "Todos los estados" 
+                        : `${filtroEstado.length} estado${filtroEstado.length !== 1 ? 's' : ''} seleccionado${filtroEstado.length !== 1 ? 's' : ''}`
+                      }
+                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <div className="p-3 space-y-2 max-h-64 overflow-y-auto">
+                      <div className="flex justify-between pb-2 border-b">
+                        <span className="text-sm font-medium">Filtrar por estados</span>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setFiltroEstado(['pendiente', 'pago_parcial', 'pagado', 'proximo', 'programado', 'parcial', 'n/a'])}
+                            className="h-6 px-2 text-xs"
+                          >
+                            Todos
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setFiltroEstado([])}
+                            className="h-6 px-2 text-xs"
+                          >
+                            Limpiar
+                          </Button>
+                        </div>
+                      </div>
+                      {[
+                        { value: 'pendiente', label: 'Pendiente', color: 'text-red-600', bg: 'bg-red-100 dark:bg-red-900/20' },
+                        { value: 'pago_parcial', label: 'Pago Parcial', color: 'text-amber-600', bg: 'bg-amber-100 dark:bg-amber-900/20' },
+                        { value: 'pagado', label: 'Pagado', color: 'text-green-600', bg: 'bg-green-100 dark:bg-green-900/20' },
+                        { value: 'proximo', label: 'Próximo', color: 'text-orange-600', bg: 'bg-orange-100 dark:bg-orange-900/20' },
+                        { value: 'programado', label: 'Programado', color: 'text-blue-600', bg: 'bg-blue-100 dark:bg-blue-900/20' },
+                        { value: 'parcial', label: 'Parcial (legacy)', color: 'text-yellow-600', bg: 'bg-yellow-100 dark:bg-yellow-900/20' },
+                        { value: 'n/a', label: 'No Aplica', color: 'text-gray-500', bg: 'bg-gray-100 dark:bg-gray-900/20' }
+                      ].map((estado) => (
+                        <div key={estado.value} className="flex items-center space-x-3 p-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                          <Checkbox
+                            id={`estado-${estado.value}`}
+                            checked={filtroEstado.includes(estado.value)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setFiltroEstado([...filtroEstado, estado.value])
+                              } else {
+                                setFiltroEstado(filtroEstado.filter(s => s !== estado.value))
+                              }
+                            }}
+                          />
+                          <label 
+                            htmlFor={`estado-${estado.value}`} 
+                            className="flex items-center gap-2 cursor-pointer flex-1"
+                          >
+                            <div className={`w-3 h-3 rounded-full ${estado.bg} flex items-center justify-center`}>
+                              <div className={`w-1.5 h-1.5 rounded-full ${estado.color === 'text-red-600' ? 'bg-red-500' : 
+                                estado.color === 'text-amber-600' ? 'bg-amber-500' :
+                                estado.color === 'text-green-600' ? 'bg-green-500' :
+                                estado.color === 'text-orange-600' ? 'bg-orange-500' :
+                                estado.color === 'text-blue-600' ? 'bg-blue-500' :
+                                estado.color === 'text-yellow-600' ? 'bg-yellow-500' :
+                                'bg-gray-400'}`}></div>
+                            </div>
+                            <span className={`text-sm ${estado.color} font-medium`}>
+                              {estado.label}
+                            </span>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
           </CardContent>
@@ -1409,9 +1483,11 @@ export default function RecurrentesPage() {
                         const categoriaMatch = !filtroCategoria || 
                           gasto.categoriaId === filtroCategoria
                         
-                        // Filtrar por estado
-                        const estadoMatch = !filtroEstado || 
-                          gasto.estado === filtroEstado
+                        // Filtrar por estado (considerar tanto el estado base como el visual calculado)
+                        const estadoVisualCalculado = calcularEstadoVisual(gasto)
+                        const estadoMatch = filtroEstado.length === 0 || 
+                          filtroEstado.includes(gasto.estado) || 
+                          filtroEstado.includes(estadoVisualCalculado)
                         
                         return conceptoMatch && categoriaMatch && estadoMatch
                       })

@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useOnboarding } from '@/contexts/OnboardingContext'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { ChevronLeft, ChevronRight, X, SkipForward, HelpCircle } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, SkipForward, HelpCircle, Sparkles, Zap } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface TourTooltipProps {
@@ -16,6 +16,7 @@ interface TourTooltipProps {
   onSkip: () => void
   onClose: () => void
   onHelp: () => void
+  onTourTypeChange: (type: 'full' | 'quick') => void
   isLastStep: boolean
   targetElement: HTMLElement | null
 }
@@ -29,14 +30,17 @@ const TourTooltip = ({
   onSkip,
   onClose,
   onHelp,
+  onTourTypeChange,
   isLastStep,
   targetElement
 }: TourTooltipProps) => {
   const [position, setPosition] = useState({ top: 0, left: 0 })
   const [placement, setPlacement] = useState<'top' | 'bottom' | 'left' | 'right'>('bottom')
   const tooltipRef = useRef<HTMLDivElement>(null)
+  const { tourType, setTourType } = useOnboarding()
 
   const progress = ((stepIndex + 1) / totalSteps) * 100
+  const isWelcomeStep = step.id === 'welcome' || step.id === 'welcome-quick'
 
   useEffect(() => {
     if (!targetElement || !tooltipRef.current) return
@@ -121,12 +125,14 @@ const TourTooltip = ({
         left: position.left,
         zIndex: 1001,
       }}
-      className="bg-white dark:bg-gray-900 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 max-w-sm overflow-hidden"
+      className="bg-white dark:bg-gray-900 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 max-w-lg overflow-hidden"
     >
       {/* Header con gradiente */}
       <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="font-bold text-lg">{step.title}</h3>
+          <h3 className="font-bold text-lg">
+            {isWelcomeStep ? '¡Bienvenido a FinanzIA! 🎉' : step.title}
+          </h3>
           <Button
             onClick={onClose}
             variant="ghost"
@@ -150,70 +156,104 @@ const TourTooltip = ({
       </div>
 
       {/* Contenido */}
-      <div className="p-4">
-        <p className="text-gray-700 dark:text-gray-300 mb-4 text-sm leading-relaxed">
-          {step.content}
-        </p>
+      <div className="p-6">
+        <div className="text-gray-700 dark:text-gray-300 mb-6 text-sm leading-relaxed">
+          <div dangerouslySetInnerHTML={{ __html: step.content }} />
+        </div>
 
         {/* Botones de acción */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex gap-2">
-            {/* Botón de asistente */}
-            <Button
-              onClick={onHelp}
-              variant="outline"
-              size="sm"
-              className="gap-1"
-            >
-              <HelpCircle className="h-3 w-3" />
-              Ayuda
-            </Button>
-            
-            {/* Botón saltar (solo si no es el último paso) */}
-            {!isLastStep && step.showSkipButton !== false && (
+        {isWelcomeStep ? (
+          <div className="space-y-4">
+            <div className="text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Elige tu experiencia de onboarding:
+              </p>
+            </div>
+            <div className="space-y-3">
               <Button
-                onClick={onSkip}
-                variant="outline"
-                size="sm"
-                className="gap-1"
+                onClick={() => onTourTypeChange('full')}
+                className="w-full justify-start gap-3 h-auto py-4 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
               >
-                <SkipForward className="h-3 w-3" />
-                Saltar
+                <Sparkles className="h-5 w-5 shrink-0" />
+                <div className="text-left">
+                  <div className="font-semibold">Tour Completo (8-10 min)</div>
+                  <div className="text-xs opacity-90">Conoce todas las funcionalidades paso a paso</div>
+                </div>
               </Button>
-            )}
+              <Button
+                onClick={() => onTourTypeChange('quick')}
+                variant="outline"
+                className="w-full justify-start gap-3 h-auto py-4 border-2 hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                <Zap className="h-5 w-5 shrink-0" />
+                <div className="text-left">
+                  <div className="font-semibold">Tour Rápido (3-4 min)</div>
+                  <div className="text-xs text-muted-foreground">Solo lo esencial para empezar</div>
+                </div>
+              </Button>
+            </div>
           </div>
-
-          <div className="flex gap-2">
-            {/* Botón anterior */}
-            {stepIndex > 0 && (
+        ) : (
+          /* Botones de navegación normales */
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex gap-2">
+              {/* Botón de asistente */}
               <Button
-                onClick={onPrev}
+                onClick={onHelp}
                 variant="outline"
                 size="sm"
-                className="gap-1"
+                className="gap-2"
               >
-                <ChevronLeft className="h-3 w-3" />
-                Anterior
+                <HelpCircle className="h-4 w-4" />
+                Ayuda
               </Button>
-            )}
-            
-            {/* Botón siguiente/finalizar */}
-            <Button
-              onClick={onNext}
-              size="sm"
-              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 gap-1"
-            >
-              {isLastStep ? (
-                '¡Empezar!'
-              ) : (
-                <>
-                  Siguiente
-                  <ChevronRight className="h-3 w-3" />
-                </>
+              
+              {/* Botón saltar (solo si no es el último paso) */}
+              {!isLastStep && step.showSkipButton !== false && (
+                <Button
+                  onClick={onSkip}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <SkipForward className="h-4 w-4" />
+                  Saltar
+                </Button>
               )}
-            </Button>
+            </div>
+
+            <div className="flex gap-2 shrink-0">
+              {/* Botón anterior */}
+              {stepIndex > 0 && (
+                <Button
+                  onClick={onPrev}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Anterior
+                </Button>
+              )}
+              
+              {/* Botón siguiente/finalizar */}
+              <Button
+                onClick={onNext}
+                size="sm"
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 gap-2 shrink-0"
+              >
+                {isLastStep ? (
+                  '¡Empezar!'
+                ) : (
+                  <>
+                    Siguiente
+                    <ChevronRight className="h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Flecha indicadora */}
@@ -318,7 +358,8 @@ export function CustomTour() {
     prevStep,
     skipTour,
     completeTour,
-    showAssistant
+    showAssistant,
+    setTourType
   } = useOnboarding()
 
   const [currentStepData, setCurrentStepData] = useState<any>(null)
@@ -375,6 +416,14 @@ export function CustomTour() {
     }
   }
 
+  const handleTourTypeChange = (type: 'full' | 'quick') => {
+    setTourType(type)
+    // Reiniciar el tour con el nuevo tipo
+    setTimeout(() => {
+      nextStep()
+    }, 100) // Pequeño delay para que el cambio se aplique
+  }
+
   const handleHelp = () => {
     showAssistant()
   }
@@ -401,6 +450,7 @@ export function CustomTour() {
           onSkip={skipTour}
           onClose={skipTour}
           onHelp={handleHelp}
+          onTourTypeChange={handleTourTypeChange}
           isLastStep={isLastStep}
           targetElement={targetElement}
         />

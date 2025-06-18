@@ -69,20 +69,20 @@ const CustomTooltip = ({
       </div>
 
       {/* Contenido */}
-      <div className="p-4">
-        <p className="text-gray-700 dark:text-gray-300 mb-4 text-sm leading-relaxed">
+      <div className="p-5">
+        <p className="text-gray-700 dark:text-gray-300 mb-5 text-sm leading-relaxed">
           {step.content}
         </p>
 
         {/* Botones de acción */}
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex gap-2">
             {/* Botón de asistente */}
             <Button
               onClick={showAssistant}
               variant="outline"
               size="sm"
-              className="gap-1"
+              className="gap-1 text-xs px-2 py-1 h-8"
             >
               <HelpCircle className="h-3 w-3" />
               Ayuda
@@ -94,7 +94,7 @@ const CustomTooltip = ({
                 {...skipProps}
                 variant="outline"
                 size="sm"
-                className="gap-1"
+                className="gap-1 text-xs px-2 py-1 h-8"
               >
                 <SkipForward className="h-3 w-3" />
                 Saltar Tour
@@ -102,14 +102,14 @@ const CustomTooltip = ({
             )}
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 shrink-0">
             {/* Botón anterior */}
             {index > 0 && (
               <Button
                 {...backProps}
                 variant="outline"
                 size="sm"
-                className="gap-1"
+                className="gap-1 text-xs px-3 py-1 h-8"
               >
                 <ChevronLeft className="h-3 w-3" />
                 Anterior
@@ -120,7 +120,7 @@ const CustomTooltip = ({
             <Button
               {...primaryProps}
               size="sm"
-              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 gap-1"
+              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 gap-1 text-xs px-3 py-1 h-8 shrink-0"
             >
               {isLastStep ? (
                 <>¡Empezar!</>
@@ -217,7 +217,7 @@ export function InteractiveTour() {
     }
   }
 
-  // No renderizar si el tour no está activo
+  // No renderizar si el tour no está activo o si hay modal de bienvenida
   if (!tourActive || !run) {
     return null
   }
@@ -247,14 +247,10 @@ export function InteractiveTour() {
       }}
       styles={{
         overlay: {
-          backgroundColor: 'rgba(0, 0, 0, 0.4)',
+          backgroundColor: 'rgba(0, 0, 0, 0.4)'
         },
         spotlight: {
-          borderRadius: '8px',
-        },
-        beacon: {
-          inner: '#3b82f6',
-          outer: '#3b82f6'
+          borderRadius: '8px'
         }
       }}
     />
