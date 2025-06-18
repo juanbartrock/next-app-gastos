@@ -27,6 +27,9 @@ function LoginForm() {
   
   // Verificar si viene del registro exitoso
   const registered = searchParams.get("registered")
+  const needsPayment = searchParams.get("needsPayment")
+  const planId = searchParams.get("planId")
+  const emailFromParams = searchParams.get("email")
 
   // Redirigir si ya está autenticado
   useEffect(() => {
@@ -73,11 +76,45 @@ function LoginForm() {
           setError(result.error)
         }
       } else if (result?.ok) {
-        // Login exitoso, redirigir inmediatamente
+        // Login exitoso
         console.log("Login exitoso, redirigiendo a:", callbackUrl);
         setIsLoading(true) // Mantener el estado de carga durante la redirección
         
-        // Usar replace para evitar problemas de navegación
+        // Si necesita pago, iniciar flujo de pago
+        if (needsPayment && planId) {
+          try {
+            const pagoResponse = await fetch('/api/suscripciones/crear-pago', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                planId: planId,
+                tipoPago: 'inicial'
+              })
+            })
+
+            if (pagoResponse.ok) {
+              const pagoData = await pagoResponse.json()
+              
+              if (pagoData.init_point) {
+                // Redirigir a MercadoPago para completar el pago
+                window.location.href = pagoData.init_point
+                return
+              }
+            } else {
+              console.error('Error iniciando pago:', await pagoResponse.text())
+              // Si falla el pago, redirigir a planes
+              router.replace("/planes?newUser=true&error=payment_failed")
+              return
+            }
+          } catch (pagoError) {
+            console.error('Error iniciando pago:', pagoError)
+            // Si falla el pago, redirigir a planes
+            router.replace("/planes?newUser=true&error=payment_failed")
+            return
+          }
+        }
+        
+        // Redirigir normalmente si no necesita pago
         router.replace(callbackUrl);
         
         // Forzar refresh del estado de la sesión
@@ -121,7 +158,16 @@ function LoginForm() {
           <p className="mt-2 text-gray-600 dark:text-gray-400">Inicia sesión en tu cuenta</p>
         </div>
 
-        {registered && (
+        {registered && needsPayment && (
+          <Alert className="border-blue-200 bg-blue-50 text-blue-800">
+            <CheckCircle className="h-4 w-4" />
+            <AlertDescription>
+              ¡Cuenta creada! Inicia sesión para completar el pago de tu plan seleccionado.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {registered && !needsPayment && (
           <Alert className="border-green-200 bg-green-50 text-green-800">
             <CheckCircle className="h-4 w-4" />
             <AlertDescription>
@@ -147,6 +193,7 @@ function LoginForm() {
                 required
                 className="dark:bg-gray-700"
                 placeholder="tu@email.com"
+                defaultValue={emailFromParams || ""}
               />
             </div>
             <div>

@@ -117,8 +117,16 @@ export default function RegisterPage() {
         throw new Error(data.message || "Error al registrar usuario")
       }
 
-      // Redirigir al login después de un registro exitoso
-      router.push("/login?registered=true")
+      // Verificar si el plan seleccionado es de pago
+      const planSeleccionado = planes.find(p => p.id === selectedPlan)
+      
+      if (planSeleccionado?.esPago) {
+        // Plan de pago: redirigir al login con parámetros para iniciar pago
+        router.push(`/login?registered=true&needsPayment=true&planId=${selectedPlan}&email=${encodeURIComponent(formData.email)}`)
+      } else {
+        // Plan gratuito: redirigir al login normalmente
+        router.push("/login?registered=true")
+      }
     } catch (error) {
       if (error instanceof Error) {
         setError(error.message)
