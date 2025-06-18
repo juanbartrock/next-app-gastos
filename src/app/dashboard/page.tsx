@@ -602,7 +602,7 @@ export default function DashboardRedesigned() {
 
   // Tipos de balance total para navegación
   const totalBalanceTypes = [
-    { label: "Saldo Total Familiar", amount: formatMoney(totalBalances.total) },
+    { label: "Saldo Total (Incluye Grupo)", amount: formatMoney(totalBalances.total) },
     { label: "Total Efectivo", amount: formatMoney(totalBalances.efectivo) },
     { label: "Total Digital", amount: formatMoney(totalBalances.digital) },
     { label: "Total Ahorros", amount: formatMoney(totalBalances.ahorro) },

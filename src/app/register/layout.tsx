@@ -4,7 +4,7 @@ import { ToastProvider } from "@/providers/ToastProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 
 export const metadata: Metadata = {
-  title: "Registro - App de Gastos",
+  title: "Registro - FinanzIA",
   description: "Crea tu cuenta nueva",
 };
 

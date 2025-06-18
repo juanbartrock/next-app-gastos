@@ -2,8 +2,8 @@ import { ReactNode } from 'react';
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Administración - App de Gastos',
-  description: 'Panel de administración para la App de Gastos',
+  title: 'Administración - FinanzIA',
+  description: 'Panel de administración para la FinanzIA',
 };
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -15,7 +15,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
                 <Link href="/">
-                  <span className="text-xl font-bold text-gray-800">App de Gastos</span>
+                  <span className="text-xl font-bold text-gray-800">FinanzIA</span>
                 </Link>
               </div>
               <div className="ml-6 flex space-x-8">

@@ -4,7 +4,7 @@ import { ToastProvider } from "@/providers/ToastProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 
 export const metadata: Metadata = {
-  title: "Iniciar Sesión - App de Gastos",
+  title: "Iniciar Sesión - FinanzIA",
   description: "Inicia sesión en tu cuenta",
 };
 
