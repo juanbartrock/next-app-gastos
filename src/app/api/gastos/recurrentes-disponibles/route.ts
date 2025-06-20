@@ -29,10 +29,8 @@ export async function GET(request: NextRequest) {
     const gastosRecurrentes = await Promise.race([
       prisma.gastoRecurrente.findMany({
         where: {
-          userId: usuario.id,
-          estado: {
-            in: ['pendiente', 'pago_parcial']  // Solo los que no están completamente pagados
-          }
+          userId: usuario.id
+          // Permitir todos los estados para casos como facturas adicionales o imponderables
         },
         include: {
           categoria: {
@@ -64,12 +62,28 @@ export async function GET(request: NextRequest) {
     const gastosConInfo = gastosRecurrentes.map((recurrente: any) => {
       const totalPagado = recurrente.gastosGenerados.reduce((sum: number, pago: any) => sum + pago.monto, 0)
       const saldoPendiente = recurrente.monto - totalPagado
+      const porcentajePagado = (totalPagado / recurrente.monto) * 100
+      
+      // Calcular estado visual para mejor información
+      let estadoVisual = recurrente.estado
+      if (totalPagado === 0) {
+        estadoVisual = 'pendiente'
+      } else if (totalPagado >= recurrente.monto) {
+        estadoVisual = 'pagado'
+      } else {
+        estadoVisual = 'pago_parcial'
+      }
       
       return {
         ...recurrente,
         totalPagado,
         saldoPendiente,
-        porcentajePagado: (totalPagado / recurrente.monto) * 100
+        porcentajePagado,
+        estadoVisual,
+        // Información adicional para el selector
+        estadoTexto: estadoVisual === 'pagado' ? 'Completamente pagado' : 
+                     estadoVisual === 'pago_parcial' ? `${porcentajePagado.toFixed(1)}% pagado` : 
+                     'Pendiente de pago'
       }
     })
 

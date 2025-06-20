@@ -137,10 +137,10 @@ export function AssistantButton() {
               ]
             } : {}}
             transition={{ duration: 2 }}
-            data-tour="assistant-button"
           >
             <Button
               onClick={assistantVisible ? hideAssistant : showAssistant}
+              data-tour="assistant-button"
               className={`
                 h-14 w-14 rounded-full shadow-lg transition-all duration-300
                 ${assistantVisible 

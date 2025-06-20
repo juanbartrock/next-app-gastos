@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Joyride, { CallBackProps, EVENTS, STATUS, ACTIONS, Placement } from 'react-joyride'
 import { useOnboarding } from '@/contexts/OnboardingContext'
+import { useSidebar } from '@/contexts/SidebarContext'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { ChevronLeft, ChevronRight, X, SkipForward, HelpCircle } from 'lucide-react'
@@ -152,9 +153,20 @@ export function InteractiveTour() {
     completeTour,
     showAssistant
   } = useOnboarding()
+  
+  // Hook para controlar el sidebar durante el tour
+  const { setSidebarOpen, isOpen: sidebarIsOpen } = useSidebar()
 
   const [joyrideSteps, setJoyrideSteps] = useState<any[]>([])
   const [run, setRun] = useState(false)
+
+  // Expandir sidebar cuando el tour se activa
+  useEffect(() => {
+    if (tourActive && !sidebarIsOpen) {
+      console.log('Expandiendo sidebar para el tour...')
+      setSidebarOpen(true)
+    }
+  }, [tourActive, sidebarIsOpen, setSidebarOpen])
 
   // Convertir steps del contexto a formato joyride
   useEffect(() => {
@@ -181,19 +193,30 @@ export function InteractiveTour() {
           }
         }))
         
-        setJoyrideSteps(joyrideSteps)
-        setRun(true)
+        console.log('Setting joyride steps:', joyrideSteps.length, 'currentStep:', currentStep)
+        
+        // Verificar que todos los targets existen con una pequeña demora
+        // para asegurar que el sidebar esté completamente expandido
+        setTimeout(() => {
+          joyrideSteps.forEach((step, index) => {
+            const element = document.querySelector(step.target)
+            console.log(`Step ${index}: ${step.target} ->`, element ? 'FOUND' : 'NOT FOUND')
+          })
+          
+          setJoyrideSteps(joyrideSteps)
+          setRun(true)
+        }, 300) // Demora para que la animación del sidebar termine
       })
     } else {
       setRun(false)
     }
-  }, [tourActive, tourType])
+  }, [tourActive, tourType, currentStep]) // Agregar currentStep para asegurar sincronización
 
   // Manejar eventos del tour
   const handleJoyrideCallback = (data: CallBackProps) => {
     const { action, index, status, type } = data
 
-    console.log('Tour event:', { action, index, status, type })
+    console.log('Tour event:', { action, index, status, type, currentStep })
 
     if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
       // Tour completado o saltado
@@ -212,7 +235,7 @@ export function InteractiveTour() {
       }
     } else if (type === EVENTS.TARGET_NOT_FOUND) {
       // Target no encontrado, pasar al siguiente paso
-      console.warn('Target not found for step:', index)
+      console.warn('Target not found for step:', index, 'currentStep:', currentStep)
       nextStep()
     }
   }
