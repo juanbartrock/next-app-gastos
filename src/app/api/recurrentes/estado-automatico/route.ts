@@ -155,18 +155,31 @@ export async function GET(request: NextRequest) {
     const periodosCerrados = []
     
     for (const recurrente of gastosRecurrentes) {
-      let estadoCalculado = calcularEstadoAutomatico(recurrente)
-      let tieneGasto = tieneGastoEnPeriodoActual(recurrente)
       let fechaActualizada = recurrente.proximaFecha
       let periodoFueCerrado = false
+      let estadoCalculado = recurrente.estado
       
-      // Si se requiere cerrar períodos anteriores y este recurrente califica
+      // PRIMERO: verificar si se debe cerrar el período
       if (cerrarPeriodosAnteriores && esCandidatoParaCierre(recurrente)) {
         // Avanzar la fecha al siguiente período
         if (recurrente.proximaFecha) {
           fechaActualizada = calcularProximaFecha(new Date(recurrente.proximaFecha), recurrente.periodicidad)
-          estadoCalculado = 'programado' // Resetear estado para el nuevo período
           periodoFueCerrado = true
+          
+          // RESETEAR ESTADO para el nuevo período
+          const ahora = new Date()
+          const nuevaFecha = new Date(fechaActualizada)
+          
+          if (ahora > nuevaFecha) {
+            estadoCalculado = 'pendiente' // Ya pasó la fecha del nuevo período
+          } else {
+            const diferenciaDias = Math.ceil((nuevaFecha.getTime() - ahora.getTime()) / (1000 * 60 * 60 * 24))
+            if (diferenciaDias <= 7 && diferenciaDias > 0) {
+              estadoCalculado = 'proximo' // Próximo a vencer
+            } else {
+              estadoCalculado = 'programado' // Programado para el futuro
+            }
+          }
           
           // Determinar razón según el estado anterior
           let razon = 'Período anterior cerrado'
@@ -193,7 +206,13 @@ export async function GET(request: NextRequest) {
             razon
           })
         }
+      } else {
+        // SEGUNDO: Si NO se cerró período, calcular estado normalmente
+        estadoCalculado = calcularEstadoAutomatico(recurrente)
       }
+      
+      // Calcular si tiene gasto en período (para información)
+      const tieneGasto = tieneGastoEnPeriodoActual(recurrente)
       
       // Actualizar en base de datos si hay cambios
       if (estadoCalculado !== recurrente.estado || periodoFueCerrado) {
