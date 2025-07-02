@@ -35,34 +35,42 @@ export async function GET(request: NextRequest) {
       const ahora = new Date()
       const proximaFecha = new Date(recurrente.proximaFecha)
       
-      // Si ya pasó la fecha próxima, buscar pago en los últimos días según periodicidad
-      let diasTolerancia = 30 // Default para mensual
+      // Calcular el período ACTUAL basándose en la próxima fecha
+      let diasPeriodo = 30 // Default para mensual
       
       switch (recurrente.periodicidad.toLowerCase()) {
+        case 'semanal':
+          diasPeriodo = 7
+          break
+        case 'quincenal':
+          diasPeriodo = 15
+          break
         case 'mensual':
-          diasTolerancia = 30
+          diasPeriodo = 30
           break
         case 'bimestral':
-          diasTolerancia = 60
+          diasPeriodo = 60
           break
         case 'trimestral':
-          diasTolerancia = 90
+          diasPeriodo = 90
           break
         case 'semestral':
-          diasTolerancia = 180
+          diasPeriodo = 180
           break
         case 'anual':
-          diasTolerancia = 365
+          diasPeriodo = 365
           break
       }
       
-      // Buscar si hay un gasto generado en el período correspondiente
-      const fechaLimiteInferior = new Date(proximaFecha)
-      fechaLimiteInferior.setDate(fechaLimiteInferior.getDate() - diasTolerancia)
+      // El período ACTUAL va desde (próxima fecha - período) hasta próxima fecha
+      const inicioPeriodiActual = new Date(proximaFecha)
+      inicioPeriodiActual.setDate(inicioPeriodiActual.getDate() - diasPeriodo)
       
+      // Solo buscar gastos EN EL PERÍODO ACTUAL
       const gastosFiltrados = recurrente.gastosGenerados.filter((gasto: any) => {
         const fechaGasto = new Date(gasto.fechaImputacion || gasto.fecha)
-        return fechaGasto >= fechaLimiteInferior && fechaGasto <= ahora
+        // Solo gastos entre inicio del período actual y próxima fecha
+        return fechaGasto >= inicioPeriodiActual && fechaGasto <= proximaFecha
       })
       
       return gastosFiltrados.length > 0
@@ -126,12 +134,39 @@ export async function GET(request: NextRequest) {
         return recurrente.estado
       }
       
-      // Si tiene gasto generado en el período actual
-      if (tieneGastoEnPeriodoActual(recurrente)) {
-        return 'pagado'
+      // PRIMERO: Verificar si tiene pago en el período actual
+      const tienePagoEnPeriodo = tieneGastoEnPeriodoActual(recurrente)
+      
+      if (tienePagoEnPeriodo) {
+        // Si tiene pago, verificar si es completo o parcial
+        const totalPagado = recurrente.gastosGenerados
+          .filter((gasto: any) => {
+            const fechaGasto = new Date(gasto.fechaImputacion || gasto.fecha)
+            const inicioPeriodiActual = new Date(proximaFecha)
+            let diasPeriodo = 30
+            switch (recurrente.periodicidad.toLowerCase()) {
+              case 'semanal': diasPeriodo = 7; break
+              case 'quincenal': diasPeriodo = 15; break
+              case 'mensual': diasPeriodo = 30; break
+              case 'bimestral': diasPeriodo = 60; break
+              case 'trimestral': diasPeriodo = 90; break
+              case 'semestral': diasPeriodo = 180; break
+              case 'anual': diasPeriodo = 365; break
+            }
+            inicioPeriodiActual.setDate(inicioPeriodiActual.getDate() - diasPeriodo)
+            return fechaGasto >= inicioPeriodiActual && fechaGasto <= proximaFecha
+          })
+          .reduce((total: number, gasto: any) => total + gasto.monto, 0)
+        
+        if (totalPagado >= recurrente.monto) {
+          return 'pagado'
+        } else {
+          return 'pago_parcial'
+        }
       }
       
-      // Si ya pasó la fecha y no hay pago
+      // SEGUNDO: Si NO tiene pago, calcular estado según fecha
+      // Si ya pasó la fecha y no hay pago → PENDIENTE
       if (ahora > proximaFecha) {
         return 'pendiente'
       }
@@ -139,15 +174,11 @@ export async function GET(request: NextRequest) {
       // Si la fecha está próxima (próximos 7 días)
       const diferenciaDias = Math.ceil((proximaFecha.getTime() - ahora.getTime()) / (1000 * 60 * 60 * 24))
       if (diferenciaDias <= 7 && diferenciaDias > 0) {
-        return 'proximo' // Nuevo estado para "próximo a vencer"
+        return 'proximo'
       }
       
       // Si está programado para el futuro
-      if (ahora <= proximaFecha) {
-        return 'programado'
-      }
-      
-      return recurrente.estado // Mantener estado actual como fallback
+      return 'programado'
     }
 
     // Procesar cada recurrente y actualizar estados si es necesario
