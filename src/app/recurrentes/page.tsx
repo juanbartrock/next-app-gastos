@@ -560,8 +560,43 @@ export default function RecurrentesPage() {
     }
   }
 
-  // NUEVA FUNCIÓN: Actualizar estados automáticos
+  // NUEVA FUNCIÓN: Actualizar estados automáticos con opción de cerrar períodos
+  // Esta función permite:
+  // 1. Actualizar estados automáticos (funcionalidad original)
+  // 2. CERRAR períodos anteriores no pagados y avanzar fechas al siguiente período
+  // Útil para casos donde no se pagó, se pagó parcialmente, o el usuario quiere cerrar el período
   const actualizarEstadosAutomaticos = async () => {
+    // Mostrar diálogo de confirmación con opciones
+    const resultado = confirm(
+      '¿Qué deseas hacer?\n\n' +
+      'OK - Solo actualizar estados automáticos\n' +
+      'Cancelar - Ver opciones avanzadas'
+    )
+    
+    if (resultado) {
+      // Solo actualizar estados (funcionalidad original)
+      await actualizarSoloEstados()
+    } else {
+      // Mostrar opciones avanzadas
+      const cerrarPeriodos = confirm(
+        '📅 OPCIONES AVANZADAS\n\n' +
+        '¿Deseas también CERRAR períodos anteriores no pagados?\n\n' +
+        '✅ SÍ - Actualizar estados + cerrar períodos del mes anterior\n' +
+        '❌ NO - Solo actualizar estados normalmente\n\n' +
+        'NOTA: Cerrar períodos avanzará las fechas de gastos recurrentes\n' +
+        'que no se pagaron el mes anterior.'
+      )
+      
+      if (cerrarPeriodos) {
+        await actualizarConCierrePeriodos()
+      } else {
+        await actualizarSoloEstados()
+      }
+    }
+  }
+
+  // Función para solo actualizar estados (funcionalidad original)
+  const actualizarSoloEstados = async () => {
     setActualizandoEstados(true)
     try {
       const response = await fetch('/api/recurrentes/estado-automatico', {
@@ -580,6 +615,51 @@ export default function RecurrentesPage() {
       }
     } catch (error) {
       console.error('Error al actualizar estados:', error)
+      toast.error('Error al actualizar estados automáticos')
+    } finally {
+      setActualizandoEstados(false)
+    }
+  }
+
+  // Función para actualizar estados Y cerrar períodos anteriores
+  const actualizarConCierrePeriodos = async () => {
+    setActualizandoEstados(true)
+    try {
+      const response = await fetch('/api/recurrentes/estado-automatico?cerrarPeriodosAnteriores=true', {
+        method: 'GET'
+      })
+      
+      if (response.ok) {
+        const resultado = await response.json()
+        let mensaje = `Estados actualizados: ${resultado.stats.actualizados} cambios realizados`
+        
+        if (resultado.stats.periodosCerrados > 0) {
+          mensaje += `\n🔄 Períodos cerrados: ${resultado.stats.periodosCerrados} gastos recurrentes avanzados al siguiente período`
+          
+          // Mostrar detalles de los períodos cerrados
+          if (resultado.periodosCerrados && resultado.periodosCerrados.length > 0) {
+            console.log('Períodos cerrados:', resultado.periodosCerrados)
+            const detalles = resultado.periodosCerrados.map((p: any) => 
+              `• ${p.concepto}: ${new Date(p.fechaAnterior).toLocaleDateString()} → ${new Date(p.fechaNueva).toLocaleDateString()}`
+            ).join('\n')
+            
+            // Mostrar toast adicional con detalles
+            setTimeout(() => {
+              alert(`Períodos cerrados y fechas actualizadas:\n\n${detalles}`)
+            }, 1000)
+          }
+        }
+        
+        toast.success(mensaje)
+        
+        // Actualizar la lista de gastos recurrentes
+        await fetchData()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Error al actualizar estados')
+      }
+    } catch (error) {
+      console.error('Error al actualizar estados con cierre:', error)
       toast.error('Error al actualizar estados automáticos')
     } finally {
       setActualizandoEstados(false)
@@ -801,11 +881,12 @@ export default function RecurrentesPage() {
               variant="secondary" 
               onClick={actualizarEstadosAutomaticos}
               disabled={actualizandoEstados}
+              title="Actualizar estados automáticos y opcionalmente cerrar períodos anteriores no pagados"
             >
               {actualizandoEstados ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Actualizando...
+                  Procesando...
                 </>
               ) : (
                 <>

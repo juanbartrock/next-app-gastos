@@ -8,12 +8,13 @@ Una aplicación completa de gestión de gastos personales y familiares con **int
 
 ## 🎪 **FUNCIONALIDADES DESTACADAS**
 
-### **🔄 GASTOS RECURRENTES - NUEVO**
+### **🔄 GASTOS RECURRENTES - ACTUALIZADO**
 - ✅ **Asociación bidireccional** entre transacciones y gastos recurrentes
 - ✅ **Estados automáticos**: pendiente → pago_parcial → pagado  
 - ✅ **Información visual** de impacto de pagos y saldos pendientes
 - ✅ **Generación automática** de pagos desde gastos recurrentes
 - ✅ **Relaciones padre-hijo** para tracking completo
+- ✅ **🆕 CIERRE DE PERÍODOS**: Cerrar períodos anteriores no pagados y avanzar fechas automáticamente
 
 ### **🤖 INTELIGENCIA ARTIFICIAL**
 - ✅ **Análisis de patrones** de gasto con OpenAI
@@ -39,6 +40,30 @@ Una aplicación completa de gestión de gastos personales y familiares con **int
 - ✅ **Categorización inteligente**
 
 ## 🎨 **MEJORAS RECIENTES - Enero 2025**
+
+### **🔄 Nueva Funcionalidad: Cierre de Períodos Anteriores**
+> **Fecha:** Enero 2025 - Gestión avanzada de gastos recurrentes
+
+#### **🎯 ¿Qué es el Cierre de Períodos?**
+Nueva funcionalidad en el botón **"Actualizar Estados"** que permite cerrar períodos anteriores no pagados y avanzar automáticamente las fechas al siguiente período.
+
+#### **📋 Casos de Uso**
+- **No se pagó** un gasto recurrente el mes anterior
+- **No correspondía pagar** ese mes específico (servicio suspendido)
+- **Se pagó parcialmente** pero se quiere cerrar el período
+- **Saltar un período** por cualquier motivo
+
+#### **🛠️ Cómo Funciona**
+1. **Botón mejorado**: "Actualizar Estados" ahora tiene dos opciones
+2. **Detección automática**: Identifica gastos del mes anterior no pagados
+3. **Avance de fechas**: Calcula nueva fecha según periodicidad
+4. **Feedback detallado**: Muestra qué períodos fueron cerrados
+
+#### **💡 Beneficios**
+- ✅ **Automatización**: No editar manualmente cada gasto recurrente
+- ✅ **Flexibilidad**: Manejo fácil de situaciones excepcionales  
+- ✅ **Orden**: Fechas siempre actualizadas y relevantes
+- ✅ **Trazabilidad**: Registro de qué períodos fueron cerrados
 
 ### **✨ Mejoras de UX y Consistencia Visual**
 > **Fecha:** Enero 2025 - Refinamientos finales de la interfaz
@@ -357,11 +382,16 @@ La aplicación está **lista para producción** con:
 
 ## 📝 **LOG DE CAMBIOS RECIENTES**
 
-### **Enero 2025 - Sesión Final de Refinamientos**
+### **Enero 2025 - Cierre de Períodos Anteriores + Refinamientos**
+- ✅ **🆕 NUEVA FUNCIONALIDAD**: Cierre automático de períodos anteriores no pagados
+- ✅ **Gestión avanzada**: Botón "Actualizar Estados" con opciones duales
+- ✅ **Detección inteligente**: Identificación automática de gastos del mes anterior
+- ✅ **Avance de fechas**: Cálculo automático según periodicidad
+- ✅ **Feedback detallado**: Información completa de períodos cerrados
 - ✅ **Consistencia de máscaras**: Unificación completa de patrones de ocultación
 - ✅ **Espaciado optimizado**: Ajuste preciso en header del dashboard
 - ✅ **Contenido mejorado**: Incremento de movimientos visibles (5→6)
-- ✅ **Documentación actualizada**: Registro completo de mejoras
+- ✅ **Documentación actualizada**: Registro completo de mejoras + nueva funcionalidad
 
 ### **Estado Previo - Diciembre 2024/Enero 2025**
 - ✅ **3 Fases principales completadas** (Alertas, Motor Automático, IA)

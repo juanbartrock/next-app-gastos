@@ -11,6 +11,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    // Obtener parámetro para verificar si queremos cerrar períodos anteriores
+    const url = new URL(request.url)
+    const cerrarPeriodosAnteriores = url.searchParams.get('cerrarPeriodosAnteriores') === 'true'
+
     // Obtener todos los gastos recurrentes del usuario con sus gastos generados
     const gastosRecurrentes = await prisma.gastoRecurrente.findMany({
       where: {
@@ -64,6 +68,67 @@ export async function GET(request: NextRequest) {
       return gastosFiltrados.length > 0
     }
 
+    // Nueva función para detectar gastos del período anterior no pagados
+    const esDelPeriodoAnteriorNoPagado = (recurrente: any): boolean => {
+      if (!recurrente.proximaFecha) return false
+      
+      const ahora = new Date()
+      const proximaFecha = new Date(recurrente.proximaFecha)
+      
+      // Calcular días que han pasado desde la fecha próxima
+      const diasPasados = Math.ceil((ahora.getTime() - proximaFecha.getTime()) / (1000 * 60 * 60 * 24))
+      
+      // Determinar si ya pasó un período completo según la periodicidad
+      let diasPeriodo = 30 // Default mensual
+      switch (recurrente.periodicidad.toLowerCase()) {
+        case 'mensual': diasPeriodo = 30; break
+        case 'bimestral': diasPeriodo = 60; break
+        case 'trimestral': diasPeriodo = 90; break
+        case 'semestral': diasPeriodo = 180; break
+        case 'anual': diasPeriodo = 365; break
+        case 'semanal': diasPeriodo = 7; break
+        case 'quincenal': diasPeriodo = 15; break
+      }
+      
+      // Si han pasado más días que un período y no está pagado
+      return diasPasados > 7 && // Al menos una semana de gracia
+             !tieneGastoEnPeriodoActual(recurrente) &&
+             !['pagado', 'n/a'].includes(recurrente.estado)
+    }
+
+    // Función para calcular la próxima fecha basada en periodicidad
+    const calcularProximaFecha = (fechaActual: Date, periodicidad: string): Date => {
+      const nuevaFecha = new Date(fechaActual)
+      
+      switch (periodicidad.toLowerCase()) {
+        case 'semanal':
+          nuevaFecha.setDate(nuevaFecha.getDate() + 7)
+          break
+        case 'quincenal':
+          nuevaFecha.setDate(nuevaFecha.getDate() + 15)
+          break
+        case 'mensual':
+          nuevaFecha.setMonth(nuevaFecha.getMonth() + 1)
+          break
+        case 'bimestral':
+          nuevaFecha.setMonth(nuevaFecha.getMonth() + 2)
+          break
+        case 'trimestral':
+          nuevaFecha.setMonth(nuevaFecha.getMonth() + 3)
+          break
+        case 'semestral':
+          nuevaFecha.setMonth(nuevaFecha.getMonth() + 6)
+          break
+        case 'anual':
+          nuevaFecha.setFullYear(nuevaFecha.getFullYear() + 1)
+          break
+        default:
+          nuevaFecha.setMonth(nuevaFecha.getMonth() + 1) // Default mensual
+      }
+      
+      return nuevaFecha
+    }
+
     // Calcular estado automático para cada recurrente
     const calcularEstadoAutomatico = (recurrente: any): string => {
       const ahora = new Date()
@@ -100,16 +165,41 @@ export async function GET(request: NextRequest) {
 
     // Procesar cada recurrente y actualizar estados si es necesario
     const estadosActualizados = []
+    const periodosCerrados = []
     
     for (const recurrente of gastosRecurrentes) {
-      const estadoCalculado = calcularEstadoAutomatico(recurrente)
-      const tieneGasto = tieneGastoEnPeriodoActual(recurrente)
+      let estadoCalculado = calcularEstadoAutomatico(recurrente)
+      let tieneGasto = tieneGastoEnPeriodoActual(recurrente)
+      let fechaActualizada = recurrente.proximaFecha
+      let periodoFueCerrado = false
       
-      // Solo actualizar si el estado cambió
-      if (estadoCalculado !== recurrente.estado) {
+      // Si se requiere cerrar períodos anteriores y este recurrente califica
+      if (cerrarPeriodosAnteriores && esDelPeriodoAnteriorNoPagado(recurrente)) {
+        // Avanzar la fecha al siguiente período
+        if (recurrente.proximaFecha) {
+          fechaActualizada = calcularProximaFecha(new Date(recurrente.proximaFecha), recurrente.periodicidad)
+          estadoCalculado = 'programado' // Resetear estado para el nuevo período
+          periodoFueCerrado = true
+          
+          periodosCerrados.push({
+            id: recurrente.id,
+            concepto: recurrente.concepto,
+            fechaAnterior: recurrente.proximaFecha,
+            fechaNueva: fechaActualizada,
+            estadoAnterior: recurrente.estado,
+            razon: 'Período anterior cerrado sin pago'
+          })
+        }
+      }
+      
+      // Actualizar en base de datos si hay cambios
+      if (estadoCalculado !== recurrente.estado || periodoFueCerrado) {
         await prisma.gastoRecurrente.update({
           where: { id: recurrente.id },
-          data: { estado: estadoCalculado }
+          data: { 
+            estado: estadoCalculado,
+            ...(periodoFueCerrado && { proximaFecha: fechaActualizada })
+          }
         })
       }
       
@@ -119,7 +209,9 @@ export async function GET(request: NextRequest) {
         estadoAnterior: recurrente.estado,
         estadoNuevo: estadoCalculado,
         tieneGastoEnPeriodo: tieneGasto,
-        proximaFecha: recurrente.proximaFecha,
+        proximaFecha: fechaActualizada,
+        proximaFechaAnterior: recurrente.proximaFecha,
+        periodoFueCerrado,
         cantidadGastosGenerados: recurrente.gastosGenerados.length
       })
     }
@@ -131,13 +223,17 @@ export async function GET(request: NextRequest) {
       pendientes: estadosActualizados.filter(e => e.estadoNuevo === 'pendiente').length,
       proximos: estadosActualizados.filter(e => e.estadoNuevo === 'proximo').length,
       programados: estadosActualizados.filter(e => e.estadoNuevo === 'programado').length,
-      actualizados: estadosActualizados.filter(e => e.estadoAnterior !== e.estadoNuevo).length
+      actualizados: estadosActualizados.filter(e => e.estadoAnterior !== e.estadoNuevo).length,
+      periodosCerrados: periodosCerrados.length
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Estados calculados exitosamente',
+      message: cerrarPeriodosAnteriores 
+        ? `Estados actualizados y ${periodosCerrados.length} períodos cerrados` 
+        : 'Estados calculados exitosamente',
       data: estadosActualizados,
+      periodosCerrados,
       stats
     })
 
