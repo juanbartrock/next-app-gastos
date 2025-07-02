@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
       const fechaLimiteInferior = new Date(proximaFecha)
       fechaLimiteInferior.setDate(fechaLimiteInferior.getDate() - diasTolerancia)
       
-      const gastosFiltrados = recurrente.gastosGenerados.filter(gasto => {
+      const gastosFiltrados = recurrente.gastosGenerados.filter((gasto: any) => {
         const fechaGasto = new Date(gasto.fechaImputacion || gasto.fecha)
         return fechaGasto >= fechaLimiteInferior && fechaGasto <= ahora
       })
@@ -68,8 +68,8 @@ export async function GET(request: NextRequest) {
       return gastosFiltrados.length > 0
     }
 
-    // Nueva función para detectar gastos del período anterior no pagados
-    const esDelPeriodoAnteriorNoPagado = (recurrente: any): boolean => {
+    // Nueva función para detectar gastos candidatos para cierre de período
+    const esCandidatoParaCierre = (recurrente: any): boolean => {
       if (!recurrente.proximaFecha) return false
       
       const ahora = new Date()
@@ -78,22 +78,9 @@ export async function GET(request: NextRequest) {
       // Calcular días que han pasado desde la fecha próxima
       const diasPasados = Math.ceil((ahora.getTime() - proximaFecha.getTime()) / (1000 * 60 * 60 * 24))
       
-      // Determinar si ya pasó un período completo según la periodicidad
-      let diasPeriodo = 30 // Default mensual
-      switch (recurrente.periodicidad.toLowerCase()) {
-        case 'mensual': diasPeriodo = 30; break
-        case 'bimestral': diasPeriodo = 60; break
-        case 'trimestral': diasPeriodo = 90; break
-        case 'semestral': diasPeriodo = 180; break
-        case 'anual': diasPeriodo = 365; break
-        case 'semanal': diasPeriodo = 7; break
-        case 'quincenal': diasPeriodo = 15; break
-      }
-      
-      // Si han pasado más días que un período y no está pagado
-      return diasPasados > 7 && // Al menos una semana de gracia
-             !tieneGastoEnPeriodoActual(recurrente) &&
-             !['pagado', 'n/a'].includes(recurrente.estado)
+      // Si han pasado más de 7 días desde la fecha próxima (período de gracia)
+      // Y no es estado "n/a" (que significa no aplica)
+      return diasPasados > 7 && recurrente.estado !== 'n/a'
     }
 
     // Función para calcular la próxima fecha basada en periodicidad
@@ -174,12 +161,28 @@ export async function GET(request: NextRequest) {
       let periodoFueCerrado = false
       
       // Si se requiere cerrar períodos anteriores y este recurrente califica
-      if (cerrarPeriodosAnteriores && esDelPeriodoAnteriorNoPagado(recurrente)) {
+      if (cerrarPeriodosAnteriores && esCandidatoParaCierre(recurrente)) {
         // Avanzar la fecha al siguiente período
         if (recurrente.proximaFecha) {
           fechaActualizada = calcularProximaFecha(new Date(recurrente.proximaFecha), recurrente.periodicidad)
           estadoCalculado = 'programado' // Resetear estado para el nuevo período
           periodoFueCerrado = true
+          
+          // Determinar razón según el estado anterior
+          let razon = 'Período anterior cerrado'
+          switch(recurrente.estado) {
+            case 'pendiente':
+              razon = 'Período anterior cerrado sin pago'
+              break
+            case 'pago_parcial':
+              razon = 'Período anterior cerrado con pago parcial'
+              break
+            case 'pagado':
+              razon = 'Período anterior cerrado - reiniciando para nuevo período'
+              break
+            default:
+              razon = 'Período anterior cerrado'
+          }
           
           periodosCerrados.push({
             id: recurrente.id,
@@ -187,7 +190,7 @@ export async function GET(request: NextRequest) {
             fechaAnterior: recurrente.proximaFecha,
             fechaNueva: fechaActualizada,
             estadoAnterior: recurrente.estado,
-            razon: 'Período anterior cerrado sin pago'
+            razon
           })
         }
       }

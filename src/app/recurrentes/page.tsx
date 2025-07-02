@@ -135,10 +135,10 @@ export default function RecurrentesPage() {
   const [isServicioFormOpen, setIsServicioFormOpen] = useState(false)
   const [servicioActual, setServicioActual] = useState<Servicio | null>(null)
   const [totalServicios, setTotalServicios] = useState(0)
-  const [mostrarTodosServicios, setMostrarTodosServicios] = useState(false)
+  const [mostrarTodosServicios, setMostrarTodosServicios] = useState(true)
   
   // Estado para mostrar todos los gastos recurrentes
-  const [mostrarTodosGastos, setMostrarTodosGastos] = useState(false)
+  const [mostrarTodosGastos, setMostrarTodosGastos] = useState(true)
   
   // Filtros
   const [filtroConcepto, setFiltroConcepto] = useState("")
