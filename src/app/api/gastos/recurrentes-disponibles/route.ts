@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { options as authOptions } from '@/app/api/auth/[...nextauth]/options'
 import prisma from '@/lib/prisma'
+import { calcularEstadoRecurrente } from '@/lib/gastos-recurrentes-utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,7 +44,8 @@ export async function GET(request: NextRequest) {
             select: {
               id: true,
               monto: true,
-              fecha: true
+              fecha: true,
+              fechaImputacion: true
             },
             take: 10 // Limitar resultados
           }
@@ -58,31 +60,20 @@ export async function GET(request: NextRequest) {
       )
     ]) as any
 
-    // Calcular información adicional para cada recurrente
+    // Calcular información adicional para cada recurrente usando las nuevas utilidades
     const gastosConInfo = gastosRecurrentes.map((recurrente: any) => {
-      const totalPagado = recurrente.gastosGenerados.reduce((sum: number, pago: any) => sum + pago.monto, 0)
-      const saldoPendiente = recurrente.monto - totalPagado
-      const porcentajePagado = (totalPagado / recurrente.monto) * 100
-      
-      // Calcular estado visual para mejor información
-      let estadoVisual = recurrente.estado
-      if (totalPagado === 0) {
-        estadoVisual = 'pendiente'
-      } else if (totalPagado >= recurrente.monto) {
-        estadoVisual = 'pagado'
-      } else {
-        estadoVisual = 'pago_parcial'
-      }
+      // Usar las nuevas utilidades para calcular estado correcto por período
+      const estadoCalculado = calcularEstadoRecurrente(recurrente, recurrente.gastosGenerados)
       
       return {
         ...recurrente,
-        totalPagado,
-        saldoPendiente,
-        porcentajePagado,
-        estadoVisual,
+        totalPagado: estadoCalculado.totalPagado,
+        saldoPendiente: estadoCalculado.saldoPendiente,
+        porcentajePagado: estadoCalculado.porcentajePagado,
+        estadoVisual: estadoCalculado.estado,
         // Información adicional para el selector
-        estadoTexto: estadoVisual === 'pagado' ? 'Completamente pagado' : 
-                     estadoVisual === 'pago_parcial' ? `${porcentajePagado.toFixed(1)}% pagado` : 
+        estadoTexto: estadoCalculado.estado === 'pagado' ? 'Completamente pagado' : 
+                     estadoCalculado.estado === 'pago_parcial' ? `${estadoCalculado.porcentajePagado.toFixed(1)}% pagado` : 
                      'Pendiente de pago'
       }
     })

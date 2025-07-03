@@ -666,47 +666,36 @@ export default function RecurrentesPage() {
     }
   }
 
-  // FUNCIÓN CORREGIDA: Calcular estado visual SOLO basado en pagos del mes actual
+  // FUNCIÓN CORREGIDA: Calcular estado visual para el MES ACTUAL
   const calcularEstadoVisual = (gasto: GastoRecurrente): string => {
     const ahora = new Date()
-    const proximaFecha = gasto.proximaFecha ? new Date(gasto.proximaFecha) : null
-    
-    console.log(`🎨 FRONTEND - Calculando estado visual para: ${gasto.concepto}`)
-    console.log(`📊 Estado en BD: ${gasto.estado}`)
-    
-    // Si tiene gastos generados, calcular total pagado DEL MES ACTUAL
-    if (gasto.gastosGenerados && gasto.gastosGenerados.length > 0) {
-      const mesActual = ahora.getMonth()
-      const anioActual = ahora.getFullYear()
+    const mesActual = ahora.getMonth()
+    const anioActual = ahora.getFullYear()
+
+    // Filtrar pagos del MES ACTUAL solamente
+    const pagosDelMesActual = gasto.gastosGenerados?.filter(pago => {
+      const pagoAny = pago as any
+      const fechaPago = new Date(pagoAny.fechaImputacion || pago.fecha)
+      return fechaPago.getMonth() === mesActual && fechaPago.getFullYear() === anioActual
+    }) || []
+
+    // Calcular estado basado en pagos del MES ACTUAL
+    if (pagosDelMesActual.length > 0) {
+      const totalPagado = pagosDelMesActual.reduce((sum, pago) => sum + pago.monto, 0)
       
-      // FILTRAR: Solo pagos del mes y año actual
-      const pagosDelMesActual = gasto.gastosGenerados.filter(pago => {
-        // Usar fechaImputacion si existe, sino fecha normal
-        const pagoAny = pago as any
-        const fechaPago = new Date(pagoAny.fechaImputacion || pago.fecha)
-        return fechaPago.getMonth() === mesActual && fechaPago.getFullYear() === anioActual
-      })
-      
-      if (pagosDelMesActual.length > 0) {
-        const totalPagado = pagosDelMesActual.reduce((sum, pago) => sum + pago.monto, 0)
-        const porcentajePagado = (totalPagado / gasto.monto) * 100
-        
-        // Si está completamente pagado EN EL MES ACTUAL
-        if (porcentajePagado >= 100) {
-          return 'pagado'
-        }
-        
-        // Si tiene pagos parciales EN EL MES ACTUAL
-        if (porcentajePagado > 0) {
-          return 'pago_parcial'
-        }
+      if (totalPagado >= gasto.monto) {
+        return 'pagado'
+      } else if (totalPagado > 0) {
+        return 'pago_parcial'
       }
     }
-    
-    // Si no hay fecha próxima
-    if (!proximaFecha) {
+
+    // Si no hay pagos en el mes actual
+    if (!gasto.proximaFecha) {
       return gasto.estado
     }
+
+    const proximaFecha = new Date(gasto.proximaFecha)
     
     // Si ya pasó la fecha y no hay pago
     if (ahora > proximaFecha) {
@@ -1611,21 +1600,38 @@ export default function RecurrentesPage() {
                             <TableCell>
                               {gasto.gastosGenerados && gasto.gastosGenerados.length > 0 ? (
                                 (() => {
-                                  const totalPagado = gasto.gastosGenerados.reduce((sum, pago) => sum + pago.monto, 0)
-                                  const saldoPendiente = gasto.monto - totalPagado
-                                  const porcentajePagado = (totalPagado / gasto.monto) * 100
+                                  // USAR LA NUEVA LÓGICA: Filtrar pagos del MES ACTUAL
+                                  const ahora = new Date()
+                                  const mesActual = ahora.getMonth()
+                                  const anioActual = ahora.getFullYear()
+
+                                  // Filtrar pagos del MES ACTUAL solamente
+                                  const pagosDelMesActual = gasto.gastosGenerados.filter(pago => {
+                                    const pagoAny = pago as any
+                                    const fechaPago = new Date(pagoAny.fechaImputacion || pago.fecha)
+                                    return fechaPago.getMonth() === mesActual && fechaPago.getFullYear() === anioActual
+                                  })
+
+                                  const totalPagadoMesActual = pagosDelMesActual.reduce((sum, pago) => sum + pago.monto, 0)
+                                  const saldoPendiente = gasto.monto - totalPagadoMesActual
+                                  const porcentajePagado = (totalPagadoMesActual / gasto.monto) * 100
                                   
                                   return (
                                     <div className="space-y-1">
                                       <div className="text-sm font-medium">
-                                        {valuesVisible ? `${formatMoney(totalPagado)} / ${formatMoney(gasto.monto)}` : "*** / ***"}
+                                        {valuesVisible ? `${formatMoney(totalPagadoMesActual)} / ${formatMoney(gasto.monto)}` : "*** / ***"}
                                       </div>
                                       <div className="text-xs text-gray-500">
-                                        {gasto.gastosGenerados.length} pago{gasto.gastosGenerados.length !== 1 ? 's' : ''}
+                                        {pagosDelMesActual.length} pago{pagosDelMesActual.length !== 1 ? 's' : ''} del mes actual
+                                        {gasto.gastosGenerados.length > pagosDelMesActual.length && (
+                                          <span className="text-gray-400 ml-1">
+                                            ({gasto.gastosGenerados.length - pagosDelMesActual.length} de meses anteriores)
+                                          </span>
+                                        )}
                                       </div>
                                       {valuesVisible && porcentajePagado > 0 && porcentajePagado < 100 && (
                                         <div className="text-xs text-amber-600 font-medium">
-                                          {porcentajePagado.toFixed(1)}% pagado
+                                          {porcentajePagado.toFixed(1)}% pagado del mes actual
                                         </div>
                                       )}
                                       {valuesVisible && saldoPendiente > 0 && (

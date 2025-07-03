@@ -5,6 +5,7 @@ import { options } from "@/app/api/auth/[...nextauth]/options"
 import { createInitialCategories } from "@/lib/dbSetup";
 import { z } from "zod"
 import { validateLimit, incrementUsage } from "@/lib/plan-limits"
+import { calcularEstadoRecurrente } from "@/lib/gastos-recurrentes-utils"
 
 // Remover la llamada automática para evitar creaciones duplicadas
 // createInitialCategories().catch(error => {
@@ -346,28 +347,25 @@ export async function POST(request: Request) {
 
       // Si está asociado a un recurrente, actualizar su estado
       if (gastoRecurrente) {
-        // Calcular total pagado para este recurrente
-        const totalPagado = await tx.gasto.aggregate({
+        // Obtener todos los pagos del gasto recurrente (incluyendo el que acabamos de crear)
+        const todosPagos = await tx.gasto.findMany({
           where: { gastoRecurrenteId: gastoRecurrente.id },
-          _sum: { monto: true }
+          select: {
+            id: true,
+            monto: true,
+            fecha: true,
+            fechaImputacion: true
+          }
         });
 
-        const montoPagado = totalPagado._sum.monto || 0;
-        const montoTotal = gastoRecurrente.monto;
-        
-        // Determinar estado basado en el pago
-        let nuevoEstado = 'pendiente';
-        if (montoPagado >= montoTotal) {
-          nuevoEstado = 'pagado';
-        } else if (montoPagado > 0) {
-          nuevoEstado = 'pago_parcial';
-        }
+        // Usar las nuevas utilidades para calcular el estado correcto por período
+        const estadoCalculado = calcularEstadoRecurrente(gastoRecurrente, todosPagos);
 
         // Actualizar el gasto recurrente
         await tx.gastoRecurrente.update({
           where: { id: gastoRecurrente.id },
           data: {
-            estado: nuevoEstado,
+            estado: estadoCalculado.estado,
             ultimoPago: new Date(),
             updatedAt: new Date()
           }

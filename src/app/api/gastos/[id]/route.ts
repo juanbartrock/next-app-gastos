@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getServerSession } from "next-auth"
 import { options } from "@/app/api/auth/[...nextauth]/options"
+import { calcularEstadoRecurrente } from '@/lib/gastos-recurrentes-utils'
 
 export async function GET(
   request: NextRequest,
@@ -216,28 +217,25 @@ export async function PUT(
 
       // Si se asoció a un recurrente (nuevo o cambio), actualizar su estado
       if (gastoRecurrente) {
-        // Calcular total pagado para este recurrente
-        const totalPagado = await tx.gasto.aggregate({
+        // Obtener todos los pagos del gasto recurrente
+        const todosPagos = await tx.gasto.findMany({
           where: { gastoRecurrenteId: gastoRecurrente.id },
-          _sum: { monto: true }
+          select: {
+            id: true,
+            monto: true,
+            fecha: true,
+            fechaImputacion: true
+          }
         });
 
-        const montoPagado = totalPagado._sum.monto || 0;
-        const montoTotal = gastoRecurrente.monto;
-        
-        // Determinar estado basado en el pago
-        let nuevoEstado = 'pendiente';
-        if (montoPagado >= montoTotal) {
-          nuevoEstado = 'pagado';
-        } else if (montoPagado > 0) {
-          nuevoEstado = 'pago_parcial';
-        }
+        // Usar las nuevas utilidades para calcular el estado correcto por período
+        const estadoCalculado = calcularEstadoRecurrente(gastoRecurrente, todosPagos);
 
         // Actualizar el gasto recurrente
         await tx.gastoRecurrente.update({
           where: { id: gastoRecurrente.id },
           data: {
-            estado: nuevoEstado,
+            estado: estadoCalculado.estado,
             ultimoPago: new Date(),
             updatedAt: new Date()
           }
@@ -251,29 +249,27 @@ export async function PUT(
         });
 
         if (recurrenteAnterior) {
-          // Recalcular estado del recurrente anterior sin este gasto
-          const totalPagadoAnterior = await tx.gasto.aggregate({
+          // Obtener todos los pagos del recurrente anterior (excluyendo el que se está editando)
+          const pagosRecurrenteAnterior = await tx.gasto.findMany({
             where: { 
               gastoRecurrenteId: recurrenteAnterior.id,
               id: { not: parseInt(idParam) }  // Excluir el gasto que se está editando
             },
-            _sum: { monto: true }
+            select: {
+              id: true,
+              monto: true,
+              fecha: true,
+              fechaImputacion: true
+            }
           });
 
-          const montoPagadoAnterior = totalPagadoAnterior._sum.monto || 0;
-          
-          // Determinar nuevo estado
-          let nuevoEstadoAnterior = 'pendiente';
-          if (montoPagadoAnterior >= recurrenteAnterior.monto) {
-            nuevoEstadoAnterior = 'pagado';
-          } else if (montoPagadoAnterior > 0) {
-            nuevoEstadoAnterior = 'pago_parcial';
-          }
+          // Usar las nuevas utilidades para calcular el estado correcto por período
+          const estadoCalculadoAnterior = calcularEstadoRecurrente(recurrenteAnterior, pagosRecurrenteAnterior);
 
           await tx.gastoRecurrente.update({
             where: { id: recurrenteAnterior.id },
             data: {
-              estado: nuevoEstadoAnterior,
+              estado: estadoCalculadoAnterior.estado,
               updatedAt: new Date()
             }
           });
