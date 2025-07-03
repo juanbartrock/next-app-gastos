@@ -666,24 +666,40 @@ export default function RecurrentesPage() {
     }
   }
 
-  // NUEVA FUNCIÓN: Calcular estado visual basado en datos locales
+  // FUNCIÓN CORREGIDA: Calcular estado visual SOLO basado en pagos del mes actual
   const calcularEstadoVisual = (gasto: GastoRecurrente): string => {
     const ahora = new Date()
     const proximaFecha = gasto.proximaFecha ? new Date(gasto.proximaFecha) : null
     
-    // Si tiene gastos generados, calcular total pagado
+    console.log(`🎨 FRONTEND - Calculando estado visual para: ${gasto.concepto}`)
+    console.log(`📊 Estado en BD: ${gasto.estado}`)
+    
+    // Si tiene gastos generados, calcular total pagado DEL MES ACTUAL
     if (gasto.gastosGenerados && gasto.gastosGenerados.length > 0) {
-      const totalPagado = gasto.gastosGenerados.reduce((sum, pago) => sum + pago.monto, 0)
-      const porcentajePagado = (totalPagado / gasto.monto) * 100
+      const mesActual = ahora.getMonth()
+      const anioActual = ahora.getFullYear()
       
-      // Si está completamente pagado
-      if (porcentajePagado >= 100) {
-        return 'pagado'
-      }
+      // FILTRAR: Solo pagos del mes y año actual
+      const pagosDelMesActual = gasto.gastosGenerados.filter(pago => {
+        // Usar fechaImputacion si existe, sino fecha normal
+        const pagoAny = pago as any
+        const fechaPago = new Date(pagoAny.fechaImputacion || pago.fecha)
+        return fechaPago.getMonth() === mesActual && fechaPago.getFullYear() === anioActual
+      })
       
-      // Si tiene pagos parciales
-      if (porcentajePagado > 0) {
-        return 'pago_parcial'
+      if (pagosDelMesActual.length > 0) {
+        const totalPagado = pagosDelMesActual.reduce((sum, pago) => sum + pago.monto, 0)
+        const porcentajePagado = (totalPagado / gasto.monto) * 100
+        
+        // Si está completamente pagado EN EL MES ACTUAL
+        if (porcentajePagado >= 100) {
+          return 'pagado'
+        }
+        
+        // Si tiene pagos parciales EN EL MES ACTUAL
+        if (porcentajePagado > 0) {
+          return 'pago_parcial'
+        }
       }
     }
     
@@ -862,7 +878,8 @@ export default function RecurrentesPage() {
   const getEstadoClase = (estado: string) => {
     switch (estado) {
       case 'pagado': return 'text-green-600 dark:text-green-400 font-medium'
-      case 'parcial': return 'text-yellow-600 dark:text-yellow-400 font-medium'
+      case 'pago_parcial': return 'text-yellow-600 dark:text-yellow-400 font-medium'
+      case 'parcial': return 'text-yellow-600 dark:text-yellow-400 font-medium' // Alias por compatibilidad
       case 'pendiente': return 'text-red-600 dark:text-red-400 font-medium'
       case 'proximo': return 'text-orange-600 dark:text-orange-400 font-medium'
       case 'programado': return 'text-blue-600 dark:text-blue-400 font-medium'

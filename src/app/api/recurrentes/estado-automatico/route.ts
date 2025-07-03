@@ -35,60 +35,49 @@ export async function GET(request: NextRequest) {
       const ahora = new Date()
       const proximaFecha = new Date(recurrente.proximaFecha)
       
-      // Calcular el período ACTUAL basándose en la próxima fecha
-      let diasPeriodo = 30 // Default para mensual
+      // SOLO considerar gastos del MES/AÑO ACTUAL
+      const mesActual = ahora.getMonth()
+      const anioActual = ahora.getFullYear()
       
-      switch (recurrente.periodicidad.toLowerCase()) {
-        case 'semanal':
-          diasPeriodo = 7
-          break
-        case 'quincenal':
-          diasPeriodo = 15
-          break
-        case 'mensual':
-          diasPeriodo = 30
-          break
-        case 'bimestral':
-          diasPeriodo = 60
-          break
-        case 'trimestral':
-          diasPeriodo = 90
-          break
-        case 'semestral':
-          diasPeriodo = 180
-          break
-        case 'anual':
-          diasPeriodo = 365
-          break
-      }
+      console.log(`   🔍 Verificando pagos para: ${recurrente.concepto}`)
+      console.log(`   📅 Mes/Año actual: ${mesActual + 1}/${anioActual}`)
       
-      // El período ACTUAL va desde (próxima fecha - período) hasta próxima fecha
-      const inicioPeriodiActual = new Date(proximaFecha)
-      inicioPeriodiActual.setDate(inicioPeriodiActual.getDate() - diasPeriodo)
-      
-      // Solo buscar gastos EN EL PERÍODO ACTUAL
+      // Buscar gastos que tengan fechaImputacion del mes actual
       const gastosFiltrados = recurrente.gastosGenerados.filter((gasto: any) => {
         const fechaGasto = new Date(gasto.fechaImputacion || gasto.fecha)
-        // Solo gastos entre inicio del período actual y próxima fecha
-        return fechaGasto >= inicioPeriodiActual && fechaGasto <= proximaFecha
+        const mesGasto = fechaGasto.getMonth()
+        const anioGasto = fechaGasto.getFullYear()
+        
+        console.log(`   💰 Pago: $${gasto.monto} - Fecha: ${mesGasto + 1}/${anioGasto} (${fechaGasto.toLocaleDateString()})`)
+        
+        // SOLO gastos del mes y año actual
+        const coincide = mesGasto === mesActual && anioGasto === anioActual
+        console.log(`   ${coincide ? '✅' : '❌'} Coincide con mes actual: ${coincide}`)
+        return coincide
       })
       
+      console.log(`   📊 Pagos del mes actual encontrados: ${gastosFiltrados.length}`)
       return gastosFiltrados.length > 0
     }
 
-    // Nueva función para detectar gastos candidatos para cierre de período
-    const esCandidatoParaCierre = (recurrente: any): boolean => {
+    // Función para detectar gastos del mes anterior que se deben cerrar
+    const esDelMesAnterior = (recurrente: any): boolean => {
       if (!recurrente.proximaFecha) return false
       
       const ahora = new Date()
       const proximaFecha = new Date(recurrente.proximaFecha)
       
-      // Calcular días que han pasado desde la fecha próxima
-      const diasPasados = Math.ceil((ahora.getTime() - proximaFecha.getTime()) / (1000 * 60 * 60 * 24))
+      // Verificar si la fecha es de un mes anterior al actual
+      const mesActual = ahora.getMonth()
+      const anioActual = ahora.getFullYear()
+      const mesProximo = proximaFecha.getMonth()
+      const anioProximo = proximaFecha.getFullYear()
       
-      // Si han pasado más de 7 días desde la fecha próxima (período de gracia)
-      // Y no es estado "n/a" (que significa no aplica)
-      return diasPasados > 7 && recurrente.estado !== 'n/a'
+      // Es del mes anterior si:
+      // 1. Es del mismo año pero mes anterior
+      // 2. Es de un año anterior
+      return (anioProximo === anioActual && mesProximo < mesActual) || 
+             (anioProximo < anioActual)
     }
 
     // Función para calcular la próxima fecha basada en periodicidad
@@ -139,22 +128,17 @@ export async function GET(request: NextRequest) {
       
       if (tienePagoEnPeriodo) {
         // Si tiene pago, verificar si es completo o parcial
+        const mesActual = ahora.getMonth()
+        const anioActual = ahora.getFullYear()
+        
         const totalPagado = recurrente.gastosGenerados
           .filter((gasto: any) => {
             const fechaGasto = new Date(gasto.fechaImputacion || gasto.fecha)
-            const inicioPeriodiActual = new Date(proximaFecha)
-            let diasPeriodo = 30
-            switch (recurrente.periodicidad.toLowerCase()) {
-              case 'semanal': diasPeriodo = 7; break
-              case 'quincenal': diasPeriodo = 15; break
-              case 'mensual': diasPeriodo = 30; break
-              case 'bimestral': diasPeriodo = 60; break
-              case 'trimestral': diasPeriodo = 90; break
-              case 'semestral': diasPeriodo = 180; break
-              case 'anual': diasPeriodo = 365; break
-            }
-            inicioPeriodiActual.setDate(inicioPeriodiActual.getDate() - diasPeriodo)
-            return fechaGasto >= inicioPeriodiActual && fechaGasto <= proximaFecha
+            const mesGasto = fechaGasto.getMonth()
+            const anioGasto = fechaGasto.getFullYear()
+            
+            // SOLO gastos del mes y año actual
+            return mesGasto === mesActual && anioGasto === anioActual
           })
           .reduce((total: number, gasto: any) => total + gasto.monto, 0)
         
@@ -186,31 +170,27 @@ export async function GET(request: NextRequest) {
     const periodosCerrados = []
     
     for (const recurrente of gastosRecurrentes) {
+      console.log(`\n🔍 PROCESANDO: ${recurrente.concepto}`)
+      console.log(`📅 Fecha actual: ${recurrente.proximaFecha}`)
+      console.log(`📊 Estado actual en BD: ${recurrente.estado}`)
+      console.log(`💰 Pagos generados: ${recurrente.gastosGenerados?.length || 0}`)
+      
       let fechaActualizada = recurrente.proximaFecha
       let periodoFueCerrado = false
       let estadoCalculado = recurrente.estado
       
-      // PRIMERO: verificar si se debe cerrar el período
-      if (cerrarPeriodosAnteriores && esCandidatoParaCierre(recurrente)) {
-        // Avanzar la fecha al siguiente período
+      // PRIMERO: CERRAR PERÍODO (si se solicita)
+      if (cerrarPeriodosAnteriores && esDelMesAnterior(recurrente)) {
+        console.log(`🔄 CERRANDO PERÍODO para: ${recurrente.concepto}`)
+        // Avanzar fecha 1 mes
         if (recurrente.proximaFecha) {
           fechaActualizada = calcularProximaFecha(new Date(recurrente.proximaFecha), recurrente.periodicidad)
           periodoFueCerrado = true
           
-          // RESETEAR ESTADO para el nuevo período
-          const ahora = new Date()
-          const nuevaFecha = new Date(fechaActualizada)
-          
-          if (ahora > nuevaFecha) {
-            estadoCalculado = 'pendiente' // Ya pasó la fecha del nuevo período
-          } else {
-            const diferenciaDias = Math.ceil((nuevaFecha.getTime() - ahora.getTime()) / (1000 * 60 * 60 * 24))
-            if (diferenciaDias <= 7 && diferenciaDias > 0) {
-              estadoCalculado = 'proximo' // Próximo a vencer
-            } else {
-              estadoCalculado = 'programado' // Programado para el futuro
-            }
-          }
+          // ESTADO = PENDIENTE (como pidió el usuario)
+          estadoCalculado = 'pendiente'
+          console.log(`✅ Fecha actualizada: ${fechaActualizada}`)
+          console.log(`✅ Estado forzado a: ${estadoCalculado}`)
           
           // Determinar razón según el estado anterior
           let razon = 'Período anterior cerrado'
@@ -238,8 +218,10 @@ export async function GET(request: NextRequest) {
           })
         }
       } else {
+        console.log(`📊 NO se cierra período. Calculando estado normal...`)
         // SEGUNDO: Si NO se cerró período, calcular estado normalmente
         estadoCalculado = calcularEstadoAutomatico(recurrente)
+        console.log(`📊 Estado calculado automáticamente: ${estadoCalculado}`)
       }
       
       // Calcular si tiene gasto en período (para información)
@@ -247,6 +229,12 @@ export async function GET(request: NextRequest) {
       
       // Actualizar en base de datos si hay cambios
       if (estadoCalculado !== recurrente.estado || periodoFueCerrado) {
+        console.log(`💾 ACTUALIZANDO BD: ${recurrente.concepto}`)
+        console.log(`   - Estado anterior: ${recurrente.estado}`)
+        console.log(`   - Estado nuevo: ${estadoCalculado}`)
+        console.log(`   - Fecha anterior: ${recurrente.proximaFecha}`)
+        console.log(`   - Fecha nueva: ${fechaActualizada}`)
+        
         await prisma.gastoRecurrente.update({
           where: { id: recurrente.id },
           data: { 
@@ -254,6 +242,9 @@ export async function GET(request: NextRequest) {
             ...(periodoFueCerrado && { proximaFecha: fechaActualizada })
           }
         })
+        console.log(`✅ BD actualizada correctamente`)
+      } else {
+        console.log(`⚪ Sin cambios para: ${recurrente.concepto}`)
       }
       
       estadosActualizados.push({
@@ -273,6 +264,7 @@ export async function GET(request: NextRequest) {
     const stats = {
       total: gastosRecurrentes.length,
       pagados: estadosActualizados.filter(e => e.estadoNuevo === 'pagado').length,
+      pago_parcial: estadosActualizados.filter(e => e.estadoNuevo === 'pago_parcial').length,
       pendientes: estadosActualizados.filter(e => e.estadoNuevo === 'pendiente').length,
       proximos: estadosActualizados.filter(e => e.estadoNuevo === 'proximo').length,
       programados: estadosActualizados.filter(e => e.estadoNuevo === 'programado').length,
