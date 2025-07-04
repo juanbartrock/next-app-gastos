@@ -834,6 +834,61 @@ export default function RecurrentesPage() {
     setIsFormOpen(true)
   }
 
+  // NUEVA FUNCIONALIDAD: Calcular total pendiente según filtros
+  const calcularTotalPendienteFiltrado = () => {
+    const ahora = new Date()
+    const mesActual = ahora.getMonth()
+    const anioActual = ahora.getFullYear()
+    
+    // Obtener gastos filtrados usando la misma lógica que la tabla
+    const gastosFiltrados = (mostrarTodosGastos ? gastosRecurrentes : gastosRecurrentes.slice(0, 3))
+      .filter(gasto => {
+        // Filtrar por concepto (case insensitive)
+        const conceptoMatch = !filtroConcepto || 
+          gasto.concepto.toLowerCase().includes(filtroConcepto.toLowerCase())
+        
+        // Filtrar por categoría
+        const categoriaMatch = !filtroCategoria || 
+          gasto.categoriaId === filtroCategoria
+        
+        // Filtrar por estado (considerar tanto el estado base como el visual calculado)
+        const estadoVisualCalculado = calcularEstadoVisual(gasto)
+        const estadoMatch = filtroEstado.length === 0 || 
+          filtroEstado.includes(gasto.estado) || 
+          filtroEstado.includes(estadoVisualCalculado)
+        
+        return conceptoMatch && categoriaMatch && estadoMatch
+      })
+    
+    // Calcular el saldo pendiente de cada gasto filtrado
+    const totalPendiente = gastosFiltrados.reduce((total, gasto) => {
+      if (gasto.gastosGenerados && gasto.gastosGenerados.length > 0) {
+        // Filtrar pagos del MES ACTUAL solamente
+        const pagosDelMesActual = gasto.gastosGenerados.filter(pago => {
+          const pagoAny = pago as any
+          const fechaPago = new Date(pagoAny.fechaImputacion || pago.fecha)
+          return fechaPago.getMonth() === mesActual && fechaPago.getFullYear() === anioActual
+        })
+        
+        const totalPagadoMesActual = pagosDelMesActual.reduce((sum, pago) => sum + pago.monto, 0)
+        const saldoPendiente = Math.max(0, gasto.monto - totalPagadoMesActual) // No permitir valores negativos
+        return total + saldoPendiente
+      } else {
+        // Si no hay pagos, el saldo pendiente es el monto total
+        return total + gasto.monto
+      }
+    }, 0)
+    
+    return {
+      totalPendiente,
+      cantidadGastos: gastosFiltrados.length,
+      totalGastos: gastosRecurrentes.length
+    }
+  }
+
+  // Obtener estadísticas de filtros
+  const estadisticasFiltros = calcularTotalPendienteFiltrado()
+
   // Si está cargando, mostrar pantalla de carga
   if (status === "loading" || loading) {
     return <LoadingScreen />
@@ -1077,6 +1132,60 @@ export default function RecurrentesPage() {
           </CardContent>
         </Card>
         
+        {/* NUEVA FUNCIONALIDAD: Resumen de Total Pendiente */}
+        <Card className="w-full bg-white dark:bg-gray-800 shadow-lg mb-6">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Total Pendiente por Pagar
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {estadisticasFiltros.cantidadGastos === estadisticasFiltros.totalGastos 
+                    ? `${estadisticasFiltros.cantidadGastos} gastos recurrentes` 
+                    : `${estadisticasFiltros.cantidadGastos} de ${estadisticasFiltros.totalGastos} gastos (filtrados)`
+                  }
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-red-600 dark:text-red-400">
+                  {valuesVisible ? formatMoney(estadisticasFiltros.totalPendiente) : "***"}
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+                </p>
+              </div>
+            </div>
+            
+            {/* Información adicional cuando hay filtros aplicados */}
+            {(filtroConcepto || filtroCategoria || filtroEstado.length > 0) && (
+              <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="font-medium">Filtros aplicados:</span>
+                  <div className="flex gap-1 flex-wrap">
+                    {filtroConcepto && (
+                      <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs">
+                        Concepto: "{filtroConcepto}"
+                      </span>
+                    )}
+                    {filtroCategoria && (
+                      <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs">
+                        Categoría: {categorias.find(c => c.id === filtroCategoria)?.descripcion || 'N/A'}
+                      </span>
+                    )}
+                    {filtroEstado.length > 0 && (
+                      <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs">
+                        Estados: {filtroEstado.length}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Filtros de búsqueda */}
         <Card className="w-full bg-white dark:bg-gray-800 shadow-lg mb-6">
           <CardHeader>
