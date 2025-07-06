@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { source = 'unknown' } = body
 
-    console.log(`🎯 Smart Trigger activado desde: ${source} por usuario: ${session.user.email}`)
+    // console.log(`🎯 Smart Trigger activado desde: ${source} por usuario: ${session.user.email}`)
 
     // Ejecutar el Smart Trigger
     const result = await smartAlertTrigger.tryExecuteAlerts(session.user.id)
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('❌ Error en Smart Trigger API:', error)
+    // console.error('❌ Error en Smart Trigger API:', error)
     return NextResponse.json({ 
       error: 'Error interno del servidor',
       details: error instanceof Error ? error.message : 'Error desconocido',
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('❌ Error obteniendo stats Smart Trigger:', error)
+    // console.error('❌ Error obteniendo stats Smart Trigger:', error)
     return NextResponse.json({ 
       error: 'Error interno del servidor',
       details: error instanceof Error ? error.message : 'Error desconocido',

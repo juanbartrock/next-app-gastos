@@ -22,6 +22,7 @@ const robotoMono = Roboto_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXTAUTH_URL || 'http://localhost:3000'),
   title: "FinanzIA - Gestión Inteligente de Gastos",
   description: "Aplicación de gestión de gastos personales y familiares con inteligencia artificial integrada",
   keywords: ["finanzas", "gastos", "presupuesto", "inteligencia artificial", "ahorro", "argentina"],
@@ -61,12 +62,6 @@ export const metadata: Metadata = {
     description: "Aplicación de gestión de gastos personales y familiares con inteligencia artificial integrada",
     images: ["/FinanzIA-logo.png"],
   },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-  },
-  themeColor: "#6366f1",
 };
 
 export default function RootLayout({

@@ -64,7 +64,7 @@ export class SmartAlertTrigger {
       // 3. Ejecutar evaluación para todos los usuarios activos
       const alertasCreadas = await this.executeForActiveUsers()
 
-      console.log(`🎯 Smart Trigger ejecutado: ${alertasCreadas} alertas creadas`)
+      // console.log(`🎯 Smart Trigger ejecutado: ${alertasCreadas} alertas creadas`)
 
       return {
         executed: true,
@@ -73,7 +73,7 @@ export class SmartAlertTrigger {
       }
 
     } catch (error) {
-      console.error('❌ Error en Smart Trigger:', error)
+      // console.error('❌ Error en Smart Trigger:', error)
       return {
         executed: false,
         reason: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -131,7 +131,7 @@ export class SmartAlertTrigger {
   private recordExecution(): void {
     this.lastExecution = new Date()
     this.executionsToday++
-    console.log(`📝 Smart Trigger: Ejecución #${this.executionsToday} registrada`)
+    // console.log(`📝 Smart Trigger: Ejecución #${this.executionsToday} registrada`)
   }
 
   /**
@@ -142,23 +142,59 @@ export class SmartAlertTrigger {
     const alertEngine = new AlertEngine()
     let totalAlertas = 0
 
-    console.log(`🎯 Ejecutando Smart Trigger para ${activeUsers.length} usuarios activos`)
+    // console.log(`🎯 Ejecutando Smart Trigger para ${activeUsers.length} usuarios activos`)
 
-    for (const user of activeUsers) {
-      try {
-        const alertasCreadas = await alertEngine.runAutomaticEvaluation(user.id)
-        totalAlertas += alertasCreadas
-        
-        if (alertasCreadas > 0) {
-          console.log(`✅ Usuario ${user.email}: ${alertasCreadas} alertas creadas`)
-        }
-      } catch (error) {
-        console.error(`❌ Error evaluando usuario ${user.email}:`, error)
-      }
+    // Límite de usuarios procesados para evitar timeout
+    const maxUsersToProcess = 10
+    const usersToProcess = activeUsers.slice(0, maxUsersToProcess)
+    
+    if (activeUsers.length > maxUsersToProcess) {
+      // console.log(`⚠️ Limitando procesamiento a ${maxUsersToProcess} usuarios de ${activeUsers.length}`)
     }
 
-    // Limpiar alertas expiradas
-    await this.cleanupExpiredAlerts()
+    // Procesar usuarios en lotes para evitar timeout
+    const batchSize = 3
+    for (let i = 0; i < usersToProcess.length; i += batchSize) {
+      const batch = usersToProcess.slice(i, i + batchSize)
+      
+      try {
+        // Procesar lote con timeout de 10 segundos
+        const batchResults = await Promise.race([
+          Promise.all(batch.map(async (user) => {
+            try {
+              const alertasCreadas = await alertEngine.runAutomaticEvaluation(user.id)
+              if (alertasCreadas > 0) {
+                // console.log(`✅ Usuario ${user.email}: ${alertasCreadas} alertas creadas`)
+              }
+              return alertasCreadas
+            } catch (error) {
+              // console.error(`❌ Error evaluando usuario ${user.email}:`, error)
+              return 0
+            }
+          })),
+          new Promise<number[]>((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout en lote')), 10000)
+          )
+        ])
+        
+        totalAlertas += batchResults.reduce((sum, count) => sum + count, 0)
+        
+              } catch (error) {
+          // console.error(`❌ Error procesando lote ${i}-${i+batchSize}:`, error)
+        }
+    }
+
+    // Limpiar alertas expiradas (con timeout)
+    try {
+      await Promise.race([
+        this.cleanupExpiredAlerts(),
+        new Promise<void>((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout en cleanup')), 5000)
+        )
+      ])
+          } catch (error) {
+        // console.error('❌ Error en cleanup:', error)
+      }
 
     return totalAlertas
   }
@@ -216,7 +252,7 @@ export class SmartAlertTrigger {
     })
 
     if (result.count > 0) {
-      console.log(`🧹 Smart Trigger: ${result.count} alertas expiradas eliminadas`)
+      // console.log(`🧹 Smart Trigger: ${result.count} alertas expiradas eliminadas`)
     }
 
     return result.count
@@ -252,7 +288,7 @@ export class SmartAlertTrigger {
     this.lastExecution = null
     this.executionsToday = 0
     this.lastExecutionDate = ''
-    console.log('🔄 Smart Trigger reiniciado')
+    // console.log('🔄 Smart Trigger reiniciado')
   }
 }
 

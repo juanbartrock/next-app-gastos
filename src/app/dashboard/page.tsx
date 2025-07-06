@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
@@ -393,6 +393,17 @@ export default function DashboardRedesigned() {
   const [loading, setLoading] = useState(true)
   const [balanceIndex, setBalanceIndex] = useState(0)
   const [signingOut, setSigningOut] = useState(false)
+  
+  // NUEVO: Estado para gastos pendientes
+  const [gastosPendientes, setGastosPendientes] = useState({
+    totalPendiente: 0,
+    gastosRecurrentes: { total: 0, cantidad: 0 },
+    prestamos: { total: 0, cantidad: 0 },
+    resumen: { totalGeneral: 0, cantidadTotal: 0, mes: '' }
+  })
+
+  // Ref para controlar la primera carga
+  const isFirstLoad = useRef(true)
 
   // Función para ejecutar Smart Trigger en background
   const executeSmartTrigger = async () => {
@@ -439,23 +450,44 @@ export default function DashboardRedesigned() {
   // Función para cargar gastos familiares
   const fetchGastosFamiliares = async () => {
     try {
-      const response = await fetch('/api/gastos/familiares?usarFechaImputacion=true')
+      const response = await fetch(`/api/gastos/familiares?month=${currentMonth}&year=${currentYear}`)
       if (response.ok) {
         const data = await response.json()
-        // El API devuelve { gastos, permisos }, necesitamos extraer solo el array de gastos
-        if (data.gastos && Array.isArray(data.gastos)) {
-          setGastosFamiliares(data.gastos)
-        } else {
-          console.warn('Respuesta del API de gastos familiares no contiene array de gastos válido:', data)
-          setGastosFamiliares([])
-        }
+        setGastosFamiliares(data.gastos || [])
       } else {
-        console.error('Error en respuesta del API de gastos familiares:', response.status)
+        console.error('Error al obtener gastos familiares:', response.statusText)
         setGastosFamiliares([])
       }
     } catch (error) {
-      console.error('Error al cargar gastos familiares:', error)
+      console.error('Error al obtener gastos familiares:', error)
       setGastosFamiliares([])
+    }
+  }
+
+  // NUEVA FUNCIÓN: Obtener gastos pendientes
+  const fetchGastosPendientes = async () => {
+    try {
+      const response = await fetch('/api/gastos/pendientes')
+      if (response.ok) {
+        const data = await response.json()
+        setGastosPendientes(data)
+      } else {
+        console.error('Error al obtener gastos pendientes:', response.statusText)
+        setGastosPendientes({
+          totalPendiente: 0,
+          gastosRecurrentes: { total: 0, cantidad: 0 },
+          prestamos: { total: 0, cantidad: 0 },
+          resumen: { totalGeneral: 0, cantidadTotal: 0, mes: '' }
+        })
+      }
+    } catch (error) {
+      console.error('Error al obtener gastos pendientes:', error)
+      setGastosPendientes({
+        totalPendiente: 0,
+        gastosRecurrentes: { total: 0, cantidad: 0 },
+        prestamos: { total: 0, cantidad: 0 },
+        resumen: { totalGeneral: 0, cantidadTotal: 0, mes: '' }
+      })
     }
   }
 
@@ -465,7 +497,8 @@ export default function DashboardRedesigned() {
     try {
       await Promise.all([
         fetchGastosPersonales(),
-        fetchGastosFamiliares()
+        fetchGastosFamiliares(),
+        fetchGastosPendientes()
       ])
     } finally {
       setLoading(false)
@@ -479,16 +512,21 @@ export default function DashboardRedesigned() {
     }
   }, [status, router])
 
-  // Efecto para cargar datos iniciales y ejecutar Smart Trigger
+  // Efecto para carga inicial de datos
   useEffect(() => {
-    if (status === "authenticated") {
+    if (status === "authenticated" && isFirstLoad.current) {
+      isFirstLoad.current = false
       reloadData()
-      
-      // Ejecutar Smart Trigger después de cargar datos principales
-      // Se ejecuta en paralelo sin bloquear la UI
       executeSmartTrigger()
     }
   }, [status])
+
+  // Efecto para recargar datos cuando cambie el mes (solo después de la primera carga)
+  useEffect(() => {
+    if (status === "authenticated" && !isFirstLoad.current) {
+      reloadData()
+    }
+  }, [currentMonth, currentYear])
 
   // Navegación por meses
   const navigateMonth = (direction: "prev" | "next") => {
@@ -788,7 +826,7 @@ export default function DashboardRedesigned() {
               
               {/* Tab Personal */}
               <TabsContent value="personal" className="space-y-6" data-tour="dashboard-main">
-                <div className="grid gap-4 md:grid-cols-3" data-tour="balance-cards">
+                <div className="grid gap-4 md:grid-cols-4" data-tour="balance-cards">
                   <BalanceCard
                     title="Mis Ingresos"
                     amount={formatMoney(personalMonthStats.ingresos)}
@@ -809,6 +847,13 @@ export default function DashboardRedesigned() {
                     subtitle="Balance personal del mes"
                     icon={Wallet}
                     variant={personalMonthStats.balance >= 0 ? "positive" : "negative"}
+                  />
+                  <BalanceCard
+                    title="Gastos Pendientes"
+                    amount={formatMoney(gastosPendientes.totalPendiente)}
+                    subtitle={`${gastosPendientes.resumen.cantidadTotal} gastos por pagar`}
+                    icon={Bell}
+                    variant="negative"
                   />
                 </div>
                 
@@ -874,7 +919,7 @@ export default function DashboardRedesigned() {
               {/* Tab Familiar */}
               {puedeVerGastosFamiliares() ? (
                 <TabsContent value="familiar" className="space-y-6">
-                  <div className="grid gap-4 md:grid-cols-3">
+                  <div className="grid gap-4 md:grid-cols-4">
                     <BalanceCard
                       title="Ingresos Familiares"
                       amount={formatMoney(familyMonthStats.ingresos)}
@@ -895,6 +940,13 @@ export default function DashboardRedesigned() {
                       subtitle="Balance familiar del mes"
                       icon={Users}
                       variant={familyMonthStats.balance >= 0 ? "positive" : "negative"}
+                    />
+                    <BalanceCard
+                      title="Gastos Pendientes"
+                      amount={formatMoney(gastosPendientes.totalPendiente)}
+                      subtitle={`${gastosPendientes.resumen.cantidadTotal} gastos por pagar`}
+                      icon={Bell}
+                      variant="negative"
                     />
                   </div>
 
