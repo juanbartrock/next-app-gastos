@@ -614,8 +614,8 @@ export default function DashboardRedesigned() {
     }
   })()
 
-  // Cálculos de saldos totales por tipo de movimiento
-  const totalBalances = (() => {
+  // Cálculos de saldos totales HISTÓRICOS (para el header)
+  const totalBalancesHistoricos = (() => {
     const totals = { total: 0, efectivo: 0, digital: 0, ahorro: 0 }
 
     // Verificar que gastosFamiliares sea un array
@@ -638,12 +638,33 @@ export default function DashboardRedesigned() {
     return totals
   })()
 
-  // Tipos de balance total para navegación
+  // Cálculos de saldos DEL MES ACTUAL (para las tarjetas del tab familiar)
+  const totalBalancesMes = (() => {
+    const totals = { total: 0, efectivo: 0, digital: 0, ahorro: 0 }
+
+    gastosFamiliaresDelMes.forEach(gasto => {
+      const amount = gasto.tipoTransaccion === 'income' ? Number(gasto.monto) : -Number(gasto.monto)
+      
+      totals.total += amount
+      
+      if (gasto.tipoMovimiento === 'efectivo') {
+        totals.efectivo += amount
+      } else if (gasto.tipoMovimiento === 'digital') {
+        totals.digital += amount
+      } else if (gasto.tipoMovimiento === 'ahorro') {
+        totals.ahorro += amount
+      }
+    })
+
+    return totals
+  })()
+
+  // Tipos de balance total para navegación (HISTÓRICO en el header)
   const totalBalanceTypes = [
-    { label: "Saldo Total (Incluye Grupo)", amount: formatMoney(totalBalances.total) },
-    { label: "Total Efectivo", amount: formatMoney(totalBalances.efectivo) },
-    { label: "Total Digital", amount: formatMoney(totalBalances.digital) },
-    { label: "Total Ahorros", amount: formatMoney(totalBalances.ahorro) },
+    { label: "Saldo Total (Incluye Grupo)", amount: formatMoney(totalBalancesHistoricos.total) },
+    { label: "Total Efectivo", amount: formatMoney(totalBalancesHistoricos.efectivo) },
+    { label: "Total Digital", amount: formatMoney(totalBalancesHistoricos.digital) },
+    { label: "Total Ahorros", amount: formatMoney(totalBalancesHistoricos.ahorro) },
   ]
 
   return (
@@ -950,31 +971,31 @@ export default function DashboardRedesigned() {
                     />
                   </div>
 
-                  {/* Estadísticas adicionales familiares */}
+                  {/* Estadísticas adicionales familiares DEL MES */}
                   <div className="grid gap-4 md:grid-cols-4">
                     <BalanceCard
                       title="Total Efectivo"
-                      amount={formatMoney(totalBalances.efectivo)}
+                      amount={formatMoney(totalBalancesMes.efectivo)}
                       icon={Banknote}
                       variant="default"
                     />
                     <BalanceCard
                       title="Total Digital"
-                      amount={formatMoney(totalBalances.digital)}
+                      amount={formatMoney(totalBalancesMes.digital)}
                       icon={CreditCard}
                       variant="default"
                     />
                     <BalanceCard
                       title="Total Ahorros"
-                      amount={formatMoney(totalBalances.ahorro)}
+                      amount={formatMoney(totalBalancesMes.ahorro)}
                       icon={PiggyBank}
                       variant="default"
                     />
                     <BalanceCard
                       title="Saldo General"
-                      amount={formatMoney(totalBalances.total)}
+                      amount={formatMoney(totalBalancesMes.total)}
                       icon={DollarSign}
-                      variant={totalBalances.total >= 0 ? "positive" : "negative"}
+                      variant={totalBalancesMes.total >= 0 ? "positive" : "negative"}
                     />
                   </div>
 
