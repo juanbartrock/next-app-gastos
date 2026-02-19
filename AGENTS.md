@@ -123,6 +123,27 @@ Para cerrar una issue:
 - `tailwind-design-system` → sistema de diseño con Tailwind/CVA/tokens.
 - `neon-postgres` → buenas prácticas de Postgres/Neon para datos y performance.
 
+### Mapeo explícito Agent → Skills
+
+**OpenClaw (agente principal del repo)**
+- `next-app-gastos-refactor` (orquestación del workflow)
+- `github`
+- `skill-creator`
+- `vercel-react-best-practices`
+- `next-best-practices`
+- `vercel-composition-patterns`
+- `web-design-guidelines`
+- `frontend-design`
+- `ui-ux-pro-max`
+- `tailwind-design-system`
+- `neon-postgres`
+- `brainstorming`
+
+**Nota operativa**
+- Instalación real gestionada por `skills` CLI en `.agents/skills/*`.
+- Exposición en OpenClaw del workspace mediante symlinks en `skills/*`.
+- Si se agrega/remueve una skill, actualizar ambos: instalación y symlink.
+
 ### Regla de carga progresiva
 1) Cargar primero `next-app-gastos-refactor` para respetar workflow y estados.
 2) Elegir **una** skill especializada principal según el tipo de tarea.
