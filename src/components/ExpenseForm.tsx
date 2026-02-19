@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { useCurrency } from "@/contexts/CurrencyContext"
 import { parseDDMMYYYY, formatDateToDDMMYYYY } from "@/lib/transactions/date-utils"
 import { normalizeAmountInput, formatAmountFromDigits } from "@/lib/transactions/amount-utils"
+import { createGasto, createFinanciacion, getGastosRecurrentesDisponibles } from "@/lib/transactions/client"
 import { TransactionBaseFields } from "@/components/transactions/expense-form/TransactionBaseFields"
 import { RecurrentExpenseLinkSection } from "@/components/transactions/expense-form/RecurrentExpenseLinkSection"
 import { CardFinancingSection } from "@/components/transactions/expense-form/CardFinancingSection"
@@ -134,32 +135,19 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
     }
 
     try {
-      // Crear el gasto
-      const response = await fetch('/api/gastos', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          concepto,
-          monto: Number(monto) / 100,
-          categoria,
-          categoriaId: parseInt(categoriaId),
-          tipoTransaccion: transactionType,
-          tipoMovimiento: movementType,
-          fecha: parsedDate,
-          fechaImputacion: parsedFechaImputacion,
-          grupoId: null,
-          incluirEnFamilia: true,
-          gastoRecurrenteId: gastoRecurrenteId ? parseInt(gastoRecurrenteId) : undefined
-        }),
+      const data = await createGasto({
+        concepto,
+        monto: Number(monto) / 100,
+        categoria,
+        categoriaId: parseInt(categoriaId),
+        tipoTransaccion: transactionType,
+        tipoMovimiento: movementType,
+        fecha: parsedDate,
+        fechaImputacion: parsedFechaImputacion,
+        grupoId: null,
+        incluirEnFamilia: true,
+        gastoRecurrenteId: gastoRecurrenteId ? parseInt(gastoRecurrenteId) : undefined,
       })
-
-      if (!response.ok) {
-        throw new Error('Error al crear el registro')
-      }
-
-      const data = await response.json()
       console.log('Registro creado:', data)
       
       // Si es tarjeta, crear la financiación
@@ -176,38 +164,20 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
         })
         
         try {
-          const financiacionResponse = await fetch('/api/financiacion', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              gastoId: data.id,
-              cantidadCuotas: parseInt(cantidadCuotas),
-              montoCuota,
-              fechaPrimerPago: parsedFechaPrimerPago,
-              diaPago: diaPago ? parseInt(diaPago) : null,
-              tarjetaEspecifica: tarjetaEspecifica
-            }),
+          const financiacionData = await createFinanciacion({
+            gastoId: data.id,
+            cantidadCuotas: parseInt(cantidadCuotas),
+            montoCuota,
+            fechaPrimerPago: parsedFechaPrimerPago,
+            diaPago: diaPago ? parseInt(diaPago) : null,
+            tarjetaEspecifica,
           })
-          
-          if (!financiacionResponse.ok) {
-            const errorText = await financiacionResponse.text()
-            console.error('Error al crear financiación. Status:', financiacionResponse.status, 'Response:', errorText)
-            try {
-              const errorJson = JSON.parse(errorText)
-              toast.error(`Error: ${errorJson.error || errorJson.details || 'Error al crear la financiación'}`)
-            } catch {
-              toast.error(`Error (${financiacionResponse.status}): ${errorText || 'Error al crear la financiación'}`)
-            }
-          } else {
-            const financiacionData = await financiacionResponse.json()
-            console.log('Financiación creada:', financiacionData)
-            toast.success("Gasto y financiación registrados correctamente")
-          }
+
+          console.log('Financiación creada:', financiacionData)
+          toast.success("Gasto y financiación registrados correctamente")
         } catch (error) {
-          console.error('Error de red al crear financiación:', error)
-          toast.error("Error de conexión al crear la financiación")
+          console.error('Error al crear financiación:', error)
+          toast.error(error instanceof Error ? error.message : "Error de conexión al crear la financiación")
         }
       } else {
         toast.success("Transacción registrada correctamente")
@@ -241,7 +211,7 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
       
     } catch (error) {
       console.error('Error:', error)
-      setError("Error al crear el registro. Por favor, intenta de nuevo.")
+      setError(error instanceof Error ? error.message : "Error al crear el registro. Por favor, intenta de nuevo.")
     } finally {
       setLoading(false)
     }
@@ -251,11 +221,8 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
   const fetchGastosRecurrentes = async () => {
     try {
       setLoadingRecurrentes(true)
-      const response = await fetch('/api/gastos/recurrentes-disponibles')
-      if (response.ok) {
-        const data = await response.json()
-        setGastosRecurrentes(data)
-      }
+      const data = await getGastosRecurrentesDisponibles()
+      setGastosRecurrentes(data)
     } catch (error) {
       console.error('Error al cargar gastos recurrentes:', error)
     } finally {
