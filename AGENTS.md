@@ -122,6 +122,7 @@ Para cerrar una issue:
 - `next-best-practices` → buenas prácticas específicas de Next.js.
 - `tailwind-design-system` → sistema de diseño con Tailwind/CVA/tokens.
 - `neon-postgres` → buenas prácticas de Postgres/Neon para datos y performance.
+- `edge-tts` → síntesis de voz con Microsoft Edge TTS (audio natural, voces multilenguaje).
 
 ### Mapeo explícito Agent → Skills
 
@@ -138,11 +139,13 @@ Para cerrar una issue:
 - `tailwind-design-system`
 - `neon-postgres`
 - `brainstorming`
+- `edge-tts`
 
 **Nota operativa**
 - Instalación real gestionada por `skills` CLI en `.agents/skills/*`.
 - Exposición en OpenClaw del workspace mediante symlinks en `skills/*`.
 - Si se agrega/remueve una skill, actualizar ambos: instalación y symlink.
+- Para `edge-tts`, verificar runtime local (`uvx`) y conectividad a servicio de voces.
 
 ### Regla de carga progresiva
 1) Cargar primero `next-app-gastos-refactor` para respetar workflow y estados.
