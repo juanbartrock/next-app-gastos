@@ -15,6 +15,8 @@ import { ArrowDown, ArrowUp, CalendarIcon, CreditCard, Plus, Loader2, RefreshCw 
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { toast } from "sonner"
 import { useCurrency } from "@/contexts/CurrencyContext"
+import { parseDDMMYYYY, formatDateToDDMMYYYY } from "@/lib/transactions/date-utils"
+import { normalizeAmountInput, formatAmountFromDigits, amountDigitsToNumber } from "@/lib/transactions/amount-utils"
 
 interface ExpenseFormProps {
   onTransactionAdded: () => void
@@ -27,37 +29,6 @@ interface Categoria {
   grupo_categoria: string | null;
   status: boolean;
 }
-
-// FUNCIONES HELPER PARA FECHAS (DD/MM/YYYY) - Se pueden mover a un archivo utils/date.ts si se usan en múltiples sitios
-const parseDDMMYYYY = (dateStr: string): Date | undefined => {
-  if (!dateStr) return undefined;
-  const parts = dateStr.split('/');
-  if (parts.length === 3) {
-    const day = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1;
-    const year = parseInt(parts[2], 10);
-    if (!isNaN(day) && !isNaN(month) && !isNaN(year) && year > 1000 && year < 3000 && day > 0 && day <= 31 && month >= 0 && month < 12) {
-      const date = new Date(year, month, day);
-      if (date.getFullYear() === year && date.getMonth() === month && date.getDate() === day) {
-        return date;
-      }
-    }
-  }
-  return undefined;
-};
-
-const formatDateToDDMMYYYY = (date: Date | undefined): string => {
-  if (!date) return "";
-  try {
-    const d = new Date(date);
-    const day = d.getDate().toString().padStart(2, '0');
-    const month = (d.getMonth() + 1).toString().padStart(2, '0');
-    const year = d.getFullYear();
-    return `${day}/${month}/${year}`;
-  } catch (error) {
-    return "";
-  }
-};
 
 export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
   const [amount, setAmount] = useState("")
@@ -114,19 +85,9 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
     fetchCategorias()
   }, [])
 
-  // Función para formatear el monto con el formato requerido
-  const formatAmount = (value: string) => {
-    // Eliminar todo excepto números
-    const numbers = value.replace(/\D/g, "")
-
-    // Convertir a número y formatear con el contexto de moneda
-    const amountNumber = Number(numbers) / 100
-    return formatMoney(amountNumber)
-  }
-
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/[^0-9]/g, "")
-    setAmount(value ? formatAmount(value) : "")
+    const digits = normalizeAmountInput(e.target.value)
+    setAmount(digits ? formatAmountFromDigits(digits, formatMoney) : "")
   }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -139,7 +100,7 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
     const formData = new FormData(form)
     
     const concepto = formData.get('concepto')?.toString()
-    const monto = amount.replace(/[^0-9]/g, "") // Eliminar todo excepto números
+    const monto = normalizeAmountInput(amount)
     const categoria = formData.get('categoria')?.toString()
     const categoriaId = formData.get('categoriaId')?.toString()
 
@@ -624,7 +585,7 @@ export function ExpenseForm({ onTransactionAdded }: ExpenseFormProps) {
             <div className="pt-2">
               <p className="text-sm text-gray-600 dark:text-gray-300">
                 Monto por cuota: {cantidadCuotas && amount ? 
-                  formatAmount((parseInt(amount.replace(/[^0-9]/g, "")) / parseInt(cantidadCuotas)).toString()) : 
+                  formatMoney(amountDigitsToNumber(amount) / parseInt(cantidadCuotas)) : 
                   formatMoney(0)}
               </p>
             </div>
