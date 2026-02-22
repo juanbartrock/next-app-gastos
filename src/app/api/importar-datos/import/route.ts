@@ -245,27 +245,31 @@ function processPrestamosSheet(worksheet: XLSX.WorkSheet): { data: any[], errors
   return { data, errors }
 }
 
-// Función para obtener o crear una categoría
-async function getOrCreateCategory(categoryName: string): Promise<number> {
-  let category = await prisma.categoria.findFirst({
-    where: {
-      descripcion: {
-        equals: categoryName,
-        mode: 'insensitive'
-      }
+// Función optimizada para obtener o crear una categoría usando cache
+async function getOrCreateCategoryOptimized(
+  categoryName: string, 
+  categoriasMap: Map<string, number>, 
+  tx: any
+): Promise<number> {
+  const categoryKey = categoryName.toLowerCase()
+  
+  // Verificar en cache primero
+  if (categoriasMap.has(categoryKey)) {
+    return categoriasMap.get(categoryKey)!
+  }
+
+  // Si no existe, crearla
+  const category = await tx.categoria.create({
+    data: {
+      descripcion: categoryName,
+      status: true,
+      grupo_categoria: 'Importado'
     }
   })
 
-  if (!category) {
-    category = await prisma.categoria.create({
-      data: {
-        descripcion: categoryName,
-        status: true,
-        grupo_categoria: 'Importado'
-      }
-    })
-  }
-
+  // Agregar al cache para futuras consultas
+  categoriasMap.set(categoryKey, category.id)
+  
   return category.id
 }
 
@@ -300,7 +304,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Usar transacción para garantizar atomicidad
+    // Crear cache de categorías para optimizar consultas
+    const categoriasMap = new Map<string, number>()
+    const categoriasExistentes = await prisma.categoria.findMany({
+      select: { id: true, descripcion: true }
+    })
+    
+    categoriasExistentes.forEach(cat => {
+      categoriasMap.set(cat.descripcion.toLowerCase(), cat.id)
+    })
+
+    // Usar transacción para garantizar atomicidad con timeout extendido
     await prisma.$transaction(async (tx) => {
       // Procesar gastos
       const gastosSheet = sheets.find(name => 
@@ -312,7 +326,7 @@ export async function POST(request: NextRequest) {
 
         for (const gasto of gastosResult.data) {
           try {
-            const categoriaId = await getOrCreateCategory(gasto.categoria)
+            const categoriaId = await getOrCreateCategoryOptimized(gasto.categoria, categoriasMap, tx)
             
             await tx.gasto.create({
               data: {
@@ -343,7 +357,7 @@ export async function POST(request: NextRequest) {
 
         for (const recurrente of recurrentesResult.data) {
           try {
-            const categoriaId = await getOrCreateCategory(recurrente.categoria)
+            const categoriaId = await getOrCreateCategoryOptimized(recurrente.categoria, categoriasMap, tx)
             
             await tx.gastoRecurrente.create({
               data: {
@@ -374,7 +388,7 @@ export async function POST(request: NextRequest) {
 
         for (const presupuesto of presupuestosResult.data) {
           try {
-            const categoriaId = await getOrCreateCategory(presupuesto.categoria)
+            const categoriaId = await getOrCreateCategoryOptimized(presupuesto.categoria, categoriasMap, tx)
             
             // Verificar si ya existe un presupuesto para esa categoría en ese mes/año
             const existingPresupuesto = await tx.presupuesto.findFirst({
@@ -448,6 +462,8 @@ export async function POST(request: NextRequest) {
           }
         }
       }
+    }, {
+      timeout: 30000, // 30 segundos
     })
 
     return NextResponse.json(result)

@@ -5,17 +5,18 @@ import { getToken } from 'next-auth/jwt'
 export async function middleware(request: NextRequest) {
   // Rutas públicas que no requieren autenticación
   const publicPaths = ['/', '/login', '/register']
-  
+
   // Verificar si la ruta actual es pública
-  const isPublicPath = publicPaths.some((path) => 
+  const isPublicPath = publicPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   )
 
   // Ignorar rutas de recursos estáticos y API de auth
   if (
-    request.nextUrl.pathname.startsWith('/_next') || 
+    request.nextUrl.pathname.startsWith('/_next') ||
     request.nextUrl.pathname.startsWith('/api/auth') ||
     request.nextUrl.pathname.startsWith('/api/twilio') ||
+    request.nextUrl.pathname.startsWith('/api/v1/agent') ||
     request.nextUrl.pathname === '/favicon.ico' ||
     request.nextUrl.pathname === '/.well-known/appspecific/com.chrome.devtools.json'
   ) {
@@ -23,9 +24,9 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    const token = await getToken({ 
+    const token = await getToken({
       req: request,
-      secret: process.env.NEXTAUTH_SECRET 
+      secret: process.env.NEXTAUTH_SECRET
     })
 
     // Si el usuario no está autenticado y está intentando acceder a una ruta protegida
