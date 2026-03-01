@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { validateApiKey } from '@/lib/api-key'
+import { validateLimit, incrementUsage } from '@/lib/plan-limits'
+import { calcularEstadoRecurrente } from '@/lib/gastos-recurrentes-utils'
 
 // GET /api/v1/agent/gastos — Gastos del usuario con filtros y paginación
 export async function GET(request: NextRequest) {
@@ -113,6 +115,144 @@ export async function GET(request: NextRequest) {
         })
     } catch (error) {
         console.error('Error API Agent gastos:', error)
+        return NextResponse.json(
+            { error: 'Error interno del servidor' },
+            { status: 500 }
+        )
+    }
+}
+
+// POST /api/v1/agent/gastos — Crear nuevo gasto
+export async function POST(request: NextRequest) {
+    try {
+        const auth = await validateApiKey(request)
+
+        if (!auth) {
+            return NextResponse.json(
+                { error: 'No autorizado. Se requiere API key válida en header Authorization: Bearer <key>' },
+                { status: 401 }
+            )
+        }
+
+        if (!auth.apiKey.permisos.includes('write')) {
+            return NextResponse.json(
+                { error: 'API key sin permiso de escritura' },
+                { status: 403 }
+            )
+        }
+
+        const body = await request.json()
+        const {
+            concepto,
+            monto,
+            categoria,
+            categoriaId,
+            tipoTransaccion = 'expense',
+            tipoMovimiento = 'efectivo',
+            fecha,
+            fechaImputacion,
+            incluirEnFamilia = true,
+            gastoRecurrenteId
+        } = body
+
+        // Validaciones básicas
+        if (!concepto || !monto) {
+            return NextResponse.json(
+                { error: 'Faltan campos requeridos: concepto, monto' },
+                { status: 400 }
+            )
+        }
+
+        // Verificar categoría si se provee ID
+        let nombreCategoria = categoria
+        if (categoriaId) {
+            const cat = await prisma.categoria.findUnique({
+                where: { id: Number(categoriaId) }
+            })
+            if (!cat) {
+                return NextResponse.json({ error: 'Categoría no encontrada' }, { status: 400 })
+            }
+            if (!nombreCategoria) nombreCategoria = cat.descripcion
+        }
+
+        // Verificar gasto recurrente si se provee ID
+        let gastoRecurrente = null
+        if (gastoRecurrenteId) {
+            gastoRecurrente = await prisma.gastoRecurrente.findFirst({
+                where: {
+                    id: Number(gastoRecurrenteId),
+                    userId: auth.user.id
+                }
+            })
+            if (!gastoRecurrente) {
+                return NextResponse.json({ error: 'Gasto recurrente no encontrado' }, { status: 400 })
+            }
+        }
+
+        // Validar límites del plan
+        const validacion = await validateLimit(auth.user.id, 'transacciones_mes')
+        if (!validacion.allowed) {
+            return NextResponse.json({
+                error: 'Límite de transacciones alcanzado',
+                detalles: validacion
+            }, { status: 403 })
+        }
+
+        // Procesar fechas
+        const fechaReal = fecha ? new Date(fecha) : new Date()
+        let fechaImputacionReal = null
+        if (fechaImputacion) {
+            const d = new Date(fechaImputacion)
+            if (!isNaN(d.getTime())) fechaImputacionReal = d
+        }
+
+        // Crear transacción
+        const resultado = await prisma.$transaction(async (tx) => {
+            const gasto = await tx.gasto.create({
+                data: {
+                    concepto,
+                    monto: Number(monto),
+                    categoria: nombreCategoria || 'Sin categoría',
+                    tipoTransaccion,
+                    tipoMovimiento,
+                    fecha: fechaReal,
+                    fechaImputacion: fechaImputacionReal,
+                    userId: auth.user.id,
+                    incluirEnFamilia: Boolean(incluirEnFamilia),
+                    ...(categoriaId && { categoriaId: Number(categoriaId) }),
+                    ...(gastoRecurrenteId && { gastoRecurrenteId: Number(gastoRecurrenteId) })
+                }
+            })
+
+            // Actualizar recurrente si corresponde
+            if (gastoRecurrente) {
+                const todosPagos = await tx.gasto.findMany({
+                    where: { gastoRecurrenteId: gastoRecurrente.id },
+                    select: { id: true, monto: true, fecha: true, fechaImputacion: true }
+                })
+
+                const estadoCalculado = calcularEstadoRecurrente(gastoRecurrente, todosPagos)
+
+                await tx.gastoRecurrente.update({
+                    where: { id: gastoRecurrente.id },
+                    data: {
+                        estado: estadoCalculado.estado,
+                        ultimoPago: new Date(),
+                        updatedAt: new Date()
+                    }
+                })
+            }
+
+            return gasto
+        })
+
+        // Incrementar uso del plan
+        await incrementUsage(auth.user.id, 'transacciones_mes')
+
+        return NextResponse.json(resultado, { status: 201 })
+
+    } catch (error) {
+        console.error('Error API Agent POST gastos:', error)
         return NextResponse.json(
             { error: 'Error interno del servidor' },
             { status: 500 }

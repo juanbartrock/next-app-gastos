@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   eslint: {
     // Ignorar errores de ESLint durante el build
     ignoreDuringBuilds: true,
@@ -8,11 +9,6 @@ const nextConfig: NextConfig = {
   typescript: {
     // Ignorar errores de TypeScript durante el build
     ignoreBuildErrors: true,
-  },
-  env: {
-    DATABASE_URL: process.env.DATABASE_URL,
-    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
-    NEXTAUTH_URL: process.env.NEXTAUTH_URL,
   },
   // Optimizaciones para mejorar performance
   experimental: {

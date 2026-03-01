@@ -26,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/ui/logo"
 import { useSidebar } from "@/contexts/SidebarContext"
+import { cn } from "@/lib/utils"
 
 export function Sidebar() {
   const router = useRouter()
@@ -47,17 +48,25 @@ export function Sidebar() {
     }
   }
 
+  const navBtnClass = (path: string) => cn(
+    "w-full flex items-center py-5 rounded-lg transition-colors",
+    isOpen ? "justify-start" : "justify-center",
+    isActive(path)
+      ? "bg-violet-600/20 text-violet-300 border border-violet-500/20 hover:bg-violet-600/25"
+      : "text-white/50 hover:bg-white/[0.06] hover:text-white/80 border border-transparent"
+  )
+
   return (
-    <div className={`${isOpen ? 'w-64' : 'w-20'} transition-all duration-300 border-r border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg flex flex-col fixed h-screen z-10`} data-tour="sidebar">
+    <div className={`${isOpen ? 'w-64' : 'w-20'} transition-all duration-300 border-r border-white/[0.06] bg-[#0D0B1E]/95 backdrop-blur-xl shadow-lg flex flex-col fixed h-screen z-10`} data-tour="sidebar">
       {/* Botón toggle */}
-      <Button 
-        variant="outline" 
-        size="icon" 
+      <Button
+        variant="ghost"
+        size="icon"
         onClick={(e) => {
           e.stopPropagation();
           toggle();
         }}
-        className="absolute -right-3 top-20 h-6 w-6 rounded-full shadow-md border-gray-200 bg-white dark:bg-gray-700 dark:border-gray-600 p-0"
+        className="absolute -right-3 top-20 h-6 w-6 rounded-full shadow-md border border-white/[0.12] bg-[#1A1535] hover:bg-violet-600/30 p-0"
       >
         {isOpen ? <PanelLeftClose className="h-3 w-3" /> : <PanelLeft className="h-3 w-3" />}
       </Button>
@@ -95,235 +104,217 @@ export function Sidebar() {
             }
             
             .dark .sidebar-scroll::-webkit-scrollbar-thumb {
-              background: rgba(75, 85, 99, 0.4);
+              background: rgba(139, 92, 246, 0.25);
             }
-            
+
             .dark .sidebar-scroll::-webkit-scrollbar-thumb:hover {
-              background: rgba(75, 85, 99, 0.6);
+              background: rgba(139, 92, 246, 0.4);
             }
-            
+
             /* Para Firefox */
             .sidebar-scroll {
               scrollbar-width: thin;
               scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
             }
-            
+
             .dark .sidebar-scroll {
-              scrollbar-color: rgba(75, 85, 99, 0.4) transparent;
+              scrollbar-color: rgba(139, 92, 246, 0.25) transparent;
             }
           `}</style>
           
           {/* 1. Dashboard */}
-          <Button 
-            variant={isActive("/") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+          <Button
+            variant="ghost"
+            className={navBtnClass("/")}
             onClick={() => handleNavigation('/?dashboard=true')}
           >
-            <Grid className="w-5 h-5" />
+            <Grid className="w-5 h-5 shrink-0" />
             {isOpen && <span className="ml-3">Dashboard</span>}
           </Button>
-          
+
           {/* 2. Informes */}
-          <Button 
-            variant={isActive("/informes") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+          <Button
+            variant="ghost"
+            className={navBtnClass("/informes")}
             onClick={() => handleNavigation('/informes')}
           >
-            <BarChart3 className="w-5 h-5" />
+            <BarChart3 className="w-5 h-5 shrink-0" />
             {isOpen && <span className="ml-3">Informes</span>}
           </Button>
-          
+
           {/* 3. Transacciones */}
-          <Button 
-            variant={isActive("/transacciones") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+          <Button
+            variant="ghost"
+            className={navBtnClass("/transacciones")}
             onClick={() => handleNavigation('/transacciones')}
           >
-            <DollarSign className="w-5 h-5 text-blue-500" />
+            <DollarSign className="w-5 h-5 shrink-0 text-blue-400" />
             {isOpen && <span className="ml-3">Transacciones</span>}
           </Button>
-          
+
           {/* 4. Recurrentes */}
-          <Button 
-            variant={isActive("/recurrentes") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+          <Button
+            variant="ghost"
+            className={navBtnClass("/recurrentes")}
             onClick={() => handleNavigation('/recurrentes')}
             data-tour="recurring"
           >
-            <Repeat className="w-5 h-5" />
+            <Repeat className="w-5 h-5 shrink-0" />
             {isOpen && <span className="ml-3">Recurrentes</span>}
           </Button>
-          
+
           {/* 5. Financiación */}
-          <Button 
-            variant={isActive("/financiacion") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+          <Button
+            variant="ghost"
+            className={navBtnClass("/financiacion")}
             onClick={() => handleNavigation('/financiacion')}
           >
-            <CreditCard className="w-5 h-5" />
+            <CreditCard className="w-5 h-5 shrink-0" />
             {isOpen && <span className="ml-3">Financiación</span>}
           </Button>
-          
+
           {/* 6. Inversiones */}
-          <Button 
-            variant={isActive("/inversiones") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+          <Button
+            variant="ghost"
+            className={navBtnClass("/inversiones")}
             onClick={() => handleNavigation('/inversiones')}
           >
-            <TrendingUp className="w-5 h-5 text-green-500" />
+            <TrendingUp className="w-5 h-5 shrink-0 text-emerald-400" />
             {isOpen && <span className="ml-3">Inversiones</span>}
           </Button>
-          
+
           {/* 7. Préstamos */}
-          <Button 
-            variant={isActive("/prestamos") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+          <Button
+            variant="ghost"
+            className={navBtnClass("/prestamos")}
             onClick={() => handleNavigation('/prestamos')}
           >
-            <Building2 className="w-5 h-5 text-blue-500" />
+            <Building2 className="w-5 h-5 shrink-0 text-blue-400" />
             {isOpen && <span className="ml-3">Préstamos</span>}
           </Button>
-          
+
           {/* 8. Presupuestos */}
-          <Button 
-            variant={isActive("/presupuestos") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+          <Button
+            variant="ghost"
+            className={navBtnClass("/presupuestos")}
             onClick={() => handleNavigation('/presupuestos')}
             data-tour="budgets"
           >
-            <PieChart className="w-5 h-5" />
+            <PieChart className="w-5 h-5 shrink-0" />
             {isOpen && <span className="ml-3">Presupuestos</span>}
           </Button>
-          
+
           {/* 9. Grupos */}
-          <Button 
-            variant={isActive("/grupos") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+          <Button
+            variant="ghost"
+            className={navBtnClass("/grupos")}
             onClick={() => handleNavigation('/grupos')}
           >
-            <Users className="w-5 h-5" />
+            <Users className="w-5 h-5 shrink-0" />
             {isOpen && <span className="ml-3">Grupos</span>}
           </Button>
-          
+
           {/* 10. Tareas */}
-          <Button 
-            variant={isActive("/tareas") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+          <Button
+            variant="ghost"
+            className={navBtnClass("/tareas")}
             onClick={() => handleNavigation('/tareas')}
           >
-            <CheckSquare2 className="w-5 h-5 text-purple-500" />
+            <CheckSquare2 className="w-5 h-5 shrink-0 text-violet-400" />
             {isOpen && <span className="ml-3">Tareas</span>}
           </Button>
-          
+
           {/* 11. Alertas */}
-          <Button 
-            variant={isActive("/alertas") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+          <Button
+            variant="ghost"
+            className={navBtnClass("/alertas")}
             onClick={() => handleNavigation('/alertas')}
           >
-            <Bell className="w-5 h-5 text-amber-500" />
+            <Bell className="w-5 h-5 shrink-0 text-amber-400" />
             {isOpen && <span className="ml-3">Alertas</span>}
           </Button>
-          
+
           {/* 12. IA Financiero */}
-          <Button 
-            variant={isActive("/ai-financiero") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+          <Button
+            variant="ghost"
+            className={navBtnClass("/ai-financiero")}
             onClick={() => handleNavigation('/ai-financiero')}
             data-tour="ai"
           >
-            <LightbulbIcon className="w-5 h-5 text-cyan-500" />
+            <LightbulbIcon className="w-5 h-5 shrink-0 text-cyan-400" />
             {isOpen && <span className="ml-3">IA Financiero</span>}
           </Button>
-          
+
           {/* 13. Buzón de Comprobantes */}
-          <Button 
-            variant={isActive("/buzon") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+          <Button
+            variant="ghost"
+            className={navBtnClass("/buzon")}
             onClick={() => handleNavigation('/buzon')}
           >
-            <Archive className="w-5 h-5 text-indigo-500" />
+            <Archive className="w-5 h-5 shrink-0 text-indigo-400" />
             {isOpen && <span className="ml-3">Buzón Comprobantes</span>}
           </Button>
-          
+
           {/* 14. Beta Feedback */}
-          <Button 
-            variant={isActive("/beta-feedback") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+          <Button
+            variant="ghost"
+            className={navBtnClass("/beta-feedback")}
             onClick={() => handleNavigation('/beta-feedback')}
           >
-            <Bug className="w-5 h-5 text-blue-500" />
+            <Bug className="w-5 h-5 shrink-0 text-blue-400" />
             {isOpen && <span className="ml-3">Beta Feedback</span>}
           </Button>
-          
+
           {/* 15. Recomendaciones - DESHABILITADO: Funcionalidad deprecada */}
           {false && (
-            <Button 
-              variant={isActive("/recomendaciones-ahorro") ? "secondary" : "ghost"}
-              className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-              style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            <Button
+              variant="ghost"
+              className={navBtnClass("/recomendaciones-ahorro")}
               onClick={() => handleNavigation('/recomendaciones-ahorro')}
             >
-              <LightbulbIcon className="w-5 h-5" />
+              <LightbulbIcon className="w-5 h-5 shrink-0" />
               {isOpen && <span className="ml-3">Recomendaciones</span>}
             </Button>
           )}
-          
+
           {/* 16. Seguimiento Precios - DESHABILITADO: Funcionalidad deprecada */}
           {false && (
-            <Button 
-              variant={isActive("/seguimiento-precios") ? "secondary" : "ghost"}
-              className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-              style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+            <Button
+              variant="ghost"
+              className={navBtnClass("/seguimiento-precios")}
               onClick={() => handleNavigation('/seguimiento-precios')}
             >
-              <Tag className="w-5 h-5 text-orange-500" />
+              <Tag className="w-5 h-5 shrink-0 text-orange-400" />
               {isOpen && <span className="ml-3">Seguimiento Precios</span>}
             </Button>
           )}
 
           {/* Separador visual */}
           {isOpen && (
-            <div className="my-4 border-t border-gray-200 dark:border-gray-600 pt-2">
-              <span className="text-xs text-gray-400 dark:text-gray-500 px-3 font-medium">
+            <div className="my-4 border-t border-white/[0.06] pt-2">
+              <span className="text-xs text-white/25 px-3 font-medium uppercase tracking-wider">
                 Gestión de Datos
               </span>
             </div>
           )}
-          
+
           {/* 17. Importar Datos */}
-          <Button 
-            variant={isActive("/importar-datos") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+          <Button
+            variant="ghost"
+            className={navBtnClass("/importar-datos")}
             onClick={() => handleNavigation('/importar-datos')}
           >
-            <Upload className="w-5 h-5 text-blue-500" />
+            <Upload className="w-5 h-5 shrink-0 text-blue-400" />
             {isOpen && <span className="ml-3">Importar Datos</span>}
           </Button>
-          
+
           {/* 18. Exportar Datos */}
-          <Button 
-            variant={isActive("/exportar-datos") ? "secondary" : "ghost"}
-            className="w-full flex items-center justify-center py-5 text-gray-500 dark:text-gray-400"
-            style={{ justifyContent: isOpen ? 'flex-start' : 'center' }}
+          <Button
+            variant="ghost"
+            className={navBtnClass("/exportar-datos")}
             onClick={() => handleNavigation('/exportar-datos')}
           >
-            <Download className="w-5 h-5 text-green-500" />
+            <Download className="w-5 h-5 shrink-0 text-emerald-400" />
             {isOpen && <span className="ml-3">Exportar Datos</span>}
           </Button>
         </div>

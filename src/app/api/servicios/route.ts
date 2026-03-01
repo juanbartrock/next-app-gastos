@@ -1,28 +1,41 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { options as authOptions } from '@/app/api/auth/[...nextauth]/options'
+import { validateApiKey } from '@/lib/api-key'
 
 // GET /api/servicios - Obtener todos los servicios del usuario
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Intentar sesión NextAuth
     const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.email) {
+    let userId: string | null = null
+
+    if (session?.user?.email) {
+      const user = await prisma.user.findUnique({
+        where: { email: session.user.email },
+        select: { id: true }
+      })
+      userId = user?.id ?? null
+    }
+
+    // Fallback: API key
+    if (!userId) {
+      const auth = await validateApiKey(request)
+      if (auth?.apiKey.permisos.includes('read')) {
+        userId = auth.user.id
+      }
+    }
+
+    if (!userId) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
-    
+
     const servicios = await prisma.servicio.findMany({
-      where: {
-        user: {
-          email: session.user.email
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
+      where: { userId },
+      orderBy: { createdAt: 'desc' }
     })
-    
+
     return NextResponse.json(servicios)
   } catch (error) {
     console.error('Error al obtener servicios:', error)

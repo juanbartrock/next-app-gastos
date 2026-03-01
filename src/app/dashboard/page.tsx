@@ -69,11 +69,11 @@ import { useCurrency } from "@/contexts/CurrencyContext"
 import { useOnboarding } from "@/contexts/OnboardingContext"
 
 // Componente para mostrar estadísticas de gastos
-function BalanceCard({ 
-  title, 
-  amount, 
-  subtitle, 
-  icon: Icon, 
+function BalanceCard({
+  title,
+  amount,
+  subtitle,
+  icon: Icon,
   variant = "default",
   trend
 }: {
@@ -85,66 +85,85 @@ function BalanceCard({
   trend?: { value: number; period: string }
 }) {
   const { valuesVisible } = useVisibility()
-  
-  const getVariantStyles = () => {
+
+  const getAccentColor = () => {
     switch (variant) {
-      case "positive":
-        return "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950"
-      case "negative":
-        return "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950"
-      default:
-        return "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950"
+      case "positive": return "bg-emerald-400"
+      case "negative": return "bg-red-400"
+      default: return "bg-violet-400"
     }
   }
 
-  const getIconStyles = () => {
+  const getTintBg = () => {
     switch (variant) {
-      case "positive":
-        return "text-green-600 dark:text-green-400"
-      case "negative":
-        return "text-red-600 dark:text-red-400"
-      default:
-        return "text-blue-600 dark:text-blue-400"
+      case "positive": return "dark:bg-emerald-500/[0.08]"
+      case "negative": return "dark:bg-red-500/[0.08]"
+      default: return "dark:bg-violet-500/[0.08]"
+    }
+  }
+
+  const getIconColor = () => {
+    switch (variant) {
+      case "positive": return "text-emerald-400"
+      case "negative": return "text-red-400"
+      default: return "text-violet-400"
+    }
+  }
+
+  const getIconBg = () => {
+    switch (variant) {
+      case "positive": return "bg-emerald-500/20"
+      case "negative": return "bg-red-500/20"
+      default: return "bg-violet-500/20"
     }
   }
 
   return (
-    <Card className={cn("transition-all hover:shadow-md", getVariantStyles())}>
-      <CardContent className="p-6">
+    <div className={cn(
+      "relative overflow-hidden rounded-xl transition-all duration-200",
+      "backdrop-blur-xl bg-white/[0.04] border border-white/[0.08]",
+      "hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20",
+      getTintBg()
+    )}>
+      {/* Colored left border accent */}
+      <div className={cn("absolute left-0 top-0 bottom-0 w-1 rounded-l-xl", getAccentColor())} />
+      <div className="p-5 pl-6">
         <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="text-3xl font-bold">
+          <div className="space-y-1 flex-1 min-w-0">
+            <p className="text-xs font-medium text-white/50 uppercase tracking-wider">{title}</p>
+            <p className="text-2xl font-bold tracking-tight text-white">
               {valuesVisible ? amount : "***"}
             </p>
             {subtitle && (
-              <p className="text-xs text-muted-foreground">{subtitle}</p>
+              <p className="text-xs text-white/40">{subtitle}</p>
             )}
             {trend && (
               <div className="flex items-center gap-1 text-xs">
                 {trend.value > 0 ? (
-                  <TrendingUp className="h-3 w-3 text-green-500" />
+                  <TrendingUp className="h-3 w-3 text-emerald-400" />
                 ) : (
-                  <TrendingDown className="h-3 w-3 text-red-500" />
+                  <TrendingDown className="h-3 w-3 text-red-400" />
                 )}
-                <span className={trend.value > 0 ? "text-green-600" : "text-red-600"}>
+                <span className={trend.value > 0 ? "text-emerald-400" : "text-red-400"}>
                   {Math.abs(trend.value)}% vs {trend.period}
                 </span>
               </div>
             )}
           </div>
-          <Icon className={cn("h-8 w-8", getIconStyles())} />
+          <div className={cn("h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 ml-3", getIconBg())}>
+            <Icon className={cn("h-5 w-5", getIconColor())} />
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
 // Componente para cargar datos
 function LoadingScreen() {
   return (
-    <div className="h-screen w-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
-      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 dark:border-blue-300"></div>
+    <div className="h-screen w-full flex items-center justify-center bg-gradient-to-br from-[#0D0B1E] via-[#0F1235] to-[#0B1530]">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-violet-500"></div>
     </div>
   )
 }
@@ -210,7 +229,7 @@ function UltimosMovimientos({ gastos }: { gastos: any[] }) {
             {movimientos.map((movimiento) => (
               <div
                 key={movimiento.id}
-                className="flex items-center justify-between p-3 rounded-lg border bg-card hover:shadow-sm transition-shadow"
+                className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.05] transition-colors"
               >
                 <div className="flex items-center gap-3">
                   {getMovementIcon(movimiento.tipoMovimiento)}
@@ -258,16 +277,16 @@ function UltimosMovimientos({ gastos }: { gastos: any[] }) {
 
   return (
     <Tabs defaultValue="todos" className="w-full">
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="todos" className="flex items-center gap-2 text-xs">
+      <TabsList className="grid w-full grid-cols-3 bg-white/[0.05] backdrop-blur-sm border border-white/[0.08] rounded-xl">
+        <TabsTrigger value="todos" className="flex items-center gap-2 text-xs data-[state=active]:bg-violet-600/70 data-[state=active]:text-white data-[state=active]:shadow-lg">
           <DollarSign className="h-3 w-3" />
           Todo
         </TabsTrigger>
-        <TabsTrigger value="ingresos" className="flex items-center gap-2 text-xs">
+        <TabsTrigger value="ingresos" className="flex items-center gap-2 text-xs data-[state=active]:bg-violet-600/70 data-[state=active]:text-white data-[state=active]:shadow-lg">
           <TrendingUp className="h-3 w-3" />
           Ingresos
         </TabsTrigger>
-        <TabsTrigger value="egresos" className="flex items-center gap-2 text-xs">
+        <TabsTrigger value="egresos" className="flex items-center gap-2 text-xs data-[state=active]:bg-violet-600/70 data-[state=active]:text-white data-[state=active]:shadow-lg">
           <TrendingDown className="h-3 w-3" />
           Egresos
         </TabsTrigger>
@@ -668,46 +687,46 @@ export default function DashboardRedesigned() {
   ]
 
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Header mejorado */}
-      <header className="bg-white dark:bg-gray-900 border-b shadow-sm">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-[#0D0B1E] via-[#0F1235] to-[#0B1530]">
+      {/* Header premium */}
+      <header className="bg-gradient-to-r from-violet-950/80 via-indigo-950/80 to-slate-950/80 backdrop-blur-md border-b border-white/[0.06]">
         <div className="max-w-screen-2xl mx-auto px-6">
           <div className="flex items-center justify-between py-4">
             {/* Sección izquierda: Saldo y Cotizaciones */}
             <div className="flex items-center gap-6">
               {/* Widget de Saldo Total */}
-              <div className="flex items-center p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 rounded-xl shadow-sm border border-blue-100 dark:border-blue-800 min-w-[320px]">
+              <div className="glass-card flex items-center p-4 rounded-2xl min-w-[320px] bg-violet-500/[0.06]">
                 <div className="flex flex-col flex-1 text-center">
-                  <div className="text-xs uppercase font-semibold text-blue-600 dark:text-blue-400 tracking-wider mb-1">
+                  <div className="text-xs uppercase font-semibold text-violet-300 tracking-widest mb-1">
                     {totalBalanceTypes[balanceIndex].label}
                   </div>
-                  <div className="text-4xl font-bold text-blue-700 dark:text-blue-300">
+                  <div className="text-3xl font-bold text-white">
                     {valuesVisible ? totalBalanceTypes[balanceIndex].amount : "***"}
                   </div>
-                  <div className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                  <div className="text-xs text-violet-300/60 mt-1">
                     Incluye gastos familiares
                   </div>
                 </div>
-                <div className="flex flex-col border-l pl-4 border-blue-200 dark:border-blue-700 py-1">
-                  <Button 
+                <div className="flex flex-col border-l pl-4 border-white/[0.08] py-1">
+                  <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => navigateBalanceType("prev")}
-                    className="text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 h-8 w-8 p-0"
+                    className="text-white/40 hover:text-white hover:bg-white/10 h-8 w-8 p-0 rounded-full"
                   >
                     <ChevronUp className="h-4 w-4" />
                   </Button>
-                  <Button 
+                  <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => navigateBalanceType("next")}
-                    className="text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 h-8 w-8 p-0"
+                    className="text-white/40 hover:text-white hover:bg-white/10 h-8 w-8 p-0 rounded-full"
                   >
                     <ChevronDown className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
-              
+
               {/* Widget de Cotizaciones */}
               <DollarIndicator />
             </div>
@@ -717,38 +736,38 @@ export default function DashboardRedesigned() {
               <div className="ml-3">
                 <CurrencySelector />
               </div>
-              
+
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={toggleVisibility}
-                className="rounded-full"
+                className="rounded-full hover:bg-white/10"
                 title={valuesVisible ? "Ocultar valores" : "Mostrar valores"}
               >
                 {valuesVisible ? (
-                  <Eye className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  <Eye className="h-4 w-4 text-white/50" />
                 ) : (
-                  <EyeOff className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  <EyeOff className="h-4 w-4 text-white/50" />
                 )}
               </Button>
-              
+
               <div className="flex items-center">
-                <Sun className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                <Sun className="h-4 w-4 text-white/40" />
                 <Switch
                   checked={theme === 'dark'}
                   onCheckedChange={toggleTheme}
                   className="mx-2"
                 />
-                <Moon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                <Moon className="h-4 w-4 text-white/40" />
               </div>
-              
+
               <div data-tour="notifications">
                 <NotificationCenter />
               </div>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300">
+                  <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 bg-violet-600/30 text-violet-300 hover:bg-violet-600/50">
                     {session?.user?.name?.charAt(0) || 'U'}
                   </Button>
                 </DropdownMenuTrigger>
@@ -763,7 +782,7 @@ export default function DashboardRedesigned() {
                     Configuración
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     disabled={signingOut}
                     onClick={async () => {
                       setSigningOut(true)
@@ -795,35 +814,35 @@ export default function DashboardRedesigned() {
       </header>
 
       {/* Contenido principal */}
-      <main className="flex-1 bg-gray-50 dark:bg-gray-900">
+      <main className="flex-1">
         <div className="max-w-screen-2xl mx-auto px-6 py-6">
           <div className="space-y-6">
             {/* Navegación de mes */}
-            <div className="flex items-center justify-between">
-              <Button 
-                variant="outline" 
-                size="sm" 
+            <div className="flex items-center justify-between bg-white/[0.04] backdrop-blur-sm rounded-2xl border border-white/[0.06] px-6 py-3">
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => navigateMonth('prev')}
-                className="flex items-center gap-2"
+                className="flex items-center gap-1 hover:bg-white/10 rounded-full text-white/70 hover:text-white"
               >
                 <ChevronLeft className="h-4 w-4" />
                 Anterior
               </Button>
               <div className="text-center">
-                <h1 className="text-2xl font-bold">
+                <h1 className="text-xl font-semibold text-white capitalize">
                   {format(new Date(currentYear, currentMonth), 'MMMM yyyy', { locale: es })}
                 </h1>
-                <p className="text-sm text-muted-foreground">Dashboard financiero</p>
+                <p className="text-violet-300/70 text-sm">Dashboard financiero</p>
                 {/* Indicador de nivel de acceso */}
-                <div className="mt-2">
+                <div className="mt-1">
                   <NivelAccesoIndicator nivel={nivel} esAdministrador={esAdministradorFamiliar} />
                 </div>
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => navigateMonth('next')}
-                className="flex items-center gap-2"
+                className="flex items-center gap-1 hover:bg-white/10 rounded-full text-white/70 hover:text-white"
               >
                 Siguiente
                 <ChevronRight className="h-4 w-4" />
@@ -832,13 +851,16 @@ export default function DashboardRedesigned() {
 
             {/* Tabs para separar vistas */}
             <Tabs defaultValue="personal" className="w-full">
-              <TabsList className={cn("grid w-full", puedeVerGastosFamiliares() ? "grid-cols-2" : "grid-cols-1")}>
-                <TabsTrigger value="personal" className="flex items-center gap-2">
+              <TabsList className={cn(
+                "grid w-full bg-white/[0.05] backdrop-blur-sm border border-white/[0.08] rounded-xl",
+                puedeVerGastosFamiliares() ? "grid-cols-2" : "grid-cols-1"
+              )}>
+                <TabsTrigger value="personal" className="flex items-center gap-2 data-[state=active]:bg-violet-600/70 data-[state=active]:text-white data-[state=active]:shadow-lg">
                   <UserCheck className="h-4 w-4" />
                   Mi situación mensual
                 </TabsTrigger>
                 {puedeVerGastosFamiliares() && (
-                  <TabsTrigger value="familiar" className="flex items-center gap-2">
+                  <TabsTrigger value="familiar" className="flex items-center gap-2 data-[state=active]:bg-violet-600/70 data-[state=active]:text-white data-[state=active]:shadow-lg">
                     <Users className="h-4 w-4" />
                     Situación familiar
                   </TabsTrigger>
@@ -880,13 +902,13 @@ export default function DashboardRedesigned() {
                 
                 {/* Gráfico de gastos personales */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
+                  <Card className="glass-card rounded-2xl border-white/[0.08]">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-white/90 text-base font-semibold">
                         <BarChart className="h-5 w-5" />
                         Mis gastos por categoría
                       </CardTitle>
-                      <CardDescription>
+                      <CardDescription className="text-white/40 text-xs">
                         Distribución de mis gastos personales este mes
                       </CardDescription>
                     </CardHeader>
@@ -894,11 +916,11 @@ export default function DashboardRedesigned() {
                       <MultiChartWidget month={currentMonth} year={currentYear} />
                     </CardContent>
                   </Card>
-                  
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Próximas tareas</CardTitle>
-                      <CardDescription>
+
+                  <Card className="glass-card rounded-2xl border-white/[0.08]">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-white/90 text-base font-semibold">Próximas tareas</CardTitle>
+                      <CardDescription className="text-white/40 text-xs">
                         Tareas pendientes y recordatorios
                       </CardDescription>
                     </CardHeader>
@@ -910,10 +932,10 @@ export default function DashboardRedesigned() {
 
                 {/* Formulario de nuevo movimiento y últimos movimientos personales */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <Card data-tour="add-transaction">
-                    <CardHeader>
-                      <CardTitle>Registrar nuevo movimiento</CardTitle>
-                      <CardDescription>
+                  <Card className="glass-card rounded-2xl border-white/[0.08]" data-tour="add-transaction">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-white/90 text-base font-semibold">Registrar nuevo movimiento</CardTitle>
+                      <CardDescription className="text-white/40 text-xs">
                         Registra un nuevo gasto o ingreso personal. Usa el checkbox para indicar si debe incluirse en los totales familiares.
                       </CardDescription>
                     </CardHeader>
@@ -923,10 +945,10 @@ export default function DashboardRedesigned() {
                   </Card>
 
                   {/* Últimos movimientos personales */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Mis últimos movimientos</CardTitle>
-                      <CardDescription>
+                  <Card className="glass-card rounded-2xl border-white/[0.08]">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-white/90 text-base font-semibold">Mis últimos movimientos</CardTitle>
+                      <CardDescription className="text-white/40 text-xs">
                         Movimientos personales recientes registrados
                       </CardDescription>
                     </CardHeader>
@@ -1001,10 +1023,10 @@ export default function DashboardRedesigned() {
 
                   {/* Formulario de nuevo movimiento y últimos movimientos familiares */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Registrar nuevo movimiento</CardTitle>
-                        <CardDescription>
+                    <Card className="glass-card rounded-2xl border-white/[0.08]">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-white/90 text-base font-semibold">Registrar nuevo movimiento</CardTitle>
+                        <CardDescription className="text-white/40 text-xs">
                           Registra un nuevo gasto o ingreso. Marca el checkbox para incluirlo en los totales familiares.
                         </CardDescription>
                       </CardHeader>
@@ -1014,10 +1036,10 @@ export default function DashboardRedesigned() {
                     </Card>
 
                     {/* Últimos movimientos familiares */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Últimos movimientos familiares</CardTitle>
-                        <CardDescription>
+                    <Card className="glass-card rounded-2xl border-white/[0.08]">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-white/90 text-base font-semibold">Últimos movimientos familiares</CardTitle>
+                        <CardDescription className="text-white/40 text-xs">
                           Movimientos familiares recientes registrados
                         </CardDescription>
                       </CardHeader>
