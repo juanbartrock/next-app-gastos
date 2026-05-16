@@ -121,12 +121,13 @@ export async function POST(request: Request) {
     }
     
     // Obtener los datos del request
-    const { 
-      concepto, 
-      periodicidad, 
-      monto, 
-      comentario, 
-      estado, 
+    const {
+      concepto,
+      periodicidad,
+      monto,
+      moneda,
+      comentario,
+      estado,
       categoriaId,
       proximaFecha,
       tipoMovimiento,
@@ -162,6 +163,7 @@ export async function POST(request: Request) {
         concepto,
         periodicidad,
         monto: Number(monto),
+        moneda: moneda || 'ARS',
         comentario,
         estado: estado || 'pendiente',
         tipoMovimiento: tipoMovimiento || 'efectivo',

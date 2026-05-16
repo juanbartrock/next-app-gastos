@@ -111,12 +111,13 @@ export async function PUT(
     }
     
     // Obtener los datos del request
-    const { 
-      concepto, 
-      periodicidad, 
-      monto, 
-      comentario, 
-      estado, 
+    const {
+      concepto,
+      periodicidad,
+      monto,
+      moneda,
+      comentario,
+      estado,
       categoriaId,
       proximaFecha,
       ultimoPago,
@@ -195,6 +196,7 @@ export async function PUT(
           ...(concepto && { concepto }),
           ...(periodicidad && { periodicidad }),
           ...(monto && { monto: Number(monto) }),
+          ...(moneda && { moneda }),
           comentario,
           ...(estado && { estado }),
           proximaFecha: proximaFecha ? new Date(proximaFecha) : existeGasto.proximaFecha,

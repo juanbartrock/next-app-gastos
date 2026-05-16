@@ -127,6 +127,7 @@ model Gasto {
   id                       Int                       @id @default(autoincrement())
   concepto                 String
   monto                    Float
+  moneda                   String                    @default("ARS")
   fecha                    DateTime                  @default(now())
   categoria                String
   tipoTransaccion          String                    @default("expense")
@@ -174,6 +175,7 @@ model GastoRecurrente {
   concepto        String
   periodicidad    String
   monto           Float
+  moneda          String     @default("ARS")
   comentario      String?
   estado          String     @default("pendiente")
   createdAt       DateTime   @default(now())
@@ -420,6 +422,7 @@ model Servicio {
   nombre           String
   descripcion      String?
   monto            Float
+  moneda           String           @default("ARS")
   medioPago        String
   tarjeta          String?
   fechaCobro       DateTime?

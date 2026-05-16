@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { options } from "@/app/api/auth/[...nextauth]/options";
 import twilio from "twilio";
 import prisma from "@/lib/prisma";
 
@@ -43,6 +45,11 @@ function twimlResponse(message: string, recordingOptions = {}) {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await getServerSession(options);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     // Obtener los datos del formulario de Twilio
     const formData = await request.formData();

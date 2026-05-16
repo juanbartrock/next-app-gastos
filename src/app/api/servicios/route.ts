@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     }
     
     const data = await request.json()
-    const { nombre, descripcion, monto, medioPago, tarjeta, fechaCobro, fechaVencimiento, generaRecurrente } = data
+    const { nombre, descripcion, monto, moneda, medioPago, tarjeta, fechaCobro, fechaVencimiento, generaRecurrente } = data
     
     // Validaciones básicas
     if (!nombre || !monto || !medioPago) {
@@ -117,6 +117,7 @@ export async function POST(request: Request) {
               concepto: nombre,
               periodicidad,
               monto: parseFloat(monto.toString()),
+              moneda: moneda || 'ARS',
               comentario: `Gasto recurrente generado automáticamente desde servicio: ${nombre}`,
               estado: "pendiente",
               userId: user.id,
@@ -138,6 +139,7 @@ export async function POST(request: Request) {
           nombre,
           descripcion,
           monto: parseFloat(monto.toString()),
+          moneda: moneda || 'ARS',
           medioPago,
           tarjeta,
           fechaCobro: fechaCobro ? new Date(fechaCobro) : null,

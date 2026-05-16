@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { validateApiKey } from '@/lib/api-key'
+import { validateLimit, incrementUsage } from '@/lib/plan-limits'
 
 // GET /api/v1/agent/recurrentes — Gastos recurrentes del usuario
 export async function GET(request: NextRequest) {
@@ -94,6 +95,94 @@ export async function GET(request: NextRequest) {
         })
     } catch (error) {
         console.error('Error API Agent recurrentes:', error)
+        return NextResponse.json(
+            { error: 'Error interno del servidor' },
+            { status: 500 }
+        )
+    }
+}
+
+// POST /api/v1/agent/recurrentes — Crear un nuevo gasto recurrente
+export async function POST(request: NextRequest) {
+    try {
+        const auth = await validateApiKey(request)
+
+        if (!auth) {
+            return NextResponse.json(
+                { error: 'No autorizado. Se requiere API key válida en header Authorization: Bearer <key>' },
+                { status: 401 }
+            )
+        }
+
+        if (!auth.apiKey.permisos.includes('write')) {
+            return NextResponse.json(
+                { error: 'API key sin permiso de escritura' },
+                { status: 403 }
+            )
+        }
+
+        const body = await request.json()
+        const {
+            concepto,
+            periodicidad,
+            monto,
+            proximaFecha,
+            tipoMovimiento = 'efectivo',
+            categoriaId,
+            comentario,
+        } = body
+
+        if (!concepto || !periodicidad || monto === undefined) {
+            return NextResponse.json(
+                { error: 'Faltan campos requeridos: concepto, periodicidad, monto' },
+                { status: 400 }
+            )
+        }
+
+        if (categoriaId) {
+            const cat = await prisma.categoria.findUnique({ where: { id: Number(categoriaId) } })
+            if (!cat) {
+                return NextResponse.json({ error: 'Categoría no encontrada' }, { status: 400 })
+            }
+        }
+
+        const validacion = await validateLimit(auth.user.id, 'transacciones_mes')
+        if (!validacion.allowed) {
+            return NextResponse.json({
+                error: 'Límite de transacciones alcanzado',
+                detalles: validacion
+            }, { status: 403 })
+        }
+
+        let proximaFechaDate: Date | undefined = undefined
+        if (proximaFecha) {
+            const d = new Date(proximaFecha)
+            if (isNaN(d.getTime())) {
+                return NextResponse.json({ error: 'Formato de proximaFecha inválido. Usar ISO 8601.' }, { status: 400 })
+            }
+            proximaFechaDate = d
+        }
+
+        const recurrente = await prisma.gastoRecurrente.create({
+            data: {
+                concepto,
+                periodicidad,
+                monto: Number(monto),
+                tipoMovimiento,
+                estado: 'pendiente',
+                userId: auth.user.id,
+                ...(proximaFechaDate && { proximaFecha: proximaFechaDate }),
+                ...(categoriaId && { categoriaId: Number(categoriaId) }),
+                ...(comentario && { comentario }),
+            },
+        })
+
+        await incrementUsage(auth.user.id, 'transacciones_mes')
+
+        return NextResponse.json(recurrente, { status: 201 })
+
+    } catch (error) {
+        console.error('Error API Agent POST recurrentes:', error)
         return NextResponse.json(
             { error: 'Error interno del servidor' },
             { status: 500 }

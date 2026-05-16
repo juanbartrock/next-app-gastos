@@ -20,31 +20,13 @@ export async function OPTIONS(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(options)
-    
-    // Para pruebas, si no hay sesión, crear alertas para un usuario demo
-    let userId = session?.user?.id
-    
-    if (!userId) {
-      // Buscar un usuario existente para las pruebas
-      const usuariDemo = await prisma.user.findFirst({
-        where: {
-          email: { not: null }
-        }
-      })
-      
-      if (!usuariDemo) {
-        const response = NextResponse.json(
-          { 
-            error: "No hay usuarios en la base de datos para crear alertas de prueba",
-            sugerencia: "Inicia sesión primero o crea un usuario"
-          }, 
-          { status: 400 }
-        )
-        return addCorsHeaders(response)
-      }
-      
-      userId = usuariDemo.id
+
+    if (!session?.user?.id) {
+      const response = NextResponse.json({ error: "No autorizado" }, { status: 401 })
+      return addCorsHeaders(response)
     }
+
+    const userId = session.user.id
 
     // Crear algunas alertas de prueba
     const alertasPrueba = [
@@ -113,7 +95,7 @@ export async function POST(request: NextRequest) {
       message: "Alertas de prueba creadas exitosamente",
       alertas: alertasCreadas,
       usuario: userId,
-      nota: session ? "Creadas para tu usuario autenticado" : "Creadas para usuario demo"
+      nota: "Creadas para tu usuario autenticado"
     })
     
     return addCorsHeaders(response)

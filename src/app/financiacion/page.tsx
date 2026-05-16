@@ -46,6 +46,7 @@ type Financiacion = {
     id: number
     concepto: string
     monto: number
+    moneda?: string   // "ARS" | "USD"
     fecha: Date
     categoria: string
   }
@@ -205,28 +206,38 @@ export default function FinanciacionPage() {
     return "No definida"
   }
 
-  // Cálculo de totales
+  // Cálculo de totales (separado por moneda)
   const calcularTotales = () => {
     const fechaActual = new Date();
-    
-    // Total de pagos del mes en curso
-    const totalMesEnCurso = financiaciones.reduce((acc, financiacion) => {
-      if (financiacion.fechaProximoPago && 
-          isSameMonth(new Date(financiacion.fechaProximoPago), fechaActual)) {
-        return acc + financiacion.montoCuota;
-      }
-      return acc;
-    }, 0);
-    
-    // Total restante (suma de todos los montos restantes)
-    const totalRestante = financiaciones.reduce((acc, financiacion) => {
-      return acc + calcularMontoRestante(financiacion);
-    }, 0);
-    
-    // Próximo pago (fecha más cercana)
+
+    let totalMesEnCursoARS = 0;
+    let totalMesEnCursoUSD = 0;
+    let totalRestanteARS = 0;
+    let totalRestanteUSD = 0;
     let proximoPago: Date | null = null;
-    
+
     financiaciones.forEach(financiacion => {
+      const esUSD = financiacion.gasto.moneda === "USD";
+
+      // Total mes en curso
+      if (financiacion.fechaProximoPago &&
+          isSameMonth(new Date(financiacion.fechaProximoPago), fechaActual)) {
+        if (esUSD) {
+          totalMesEnCursoUSD += financiacion.montoCuota;
+        } else {
+          totalMesEnCursoARS += financiacion.montoCuota;
+        }
+      }
+
+      // Total restante
+      const montoRestante = calcularMontoRestante(financiacion);
+      if (esUSD) {
+        totalRestanteUSD += montoRestante;
+      } else {
+        totalRestanteARS += montoRestante;
+      }
+
+      // Próximo pago
       if (financiacion.fechaProximoPago && financiacion.cuotasRestantes > 0) {
         const fechaProx = new Date(financiacion.fechaProximoPago);
         if (!proximoPago || fechaProx < proximoPago) {
@@ -234,15 +245,20 @@ export default function FinanciacionPage() {
         }
       }
     });
-    
+
     return {
-      totalMesEnCurso,
-      totalRestante,
+      totalMesEnCurso: totalMesEnCursoARS,
+      totalMesEnCursoUSD,
+      totalRestante: totalRestanteARS,
+      totalRestanteUSD,
       proximoPago
     };
   };
 
-  const { totalMesEnCurso, totalRestante, proximoPago } = calcularTotales();
+  const { totalMesEnCurso, totalMesEnCursoUSD, totalRestante, totalRestanteUSD, proximoPago } = calcularTotales();
+
+  const formatUSD = (monto: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(monto);
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 p-6">
@@ -274,10 +290,20 @@ export default function FinanciacionPage() {
               <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {valuesVisible ? formatMoney(totalMesEnCurso) : "***"}
               </div>
+              {totalMesEnCursoUSD > 0 && (
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-700 px-1.5 py-0.5 rounded">
+                    USD
+                  </span>
+                  <span className="text-sm font-semibold text-blue-500 dark:text-blue-300">
+                    {valuesVisible ? formatUSD(totalMesEnCursoUSD) : "***"}
+                  </span>
+                </div>
+              )}
               <p className="text-xs text-gray-500 mt-1">Pagos programados para este mes</p>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-white dark:bg-gray-800 shadow-md">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Restante</CardTitle>
@@ -286,6 +312,16 @@ export default function FinanciacionPage() {
               <div className="text-2xl font-bold text-red-600 dark:text-red-400">
                 {valuesVisible ? formatMoney(totalRestante) : "***"}
               </div>
+              {totalRestanteUSD > 0 && (
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-700 px-1.5 py-0.5 rounded">
+                    USD
+                  </span>
+                  <span className="text-sm font-semibold text-blue-500 dark:text-blue-300">
+                    {valuesVisible ? formatUSD(totalRestanteUSD) : "***"}
+                  </span>
+                </div>
+              )}
               <p className="text-xs text-gray-500 mt-1">Monto total a pagar en todas las financiaciones</p>
             </CardContent>
           </Card>
@@ -340,13 +376,28 @@ export default function FinanciacionPage() {
                     {financiaciones.map((financiacion) => (
                       <TableRow key={financiacion.id}>
                         <TableCell className="font-medium">
-                          {financiacion.gasto.concepto}
+                          <div className="flex items-center gap-2">
+                            {financiacion.gasto.concepto}
+                            {financiacion.gasto.moneda === "USD" && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
+                                USD
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
-                          {valuesVisible ? formatMoney(financiacion.gasto.monto) : "***"}
+                          {valuesVisible
+                            ? (financiacion.gasto.moneda === "USD"
+                                ? formatUSD(financiacion.gasto.monto)
+                                : formatMoney(financiacion.gasto.monto))
+                            : "***"}
                         </TableCell>
                         <TableCell>
-                          {valuesVisible ? formatMoney(financiacion.montoCuota) : "***"}
+                          {valuesVisible
+                            ? (financiacion.gasto.moneda === "USD"
+                                ? formatUSD(financiacion.montoCuota)
+                                : formatMoney(financiacion.montoCuota))
+                            : "***"}
                         </TableCell>
                         <TableCell>
                           {financiacion.cuotasPagadas} de {financiacion.cantidadCuotas}
@@ -358,7 +409,11 @@ export default function FinanciacionPage() {
                           {getProximoPago(financiacion)}
                         </TableCell>
                         <TableCell className="font-medium">
-                          {valuesVisible ? formatMoney(calcularMontoRestante(financiacion)) : "***"}
+                          {valuesVisible
+                            ? (financiacion.gasto.moneda === "USD"
+                                ? formatUSD(calcularMontoRestante(financiacion))
+                                : formatMoney(calcularMontoRestante(financiacion)))
+                            : "***"}
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">

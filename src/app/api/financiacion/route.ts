@@ -38,6 +38,7 @@ export async function GET() {
             id: true,
             concepto: true,
             monto: true,
+            moneda: true,
             fecha: true,
             categoria: true
           }

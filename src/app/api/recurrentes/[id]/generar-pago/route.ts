@@ -64,6 +64,7 @@ export async function POST(
     }
 
     const ahora = new Date()
+    const tipoMovimientoRecurrente = gastoRecurrente.tipoMovimiento || 'efectivo'
 
     // Usar transacción para crear el gasto y actualizar el recurrente
     const resultado = await prisma.$transaction(async (tx) => {
@@ -72,10 +73,11 @@ export async function POST(
         data: {
           concepto: gastoRecurrente.concepto,
           monto: gastoRecurrente.monto,
+          moneda: gastoRecurrente.moneda || 'ARS',
           fecha: ahora,
           categoria: gastoRecurrente.categoria?.descripcion || 'Sin categoría',
           tipoTransaccion: 'expense',
-          tipoMovimiento: (gastoRecurrente as any).tipoMovimiento || 'efectivo',
+          tipoMovimiento: tipoMovimientoRecurrente,
           userId: session.user.id!,
           categoriaId: gastoRecurrente.categoriaId,
           gastoRecurrenteId: gastoRecurrente.id
@@ -85,6 +87,23 @@ export async function POST(
           gastoRecurrente: true
         }
       })
+
+      // Si el tipo es tarjeta, crear registro de financiación (1 cuota)
+      // para que el cargo aparezca en la sección de financiación/tarjeta
+      if (tipoMovimientoRecurrente === 'tarjeta') {
+        await tx.financiacion.create({
+          data: {
+            gastoId: nuevoGasto.id,
+            userId: session.user.id!,
+            cantidadCuotas: 1,
+            cuotasPagadas: 0,
+            cuotasRestantes: 1,
+            montoCuota: gastoRecurrente.monto,
+            fechaPrimerPago: ahora,
+            fechaProximoPago: ahora,
+          }
+        })
+      }
 
       // Actualizar el gasto recurrente
       const proximaFecha = calcularProximaFecha(ahora, gastoRecurrente.periodicidad)

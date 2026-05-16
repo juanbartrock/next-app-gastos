@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { options } from "@/app/api/auth/[...nextauth]/options"
 import OpenAI from "openai"
 
 const openai = new OpenAI({
@@ -64,9 +66,14 @@ function extraerJSON(content: string): any {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await getServerSession(options)
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   try {
     const { imagen, nombreArchivo } = await request.json()
-    
+
     if (!imagen) {
       return NextResponse.json({ error: 'Imagen requerida' }, { status: 400 })
     }

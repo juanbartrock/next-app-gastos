@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CalendarIcon, Edit, Pencil, Repeat, Trash2, ArrowLeft, Loader2, ChevronDown } from "lucide-react"
+import { CalendarIcon, Edit, Pencil, Repeat, Trash2, ArrowLeft, Loader2, ChevronDown, PlayCircle } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -43,6 +43,7 @@ type GastoRecurrente = {
   concepto: string
   periodicidad: string
   monto: number
+  moneda?: string   // "ARS" | "USD"
   comentario?: string
   estado: string
   tipoMovimiento?: string
@@ -68,6 +69,7 @@ type Servicio = {
   nombre: string
   descripcion?: string
   monto: number
+  moneda?: string   // "ARS" | "USD"
   medioPago: string
   tarjeta?: string
   fechaCobro?: Date
@@ -149,6 +151,7 @@ export default function RecurrentesPage() {
   const [concepto, setConcepto] = useState("")
   const [periodicidad, setPeriodicidad] = useState("mensual")
   const [monto, setMonto] = useState("")
+  const [moneda, setMoneda] = useState("ARS")
   const [comentario, setComentario] = useState("")
   const [estado, setEstado] = useState("pendiente")
   const [tipoMovimiento, setTipoMovimiento] = useState("efectivo")
@@ -156,6 +159,9 @@ export default function RecurrentesPage() {
   const [proximaFecha, setProximaFecha] = useState<Date | undefined>(undefined)
   const [proximaFechaStr, setProximaFechaStr] = useState<string>("")
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<string | undefined>(undefined)
+
+  // Totales separados por moneda
+  const [totalMesActualUSD, setTotalMesActualUSD] = useState(0)
   
   // Estados de loading
   const [submitting, setSubmitting] = useState(false)
@@ -164,12 +170,14 @@ export default function RecurrentesPage() {
   const [submittingServicio, setSubmittingServicio] = useState(false)
   // NUEVOS ESTADOS para funcionalidades de pago
   const [generandoPagoId, setGenerandoPagoId] = useState<number | null>(null)
+  const [generandoPagoServicioId, setGenerandoPagoServicioId] = useState<number | null>(null)
   const [actualizandoEstados, setActualizandoEstados] = useState(false)
 
   // Formulario para servicios
   const [servicioNombre, setServicioNombre] = useState("")
   const [servicioDescripcion, setServicioDescripcion] = useState("")
   const [servicioMonto, setServicioMonto] = useState("")
+  const [servicioMoneda, setServicioMoneda] = useState("ARS")
   const [servicioMedioPago, setServicioMedioPago] = useState("Tarjeta de crédito")
   const [servicioTarjeta, setServicioTarjeta] = useState("")
   const [servicioFechaCobro, setServicioFechaCobro] = useState<Date | undefined>(undefined)
@@ -181,6 +189,7 @@ export default function RecurrentesPage() {
     if (editingGasto) {
       setConcepto(editingGasto.concepto || "")
       setMonto(editingGasto.monto.toString())
+      setMoneda(editingGasto.moneda || "ARS")
       setPeriodicidad(editingGasto.periodicidad || "")
       setComentario(editingGasto.comentario || "")
       setEstado(editingGasto.estado || "")
@@ -205,6 +214,7 @@ export default function RecurrentesPage() {
     setServicioNombre("")
     setServicioDescripcion("")
     setServicioMonto("")
+    setServicioMoneda("ARS")
     setServicioMedioPago("Tarjeta de crédito")
     setServicioTarjeta("")
     setServicioFechaCobro(undefined)
@@ -219,6 +229,7 @@ export default function RecurrentesPage() {
       setServicioNombre(servicioActual.nombre || "")
       setServicioDescripcion(servicioActual.descripcion || "")
       setServicioMonto(servicioActual.monto.toString())
+      setServicioMoneda(servicioActual.moneda || "ARS")
       setServicioMedioPago(servicioActual.medioPago || "Tarjeta de crédito")
       setServicioTarjeta(servicioActual.tarjeta || "")
       
@@ -254,6 +265,7 @@ export default function RecurrentesPage() {
         nombre: servicioNombre,
         descripcion: servicioDescripcion,
         monto: parseFloat(servicioMonto),
+        moneda: servicioMoneda,
         medioPago: servicioMedioPago,
         tarjeta: servicioTarjeta,
         fechaCobro: parsedDate,
@@ -282,21 +294,28 @@ export default function RecurrentesPage() {
     }
   }
 
-  // Calcular el total de gastos recurrentes del mes actual
+  // Calcular el total de gastos recurrentes del mes actual (separado por moneda)
   useEffect(() => {
     if (gastosRecurrentes.length > 0) {
       const fechaActual = new Date();
       const mesActual = fechaActual.getMonth();
       const anioActual = fechaActual.getFullYear();
-      
+
       const gastosMesActual = gastosRecurrentes.filter(gasto => {
         if (!gasto.proximaFecha) return false;
         const fechaProx = new Date(gasto.proximaFecha);
         return fechaProx.getMonth() === mesActual && fechaProx.getFullYear() === anioActual;
       });
-      
-      const suma = gastosMesActual.reduce((total, gasto) => total + gasto.monto, 0);
-      setTotalMesActual(suma);
+
+      const sumaARS = gastosMesActual
+        .filter(g => (g.moneda || "ARS") === "ARS")
+        .reduce((total, gasto) => total + gasto.monto, 0);
+      const sumaUSD = gastosMesActual
+        .filter(g => g.moneda === "USD")
+        .reduce((total, gasto) => total + gasto.monto, 0);
+
+      setTotalMesActual(sumaARS);
+      setTotalMesActualUSD(sumaUSD);
     }
   }, [gastosRecurrentes]);
 
@@ -359,8 +378,13 @@ export default function RecurrentesPage() {
     return "mensual"
   }
 
-  // Calcular total mensual equivalente de servicios
-  const totalServiciosMensual = servicios.reduce((acc, servicio) => acc + getEquivalenteMensual(servicio), 0)
+  // Calcular total mensual equivalente de servicios (separado por moneda)
+  const totalServiciosMensual = servicios
+    .filter(s => (s.moneda || "ARS") === "ARS")
+    .reduce((acc, servicio) => acc + getEquivalenteMensual(servicio), 0)
+  const totalServiciosMensualUSD = servicios
+    .filter(s => s.moneda === "USD")
+    .reduce((acc, servicio) => acc + getEquivalenteMensual(servicio), 0)
 
   // Función para obtener servicios
   const fetchServicios = async () => {
@@ -524,6 +548,35 @@ export default function RecurrentesPage() {
       toast.success('Servicio eliminado con éxito (simulado)')
     } finally {
       setDeletingServicioId(null)
+    }
+  }
+
+  // Generar pago desde servicio contratado
+  const generarPagoServicio = async (servicioId: number) => {
+    if (!confirm('¿Generar pago para este servicio? Se registrará como gasto según el tipo de pago configurado.')) {
+      return
+    }
+
+    setGenerandoPagoServicioId(servicioId)
+    try {
+      const response = await fetch(`/api/servicios/${servicioId}/generar-pago`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      if (response.ok) {
+        const resultado = await response.json()
+        toast.success(resultado.message || '¡Pago generado exitosamente!')
+        await fetchData()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Error al generar el pago')
+      }
+    } catch (error) {
+      console.error('Error al generar pago del servicio:', error)
+      toast.error('Error al generar el pago')
+    } finally {
+      setGenerandoPagoServicioId(null)
     }
   }
 
@@ -726,6 +779,7 @@ export default function RecurrentesPage() {
     setConcepto("")
     setPeriodicidad("mensual")
     setMonto("")
+    setMoneda("ARS")
     setComentario("")
     setEstado("pendiente")
     setTipoMovimiento("efectivo")
@@ -757,6 +811,7 @@ export default function RecurrentesPage() {
         concepto,
         periodicidad,
         monto: parseFloat(monto),
+        moneda,
         comentario,
         estado,
         tipoMovimiento,
@@ -834,53 +889,53 @@ export default function RecurrentesPage() {
     setIsFormOpen(true)
   }
 
-  // NUEVA FUNCIONALIDAD: Calcular total pendiente según filtros
+  // NUEVA FUNCIONALIDAD: Calcular total pendiente según filtros (separado por moneda)
   const calcularTotalPendienteFiltrado = () => {
     const ahora = new Date()
     const mesActual = ahora.getMonth()
     const anioActual = ahora.getFullYear()
-    
+
     // Obtener gastos filtrados usando la misma lógica que la tabla
     const gastosFiltrados = (mostrarTodosGastos ? gastosRecurrentes : gastosRecurrentes.slice(0, 3))
       .filter(gasto => {
-        // Filtrar por concepto (case insensitive)
-        const conceptoMatch = !filtroConcepto || 
+        const conceptoMatch = !filtroConcepto ||
           gasto.concepto.toLowerCase().includes(filtroConcepto.toLowerCase())
-        
-        // Filtrar por categoría
-        const categoriaMatch = !filtroCategoria || 
+        const categoriaMatch = !filtroCategoria ||
           gasto.categoriaId === filtroCategoria
-        
-        // Filtrar por estado (considerar tanto el estado base como el visual calculado)
         const estadoVisualCalculado = calcularEstadoVisual(gasto)
-        const estadoMatch = filtroEstado.length === 0 || 
-          filtroEstado.includes(gasto.estado) || 
+        const estadoMatch = filtroEstado.length === 0 ||
+          filtroEstado.includes(gasto.estado) ||
           filtroEstado.includes(estadoVisualCalculado)
-        
         return conceptoMatch && categoriaMatch && estadoMatch
       })
-    
-    // Calcular el saldo pendiente de cada gasto filtrado
-    const totalPendiente = gastosFiltrados.reduce((total, gasto) => {
+
+    let totalPendienteARS = 0
+    let totalPendienteUSD = 0
+
+    gastosFiltrados.forEach(gasto => {
+      const esUSD = gasto.moneda === "USD"
+      let saldoPendiente = gasto.monto
+
       if (gasto.gastosGenerados && gasto.gastosGenerados.length > 0) {
-        // Filtrar pagos del MES ACTUAL solamente
         const pagosDelMesActual = gasto.gastosGenerados.filter(pago => {
           const pagoAny = pago as any
           const fechaPago = new Date(pagoAny.fechaImputacion || pago.fecha)
           return fechaPago.getMonth() === mesActual && fechaPago.getFullYear() === anioActual
         })
-        
         const totalPagadoMesActual = pagosDelMesActual.reduce((sum, pago) => sum + pago.monto, 0)
-        const saldoPendiente = Math.max(0, gasto.monto - totalPagadoMesActual) // No permitir valores negativos
-        return total + saldoPendiente
-      } else {
-        // Si no hay pagos, el saldo pendiente es el monto total
-        return total + gasto.monto
+        saldoPendiente = Math.max(0, gasto.monto - totalPagadoMesActual)
       }
-    }, 0)
-    
+
+      if (esUSD) {
+        totalPendienteUSD += saldoPendiente
+      } else {
+        totalPendienteARS += saldoPendiente
+      }
+    })
+
     return {
-      totalPendiente,
+      totalPendiente: totalPendienteARS,
+      totalPendienteUSD,
       cantidadGastos: gastosFiltrados.length,
       totalGastos: gastosRecurrentes.length
     }
@@ -903,6 +958,15 @@ export default function RecurrentesPage() {
   const formatFecha = (fecha?: Date) => {
     if (!fecha) return "No definida"
     return formatDateToDDMMYYYY(new Date(fecha))
+  }
+
+  // Formatear monto respetando la moneda del registro
+  const formatMontoConMoneda = (monto: number, monedaGasto?: string) => {
+    if (!valuesVisible) return "***"
+    if (monedaGasto === "USD") {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(monto)
+    }
+    return formatMoney(monto)
   }
 
   // Formatear tipo de movimiento
@@ -977,13 +1041,27 @@ export default function RecurrentesPage() {
               <div className="md:col-span-5 flex flex-col">
                 {/* Total de gastos recurrentes */}
                 <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-start">
                     <div>
                       <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">Total gastos recurrentes</h3>
                       <p className="text-sm text-gray-500 dark:text-gray-400">{new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</p>
                     </div>
-                    <div className="text-3xl font-bold text-primary">
-                      {valuesVisible ? formatMoney(totalMesActual) : "***"}
+                    <div className="text-right">
+                      <div className="text-3xl font-bold text-primary">
+                        {valuesVisible ? formatMoney(totalMesActual) : "***"}
+                      </div>
+                      {totalMesActualUSD > 0 && (
+                        <div className="mt-1 flex items-center justify-end gap-1.5">
+                          <span className="text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-700 px-1.5 py-0.5 rounded">
+                            USD
+                          </span>
+                          <span className="text-lg font-semibold text-blue-600 dark:text-blue-400">
+                            {valuesVisible
+                              ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalMesActualUSD)
+                              : "***"}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1005,7 +1083,19 @@ export default function RecurrentesPage() {
                     <div className="text-3xl font-bold text-primary">
                       {valuesVisible ? formatMoney(totalServiciosMensual) : "***"}
                     </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {totalServiciosMensualUSD > 0 && (
+                      <div className="flex items-center justify-end gap-1.5 mt-1">
+                        <span className="text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-700 px-1.5 py-0.5 rounded">
+                          USD
+                        </span>
+                        <span className="text-lg font-semibold text-blue-600 dark:text-blue-400">
+                          {valuesVisible
+                            ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalServiciosMensualUSD)
+                            : "***"}
+                        </span>
+                      </div>
+                    )}
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                       {servicios.length} servicio{servicios.length !== 1 ? 's' : ''}
                     </p>
                   </div>
@@ -1035,19 +1125,31 @@ export default function RecurrentesPage() {
                               const periodicidad = getPeriodicidadServicio(servicio.medioPago)
                               const equivalenteMensual = getEquivalenteMensual(servicio)
                               
+                              const esUSD = servicio.moneda === "USD"
+                              const fmtServicio = (v: number) => esUSD
+                                ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v)
+                                : formatMoney(v)
+
                               return (
                                 <TableRow key={servicio.id}>
                                   <TableCell className="font-medium">
-                                    {servicio.nombre}
+                                    <div className="flex items-center gap-2">
+                                      {servicio.nombre}
+                                      {esUSD && (
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
+                                          USD
+                                        </span>
+                                      )}
+                                    </div>
                                     {servicio.tarjeta && (
-                                      <span className="text-xs text-gray-500 block">
+                                      <span className="text-xs text-gray-500 block mt-0.5">
                                         {servicio.tarjeta}
                                       </span>
                                     )}
                                   </TableCell>
                                   <TableCell>
                                     <div className="text-right">
-                                      <div className="font-medium">{valuesVisible ? formatMoney(servicio.monto) : "***"}</div>
+                                      <div className="font-medium">{valuesVisible ? fmtServicio(servicio.monto) : "***"}</div>
                                       <div className="text-xs text-gray-500 capitalize">
                                         {periodicidad}
                                       </div>
@@ -1056,7 +1158,7 @@ export default function RecurrentesPage() {
                                   <TableCell>
                                     <div className="text-right">
                                       <div className="font-medium text-blue-600">
-                                        {valuesVisible ? formatMoney(equivalenteMensual) : "***"}
+                                        {valuesVisible ? fmtServicio(equivalenteMensual) : "***"}
                                       </div>
                                       {valuesVisible && periodicidad !== 'mensual' && (
                                         <div className="text-xs text-gray-500">
@@ -1081,8 +1183,21 @@ export default function RecurrentesPage() {
                                   </TableCell>
                                   <TableCell>
                                     <div className="flex items-center gap-2">
-                                      <Button 
-                                        variant="ghost" 
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        title="Generar Pago"
+                                        onClick={() => generarPagoServicio(servicio.id)}
+                                        disabled={generandoPagoServicioId === servicio.id || deletingServicioId === servicio.id || submittingServicio}
+                                      >
+                                        {generandoPagoServicioId === servicio.id ? (
+                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <PlayCircle className="h-4 w-4 text-green-600" />
+                                        )}
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
                                         size="icon"
                                         onClick={() => {
                                           setServicioActual(servicio)
@@ -1092,8 +1207,8 @@ export default function RecurrentesPage() {
                                       >
                                         <Pencil className="h-4 w-4" />
                                       </Button>
-                                      <Button 
-                                        variant="ghost" 
+                                      <Button
+                                        variant="ghost"
                                         size="icon"
                                         onClick={() => eliminarServicio(servicio.id)}
                                         disabled={deletingServicioId === servicio.id || submittingServicio}
@@ -1135,22 +1250,34 @@ export default function RecurrentesPage() {
         {/* NUEVA FUNCIONALIDAD: Resumen de Total Pendiente */}
         <Card className="w-full bg-white dark:bg-gray-800 shadow-lg mb-6">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                   Total Pendiente por Pagar
                 </h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {estadisticasFiltros.cantidadGastos === estadisticasFiltros.totalGastos 
-                    ? `${estadisticasFiltros.cantidadGastos} gastos recurrentes` 
+                  {estadisticasFiltros.cantidadGastos === estadisticasFiltros.totalGastos
+                    ? `${estadisticasFiltros.cantidadGastos} gastos recurrentes`
                     : `${estadisticasFiltros.cantidadGastos} de ${estadisticasFiltros.totalGastos} gastos (filtrados)`
                   }
                 </p>
               </div>
-              <div className="text-right">
+              <div className="text-right space-y-1">
                 <div className="text-3xl font-bold text-red-600 dark:text-red-400">
                   {valuesVisible ? formatMoney(estadisticasFiltros.totalPendiente) : "***"}
                 </div>
+                {estadisticasFiltros.totalPendienteUSD > 0 && (
+                  <div className="flex items-center justify-end gap-1.5">
+                    <span className="text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-700 px-1.5 py-0.5 rounded">
+                      USD
+                    </span>
+                    <span className="text-lg font-semibold text-blue-600 dark:text-blue-400">
+                      {valuesVisible
+                        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(estadisticasFiltros.totalPendienteUSD)
+                        : "***"}
+                    </span>
+                  </div>
+                )}
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   {new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
                 </p>
@@ -1346,31 +1473,36 @@ export default function RecurrentesPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="monto">Monto *</Label>
-                  <div className="relative">
-                    <Input
-                      id="monto"
-                      type="text"
-                      value={monto}
-                      onChange={(e) => {
-                        // Solo permitir números y un punto decimal
-                        const value = e.target.value.replace(/[^0-9.]/g, '');
-                        // Evitar múltiples puntos decimales
-                        const parts = value.split('.');
-                        if (parts.length > 2) {
-                          return;
-                        }
-                        setMonto(value);
-                      }}
-                      placeholder="0.00"
-                      required
-                      className="pl-8"
-                    />
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
-                    {monto && valuesVisible && (
-                      <div className="mt-1 text-sm text-gray-500">
-                        {formatMoney(parseFloat(monto) || 0)}
-                      </div>
-                    )}
+                  <div className="flex gap-2">
+                    <Select value={moneda} onValueChange={setMoneda}>
+                      <SelectTrigger className="w-[90px] shrink-0">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ARS">ARS $</SelectItem>
+                        <SelectItem value="USD">USD $</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="relative flex-1">
+                      <Input
+                        id="monto"
+                        type="text"
+                        value={monto}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^0-9.]/g, '');
+                          const parts = value.split('.');
+                          if (parts.length > 2) return;
+                          setMonto(value);
+                        }}
+                        placeholder="0.00"
+                        required
+                      />
+                      {monto && valuesVisible && moneda === "ARS" && (
+                        <div className="mt-1 text-sm text-gray-500">
+                          {formatMoney(parseFloat(monto) || 0)}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -1503,41 +1635,46 @@ export default function RecurrentesPage() {
               
               <div>
                 <Label htmlFor="monto">Monto *</Label>
-                <div className="relative">
-                  <Input
-                    id="monto"
-                    type="text"
-                    value={servicioMonto}
-                    onChange={(e) => {
-                      // Solo permitir números y un punto decimal
-                      const value = e.target.value.replace(/[^0-9.]/g, '');
-                      // Evitar múltiples puntos decimales
-                      const parts = value.split('.');
-                      if (parts.length > 2) {
-                        return;
-                      }
-                      setServicioMonto(value);
-                    }}
-                    placeholder={servicioMedioPago.toLowerCase().includes("anual") ? "Importe anual" : servicioMedioPago.toLowerCase().includes("trimestral") ? "Importe trimestral" : "Importe mensual"}
-                    required
-                    className="pl-8"
-                  />
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
-                  {servicioMonto && valuesVisible && (
-                    <div className="mt-1 text-sm text-gray-500">
-                      {formatMoney(parseFloat(servicioMonto) || 0)}
-                      {servicioMedioPago.toLowerCase().includes("anual") && (
-                        <span className="text-blue-600 ml-2">
-                          ({formatMoney((parseFloat(servicioMonto) || 0) / 12)} mensual)
-                        </span>
-                      )}
-                      {servicioMedioPago.toLowerCase().includes("trimestral") && (
-                        <span className="text-blue-600 ml-2">
-                          ({formatMoney((parseFloat(servicioMonto) || 0) / 3)} mensual)
-                        </span>
-                      )}
-                    </div>
-                  )}
+                <div className="flex gap-2">
+                  <Select value={servicioMoneda} onValueChange={setServicioMoneda}>
+                    <SelectTrigger className="w-[90px] shrink-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ARS">ARS $</SelectItem>
+                      <SelectItem value="USD">USD $</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="relative flex-1">
+                    <Input
+                      id="monto"
+                      type="text"
+                      value={servicioMonto}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[^0-9.]/g, '');
+                        const parts = value.split('.');
+                        if (parts.length > 2) return;
+                        setServicioMonto(value);
+                      }}
+                      placeholder={servicioMedioPago.toLowerCase().includes("anual") ? "Importe anual" : servicioMedioPago.toLowerCase().includes("trimestral") ? "Importe trimestral" : "Importe mensual"}
+                      required
+                    />
+                    {servicioMonto && valuesVisible && servicioMoneda === "ARS" && (
+                      <div className="mt-1 text-sm text-gray-500">
+                        {formatMoney(parseFloat(servicioMonto) || 0)}
+                        {servicioMedioPago.toLowerCase().includes("anual") && (
+                          <span className="text-blue-600 ml-2">
+                            ({formatMoney((parseFloat(servicioMonto) || 0) / 12)} mensual)
+                          </span>
+                        )}
+                        {servicioMedioPago.toLowerCase().includes("trimestral") && (
+                          <span className="text-blue-600 ml-2">
+                            ({formatMoney((parseFloat(servicioMonto) || 0) / 3)} mensual)
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               
@@ -1694,16 +1831,23 @@ export default function RecurrentesPage() {
                         return (
                           <TableRow key={gasto.id}>
                             <TableCell className="font-medium">
-                              {gasto.concepto}
+                              <div className="flex items-center gap-2">
+                                {gasto.concepto}
+                                {gasto.moneda === "USD" && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
+                                    USD
+                                  </span>
+                                )}
+                              </div>
                               {gasto.gastosGenerados && gasto.gastosGenerados.length > 0 && (
-                                <div className="text-xs text-gray-500">
+                                <div className="text-xs text-gray-500 mt-0.5">
                                   {gasto.gastosGenerados.length} pago{gasto.gastosGenerados.length !== 1 ? 's' : ''} generado{gasto.gastosGenerados.length !== 1 ? 's' : ''}
                                 </div>
                               )}
                             </TableCell>
                             <TableCell>{gasto.periodicidad}</TableCell>
                             <TableCell>
-                              {valuesVisible ? formatMoney(gasto.monto) : "***"}
+                              {formatMontoConMoneda(gasto.monto, gasto.moneda)}
                             </TableCell>
                             <TableCell>{formatTipoMovimiento(gasto.tipoMovimiento)}</TableCell>
                             <TableCell>

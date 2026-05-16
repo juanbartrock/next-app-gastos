@@ -67,7 +67,7 @@ export async function PUT(
     }
     
     const data = await request.json()
-    const { nombre, descripcion, monto, medioPago, tarjeta, fechaCobro, fechaVencimiento, generaRecurrente } = data
+    const { nombre, descripcion, monto, moneda, medioPago, tarjeta, fechaCobro, fechaVencimiento, generaRecurrente } = data
     
     // Obtener el servicio actual con sus relaciones
     const servicioExistente = await prisma.servicio.findUnique({
@@ -141,6 +141,7 @@ export async function PUT(
                 concepto: nombre || servicioExistente.nombre,
                 periodicidad,
                 monto: monto !== undefined ? parseFloat(monto.toString()) : servicioExistente.monto,
+                moneda: moneda || servicioExistente.moneda || 'ARS',
                 comentario: `Gasto recurrente generado automáticamente desde servicio: ${nombre || servicioExistente.nombre}`,
                 estado: "pendiente",
                 userId: servicioExistente.user.id,
@@ -170,6 +171,7 @@ export async function PUT(
           nombre: nombre || undefined,
           descripcion: descripcion !== undefined ? descripcion : undefined,
           monto: monto !== undefined ? parseFloat(monto.toString()) : undefined,
+          moneda: moneda || undefined,
           medioPago: medioPago || undefined,
           tarjeta: tarjeta !== undefined ? tarjeta : undefined,
           fechaCobro: fechaCobro ? new Date(fechaCobro) : undefined,
@@ -188,6 +190,7 @@ export async function PUT(
           data: {
             concepto: nombre || undefined,
             monto: monto !== undefined ? parseFloat(monto.toString()) : undefined,
+            moneda: moneda || undefined,
             proximaFecha: fechaCobro ? new Date(fechaCobro) : undefined,
           }
         })

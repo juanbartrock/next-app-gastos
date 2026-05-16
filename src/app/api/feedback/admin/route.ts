@@ -8,9 +8,17 @@ import { TipoFeedback, PrioridadFeedback, EstadoFeedback } from "@prisma/client"
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(options)
-    
-    // Verificar que sea el administrador principal
-    if (!session?.user?.id || session.user.email !== "jpautasso@gmail.com") {
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { isAdmin: true }
+    })
+
+    if (!currentUser?.isAdmin) {
       return NextResponse.json({ error: 'Acceso denegado - Solo administradores' }, { status: 403 })
     }
 
@@ -92,9 +100,17 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(options)
-    
-    // Verificar que sea el administrador principal
-    if (!session?.user?.id || session.user.email !== "jpautasso@gmail.com") {
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { isAdmin: true }
+    })
+
+    if (!currentUser?.isAdmin) {
       return NextResponse.json({ error: 'Acceso denegado - Solo administradores' }, { status: 403 })
     }
 

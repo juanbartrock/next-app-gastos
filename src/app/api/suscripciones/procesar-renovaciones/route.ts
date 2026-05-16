@@ -9,10 +9,19 @@ export async function POST(request: NextRequest) {
   try {
     // Esta API puede ser llamada por un cron job o manualmente por admins
     const session = await getServerSession(authOptions)
-    
-    // Solo admins pueden ejecutar esta función manualmente
-    if (session && !session.user?.isAdmin) {
-      return NextResponse.json({ error: 'Solo administradores pueden ejecutar esto' }, { status: 403 })
+
+    if (session) {
+      // Llamada autenticada: solo admins
+      if (!session.user?.isAdmin) {
+        return NextResponse.json({ error: 'Solo administradores pueden ejecutar esto' }, { status: 403 })
+      }
+    } else {
+      // Sin sesión: requerir CRON_SECRET_TOKEN en el header Authorization
+      const authHeader = request.headers.get('authorization')
+      const cronSecret = process.env.CRON_SECRET_TOKEN
+      if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+        return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+      }
     }
 
     const hoy = new Date()
